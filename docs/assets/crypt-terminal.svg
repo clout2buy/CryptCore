@@ -1,0 +1,35 @@
+<svg width="1200" height="560" viewBox="0 0 1200 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Crypt terminal preview</title>
+  <desc id="desc">A stylized terminal preview showing Crypt running tools, subagents, checks, and release gates.</desc>
+  <rect width="1200" height="560" rx="28" fill="#070B12"/>
+  <rect x="36" y="34" width="1128" height="492" rx="18" fill="#0B1220" stroke="#1E2A3D" stroke-width="2"/>
+  <circle cx="70" cy="68" r="8" fill="#FF5F57"/>
+  <circle cx="96" cy="68" r="8" fill="#FFBD2E"/>
+  <circle cx="122" cy="68" r="8" fill="#28C840"/>
+  <text x="156" y="74" fill="#8EA4C2" font-family="JetBrains Mono, Consolas, monospace" font-size="18">crypt-agent release cockpit</text>
+
+  <rect x="64" y="104" width="1072" height="58" rx="10" fill="#111B2D" stroke="#26364F"/>
+  <text x="88" y="141" fill="#E8F1FF" font-family="JetBrains Mono, Consolas, monospace" font-size="21">Crypt ollama:gpt-oss:20b</text>
+  <text x="407" y="141" fill="#4DE5FF" font-family="JetBrains Mono, Consolas, monospace" font-size="21">cwd=D:\Crypt</text>
+  <text x="922" y="141" fill="#4BE6A5" font-family="JetBrains Mono, Consolas, monospace" font-size="21">doctor 17/17</text>
+
+  <rect x="64" y="190" width="520" height="256" rx="14" fill="#09111E" stroke="#20304A"/>
+  <text x="90" y="226" fill="#4DE5FF" font-family="JetBrains Mono, Consolas, monospace" font-size="18">TOOLS</text>
+  <text x="90" y="266" fill="#E8F1FF" font-family="JetBrains Mono, Consolas, monospace" font-size="18">✓ read_file      core/loop.py</text>
+  <text x="90" y="302" fill="#E8F1FF" font-family="JetBrains Mono, Consolas, monospace" font-size="18">✓ edit_file      README.md</text>
+  <text x="90" y="338" fill="#E8F1FF" font-family="JetBrains Mono, Consolas, monospace" font-size="18">✓ spawn_agent    release_reviewer</text>
+  <text x="90" y="374" fill="#E8F1FF" font-family="JetBrains Mono, Consolas, monospace" font-size="18">✓ pytest         293 passed</text>
+  <text x="90" y="410" fill="#75E7FF" font-family="JetBrains Mono, Consolas, monospace" font-size="18">trace: redacted · packaged · verified</text>
+
+  <rect x="616" y="190" width="520" height="256" rx="14" fill="#09111E" stroke="#20304A"/>
+  <text x="642" y="226" fill="#C78BFF" font-family="JetBrains Mono, Consolas, monospace" font-size="18">AGENT LANES</text>
+  <text x="642" y="266" fill="#E8F1FF" font-family="JetBrains Mono, Consolas, monospace" font-size="18">explorer          architecture scan</text>
+  <text x="642" y="302" fill="#E8F1FF" font-family="JetBrains Mono, Consolas, monospace" font-size="18">release_reviewer  secret hygiene</text>
+  <text x="642" y="338" fill="#E8F1FF" font-family="JetBrains Mono, Consolas, monospace" font-size="18">verifier          smoke + coverage</text>
+  <text x="642" y="374" fill="#FFBF47" font-family="JetBrains Mono, Consolas, monospace" font-size="18">policy            block repeated writes</text>
+  <text x="642" y="410" fill="#4BE6A5" font-family="JetBrains Mono, Consolas, monospace" font-size="18">status            production ready</text>
+
+  <rect x="64" y="468" width="1072" height="34" rx="8" fill="#111B2D"/>
+  <rect x="64" y="468" width="820" height="34" rx="8" fill="#0F766E"/>
+  <text x="88" y="491" fill="#ECFEFF" font-family="JetBrains Mono, Consolas, monospace" font-size="17">release gate: lint + tests + build + audit + secret scan</text>
+</svg>

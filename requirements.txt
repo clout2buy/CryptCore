@@ -1,0 +1,6 @@
+anthropic
+google-auth
+google-auth-oauthlib
+pypdf
+python-dotenv
+rich
