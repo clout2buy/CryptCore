@@ -17,7 +17,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from core import auth, runtime, session as sessions, settings, ui
-from core.api import AnthropicProvider, GeminiProvider, OllamaProvider, OpenAICodexProvider, OpenAIProvider
+from core.api import AnthropicProvider, CryptProvider, GeminiProvider, OllamaProvider, OpenAIProvider
 from core.loop import run
 
 
@@ -29,8 +29,8 @@ def main() -> int:
     p = argparse.ArgumentParser(prog="crypt", description="local-first coding harness")
     p.add_argument(
         "--provider",
-        choices=settings.PROVIDERS,
-        help="anthropic oauth, openai-compatible, openai-codex oauth, gemini, or ollama",
+        choices=settings.PROVIDER_CHOICES,
+        help="anthropic oauth, openai-compatible, crypt oauth, gemini, or ollama",
     )
     p.add_argument("--model", help="model id; overrides saved/default model")
     p.add_argument("--cwd", help="workspace root for tools")
@@ -66,13 +66,16 @@ def main() -> int:
     p.add_argument(
         "command",
         nargs="?",
-        choices=["login", "logout", "setup", "doctor", "bench", "eval-target", "app-daemon"],
-        help="login | logout | setup | doctor | bench | eval-target | app-daemon",
+        choices=["login", "logout", "setup", "doctor", "bench", "eval-target", "app-daemon", "skills", "tasks", "project"],
+        help="login | logout | setup | doctor | bench | eval-target | app-daemon | skills | tasks | project",
     )
-    args = p.parse_args()
+    args, command_args = p.parse_known_args()
+    args.command_args = command_args
+    if command_args and args.command not in {"skills", "tasks", "project"}:
+        p.error(f"unrecognized arguments: {' '.join(command_args)}")
 
     if args.command == "login":
-        return _do_login(args.provider or settings.provider_default(saved))
+        return _do_login(settings.normalize_provider(args.provider or settings.provider_default(saved)))
     if args.command == "logout":
         return _do_logout()
     if args.command == "setup":
@@ -83,6 +86,12 @@ def main() -> int:
 
         print(run_doctor(settings.resolve_workspace(args.cwd, saved)))
         return 0
+    if args.command == "skills":
+        return _do_skills(saved, args)
+    if args.command == "tasks":
+        return _do_tasks(saved, args)
+    if args.command == "project":
+        return _do_project(saved, args)
     if args.command == "bench":
         return _do_bench(saved, args)
     if args.command == "eval-target":
@@ -124,7 +133,7 @@ def main() -> int:
                 [
                     (settings.PROVIDER_ANTHROPIC, "Anthropic OAuth"),
                     (settings.PROVIDER_OPENAI, "OpenAI (or compatible)"),
-                    (settings.PROVIDER_OPENAI_CODEX, "ChatGPT OAuth (Codex)"),
+                    (settings.PROVIDER_CRYPT, "Crypt OAuth"),
                     (settings.PROVIDER_GEMINI, "Gemini OAuth/API key"),
                     (settings.PROVIDER_OLLAMA, "Ollama (local/cloud)"),
                 ],
@@ -231,12 +240,12 @@ def _session_for_startup(args: argparse.Namespace, cwd: Path, provider) -> sessi
 def _do_setup(saved: dict, args: argparse.Namespace) -> dict:
     ui.info("setup: choose workspace, provider, and model")
     workspace = _ask_workspace(args.cwd, saved)
-    provider = args.provider or _pick(
+    provider = settings.normalize_provider(args.provider) or _pick(
         "provider",
         [
             ("anthropic", "Anthropic OAuth"),
             ("openai", "OpenAI (or compatible)"),
-            ("openai-codex", "ChatGPT OAuth (Codex)"),
+            (settings.PROVIDER_CRYPT, "Crypt OAuth"),
             ("gemini", "Gemini OAuth/API key"),
             ("ollama", "Ollama (local/cloud)"),
         ],
@@ -259,12 +268,12 @@ def _do_setup(saved: dict, args: argparse.Namespace) -> dict:
         }
         if not os.getenv("OPENAI_API_KEY"):
             ui.info("OPENAI_API_KEY is not set; set it before using OpenAI")
-    elif provider == settings.PROVIDER_OPENAI_CODEX:
+    elif provider == settings.PROVIDER_CRYPT:
         model = args.model or _pick_model(provider, saved)
         values = {
             "workspace": str(workspace),
             "provider": provider,
-            "openai_codex_model": model,
+            "crypt_model": model,
         }
     elif provider == settings.PROVIDER_GEMINI:
         model = args.model or _pick_model(provider, saved)
@@ -295,9 +304,9 @@ def _do_setup(saved: dict, args: argparse.Namespace) -> dict:
     if provider == settings.PROVIDER_ANTHROPIC and not auth.resolve_anthropic() and ui.ask("log in to Anthropic OAuth now?"):
         _do_login(provider)
     if (
-        provider == settings.PROVIDER_OPENAI_CODEX
-        and not auth.resolve_openai_codex()
-        and ui.ask("log in to ChatGPT now?")
+        provider == settings.PROVIDER_CRYPT
+        and not auth.resolve_crypt()
+        and ui.ask("log in to Crypt now?")
     ):
         _do_login(provider)
     if (
@@ -311,7 +320,7 @@ def _do_setup(saved: dict, args: argparse.Namespace) -> dict:
 
 
 def _startup_choice(saved: dict, args: argparse.Namespace, skip: bool = False) -> tuple[str, str | None]:
-    provider_name = args.provider or settings.provider_default(saved)
+    provider_name = settings.normalize_provider(args.provider) or settings.provider_default(saved)
     model_override = args.model
     first_run_no_config = not saved.get("provider") and not _env_truthy("CRYPT_PICKER")
     if skip or args.no_picker or args.provider or args.model or not sys.stdin.isatty() or first_run_no_config:
@@ -323,7 +332,7 @@ def _startup_choice(saved: dict, args: argparse.Namespace, skip: bool = False) -
         [
             (settings.PROVIDER_ANTHROPIC, "Anthropic OAuth"),
             (settings.PROVIDER_OPENAI, "OpenAI (or compatible)"),
-            (settings.PROVIDER_OPENAI_CODEX, "ChatGPT OAuth (Codex)"),
+            (settings.PROVIDER_CRYPT, "Crypt OAuth"),
             (settings.PROVIDER_GEMINI, "Gemini OAuth/API key"),
             (settings.PROVIDER_OLLAMA, "Ollama (local/cloud)"),
         ],
@@ -367,8 +376,8 @@ def _pick_model(provider: str, saved: dict, *, host: str | None = None) -> str:
         models = settings.ANTHROPIC_MODELS
     elif provider == settings.PROVIDER_OPENAI:
         models = settings.OPENAI_MODELS
-    elif provider == settings.PROVIDER_OPENAI_CODEX:
-        models = settings.OPENAI_CODEX_MODELS
+    elif provider == settings.PROVIDER_CRYPT:
+        models = settings.CRYPT_MODELS
     elif provider == settings.PROVIDER_GEMINI:
         models = settings.GEMINI_MODELS
     else:
@@ -392,19 +401,21 @@ def _pick_model(provider: str, saved: dict, *, host: str | None = None) -> str:
 
 
 def _credential(provider_name: str) -> auth.Credential | None:
+    provider_name = settings.normalize_provider(provider_name)
     if provider_name == settings.PROVIDER_ANTHROPIC:
         return auth.resolve_anthropic()
-    if provider_name == settings.PROVIDER_OPENAI_CODEX:
-        return auth.resolve_openai_codex()
+    if provider_name == settings.PROVIDER_CRYPT:
+        return auth.resolve_crypt()
     if provider_name == settings.PROVIDER_GEMINI:
         return auth.resolve_gemini()
     return None
 
 
 def _credential_is_usable(provider_name: str, cred: auth.Credential | None) -> bool:
+    provider_name = settings.normalize_provider(provider_name)
     if provider_name == settings.PROVIDER_ANTHROPIC:
         return cred is not None
-    if provider_name == settings.PROVIDER_OPENAI_CODEX:
+    if provider_name == settings.PROVIDER_CRYPT:
         return bool(cred and cred.token and cred.account_id)
     if provider_name == settings.PROVIDER_GEMINI:
         if os.getenv("GEMINI_API_KEY"):
@@ -414,10 +425,11 @@ def _credential_is_usable(provider_name: str, cred: auth.Credential | None) -> b
 
 
 def _provider_missing_auth_message(provider_name: str) -> str:
+    provider_name = settings.normalize_provider(provider_name)
     if provider_name == settings.PROVIDER_ANTHROPIC:
         return "Anthropic auth is missing; run `python main.py login --provider anthropic`."
-    if provider_name == settings.PROVIDER_OPENAI_CODEX:
-        return "ChatGPT OAuth is missing or incomplete; run `python main.py login --provider openai-codex`."
+    if provider_name == settings.PROVIDER_CRYPT:
+        return "Crypt OAuth is missing or incomplete; run `python main.py login --provider crypt`."
     if provider_name == settings.PROVIDER_GEMINI:
         return (
             "Gemini auth is missing; set GEMINI_API_KEY or run "
@@ -427,12 +439,13 @@ def _provider_missing_auth_message(provider_name: str) -> str:
 
 
 def _login_prompt(provider_name: str, cred: auth.Credential | None) -> str | None:
+    provider_name = settings.normalize_provider(provider_name)
     if provider_name == settings.PROVIDER_ANTHROPIC:
         return "log in to Anthropic OAuth now?"
-    if provider_name == settings.PROVIDER_OPENAI_CODEX:
+    if provider_name == settings.PROVIDER_CRYPT:
         if cred:
-            return "ChatGPT OAuth account id is missing; log in to ChatGPT again?"
-        return "log in to ChatGPT now?"
+            return "Crypt OAuth account id is missing; log in to Crypt again?"
+        return "log in to Crypt now?"
     if provider_name == settings.PROVIDER_GEMINI:
         if cred and not cred.project_id:
             return "Gemini OAuth project id is missing; set GEMINI_PROJECT_ID and log in again?"
@@ -472,15 +485,16 @@ def _provider_auth_label(
     cred: auth.Credential | None,
     provider=None,
 ) -> str:
+    provider_name = settings.normalize_provider(provider_name)
     if provider_name == settings.PROVIDER_ANTHROPIC:
         return cred.kind if cred else "missing Anthropic auth"
     if provider_name == settings.PROVIDER_OPENAI:
         return "OPENAI_API_KEY" if os.getenv("OPENAI_API_KEY") else "missing OPENAI_API_KEY"
-    if provider_name == settings.PROVIDER_OPENAI_CODEX:
+    if provider_name == settings.PROVIDER_CRYPT:
         if cred:
             suffix = f" ({cred.email})" if cred.email else ""
-            return f"ChatGPT OAuth{suffix}"
-        return "missing ChatGPT OAuth"
+            return f"Crypt OAuth{suffix}"
+        return "missing Crypt OAuth"
     if provider_name == settings.PROVIDER_GEMINI:
         if os.getenv("GEMINI_API_KEY"):
             return "GEMINI_API_KEY"
@@ -505,6 +519,7 @@ def _provider(
     cred: auth.Credential | None = None,
     model_override: str | None = None,
 ):
+    provider_name = settings.normalize_provider(provider_name)
     if provider_name == settings.PROVIDER_ANTHROPIC:
         kwargs: dict = {
             "model": model_override or args.model or settings.model_default(provider_name, saved),
@@ -526,18 +541,18 @@ def _provider(
             reasoning_effort=getattr(args, "reasoning_effort", None),
         )
 
-    if provider_name == settings.PROVIDER_OPENAI_CODEX:
+    if provider_name == settings.PROVIDER_CRYPT:
         if not _credential_is_usable(provider_name, cred):
             raise RuntimeError(_provider_missing_auth_message(provider_name))
-        return OpenAICodexProvider(
+        return CryptProvider(
             model=model_override or args.model or settings.model_default(provider_name, saved),
             auth_token=cred.token,
             account_id=cred.account_id,
             max_tokens=args.max_tokens or settings.env_int(
-                "OPENAI_CODEX_MAX_TOKENS",
-                settings.OPENAI_CODEX_MAX_TOKENS,
+                "CRYPT_MAX_TOKENS",
+                settings.CRYPT_MAX_TOKENS,
             ),
-            base_url=settings.openai_codex_base_url(saved),
+            base_url=settings.crypt_base_url(saved),
             reasoning_effort=getattr(args, "reasoning_effort", None),
         )
 
@@ -564,6 +579,92 @@ def _provider(
     )
 
 
+def _do_skills(saved: dict, args: argparse.Namespace) -> int:
+    from core import skill_manager
+
+    parser = argparse.ArgumentParser(prog="crypt skills", description="manage local Crypt skills")
+    sub = parser.add_subparsers(dest="action")
+    list_p = sub.add_parser("list", help="list visible skills")
+    list_p.add_argument("--enabled-only", action="store_true", help="hide blocked skills")
+    add_p = sub.add_parser("add", aliases=["install"], help="install skills from a local folder or skills.sh source")
+    add_p.add_argument("source", help="local path, GitHub owner/repo, git URL, or skills.sh source")
+    add_p.add_argument("--skill", action="append", dest="skills", help="specific skill name; repeatable")
+    add_p.add_argument("-g", "--global", action="store_true", dest="global_scope", help="install to ~/.crypt/skills")
+    add_p.add_argument("--upstream-cli", action="store_true", help="force npx skills add even for local-looking sources")
+    add_p.add_argument("-y", "--yes", action="store_true", help="pass yes through to the upstream skills CLI")
+    rm_p = sub.add_parser("remove", aliases=["rm"], help="remove an installed Crypt skill")
+    rm_p.add_argument("name", help="skill name")
+    rm_p.add_argument("-g", "--global", action="store_true", dest="global_scope", help="remove from ~/.crypt/skills")
+    parsed = parser.parse_args(args.command_args or ["list"])
+    cwd = settings.resolve_workspace(args.cwd, saved)
+    try:
+        if parsed.action in (None, "list"):
+            print(skill_manager.format_list(cwd, include_disabled=not parsed.enabled_only))
+            return 0
+        if parsed.action in ("add", "install"):
+            print(
+                skill_manager.install(
+                    parsed.source,
+                    cwd=cwd,
+                    names=parsed.skills or [],
+                    global_scope=parsed.global_scope,
+                    use_upstream_cli=parsed.upstream_cli,
+                    yes=parsed.yes,
+                )
+            )
+            return 0
+        if parsed.action in ("remove", "rm"):
+            print(skill_manager.remove(parsed.name, cwd=cwd, global_scope=parsed.global_scope))
+            return 0
+    except Exception as e:
+        ui.error(f"skills failed: {type(e).__name__}: {e}")
+        return 1
+    parser.print_help()
+    return 1
+
+
+def _do_tasks(saved: dict, args: argparse.Namespace) -> int:
+    from core import task_state
+
+    parser = argparse.ArgumentParser(prog="crypt tasks", description="inspect durable task logs")
+    sub = parser.add_subparsers(dest="action")
+    list_p = sub.add_parser("list", help="list recent tasks")
+    list_p.add_argument("--all", action="store_true", help="list tasks from all workspaces")
+    list_p.add_argument("--limit", type=int, default=12, help="maximum tasks to show")
+    show_p = sub.add_parser("show", help="show one task event log")
+    show_p.add_argument("task_id")
+    show_p.add_argument("--tail", type=int, default=30)
+    parsed = parser.parse_args(args.command_args or ["list"])
+    cwd = settings.resolve_workspace(args.cwd, saved)
+    if parsed.action in (None, "list"):
+        print(task_state.format_task_list(cwd, all_projects=parsed.all, limit=parsed.limit))
+        return 0
+    if parsed.action == "show":
+        print(task_state.format_task(cwd, parsed.task_id, tail=parsed.tail))
+        return 0
+    parser.print_help()
+    return 1
+
+
+def _do_project(saved: dict, args: argparse.Namespace) -> int:
+    from core import project_index
+
+    parser = argparse.ArgumentParser(prog="crypt project", description="inspect the Crypt project intelligence cache")
+    parser.add_argument("--refresh", action="store_true", help="rescan the workspace before printing")
+    parser.add_argument("--json", action="store_true", help="print the raw project profile as JSON")
+    parsed = parser.parse_args(args.command_args or [])
+    cwd = settings.resolve_workspace(args.cwd, saved)
+    if parsed.json:
+        import json
+        from dataclasses import asdict
+
+        profile = project_index.refresh(cwd) if parsed.refresh else project_index.get(cwd)
+        print(json.dumps(asdict(profile), indent=2))
+        return 0
+    print(project_index.format_profile(cwd, refresh_first=parsed.refresh))
+    return 0
+
+
 def _do_bench(saved: dict, args: argparse.Namespace) -> int:
     from core import bench
 
@@ -572,7 +673,7 @@ def _do_bench(saved: dict, args: argparse.Namespace) -> int:
         print(bench.list_tasks(suite))
         return 0
 
-    provider_name = args.provider or settings.provider_default(saved)
+    provider_name = settings.normalize_provider(args.provider) or settings.provider_default(saved)
     cred = _credential(provider_name)
 
     def provider_factory():
@@ -596,7 +697,7 @@ def _do_bench(saved: dict, args: argparse.Namespace) -> int:
 def _do_eval_target(saved: dict, args: argparse.Namespace) -> int:
     from core import target_eval
 
-    provider_name = args.provider or settings.provider_default(saved)
+    provider_name = settings.normalize_provider(args.provider) or settings.provider_default(saved)
     cred = _credential(provider_name)
     cwd = settings.resolve_workspace(args.cwd, saved)
     provider = _provider(args, saved, provider_name, cred)
@@ -625,13 +726,14 @@ def _save_runtime_choice(
     model: str,
     cwd: Path,
 ) -> None:
+    provider_name = settings.normalize_provider(provider_name)
     values: dict[str, object] = {"provider": provider_name, "workspace": str(cwd)}
     if provider_name == settings.PROVIDER_ANTHROPIC:
         values["anthropic_model"] = model
     elif provider_name == settings.PROVIDER_OPENAI:
         values["openai_model"] = model
-    elif provider_name == settings.PROVIDER_OPENAI_CODEX:
-        values["openai_codex_model"] = model
+    elif provider_name == settings.PROVIDER_CRYPT:
+        values["crypt_model"] = model
     elif provider_name == settings.PROVIDER_GEMINI:
         values["gemini_model"] = model
         project_id = settings.gemini_project_id(saved)
@@ -659,23 +761,24 @@ def _welcome(
         provider=provider.name,
         model=provider.model,
         auth_kind=_provider_auth_label(provider_name, args, saved, cred, provider=provider),
-        auth_email=cred.email if provider_name in {settings.PROVIDER_ANTHROPIC, settings.PROVIDER_OPENAI_CODEX, settings.PROVIDER_GEMINI} and cred else None,
-        auth_plan=cred.plan if provider_name in {settings.PROVIDER_ANTHROPIC, settings.PROVIDER_OPENAI_CODEX} and cred else None,
+        auth_email=cred.email if provider_name in {settings.PROVIDER_ANTHROPIC, settings.PROVIDER_CRYPT, settings.PROVIDER_GEMINI} and cred else None,
+        auth_plan=cred.plan if provider_name in {settings.PROVIDER_ANTHROPIC, settings.PROVIDER_CRYPT} and cred else None,
         cwd=cwd,
     )
 
 
 def _do_login(provider_name: str = settings.PROVIDER_ANTHROPIC) -> int:
+    provider_name = settings.normalize_provider(provider_name)
     try:
         now_ms = int(time.time() * 1000)
-        if provider_name == settings.PROVIDER_OPENAI_CODEX:
+        if provider_name == settings.PROVIDER_CRYPT:
             from core.openai_oauth import login
 
             tokens = login(on_status=lambda m: ui.info(m))
             expires_in = tokens.get("expires_in", 3600)
             claims = tokens.get("claims") or {}
-            auth.save_provider("openai-codex", {
-                "type": "openai-codex",
+            auth.save_provider(settings.PROVIDER_CRYPT, {
+                "type": settings.PROVIDER_CRYPT,
                 "access": tokens["access_token"],
                 "refresh": tokens.get("refresh_token"),
                 "expires": now_ms + expires_in * 1000 - 5 * 60 * 1000,
@@ -683,7 +786,7 @@ def _do_login(provider_name: str = settings.PROVIDER_ANTHROPIC) -> int:
                 "email": claims.get("email"),
                 "plan": tokens.get("plan"),
             })
-            ui.info("logged in to ChatGPT")
+            ui.info("logged in to Crypt")
         elif provider_name == settings.PROVIDER_GEMINI:
             from core.gemini_oauth import login
 

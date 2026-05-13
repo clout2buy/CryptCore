@@ -4,6 +4,11 @@ CryptCore is the protected Python runtime and terminal coding harness behind
 Crypt. It owns the agent loop, provider routing, typed tools, approvals,
 sessions, memory, subagents, safety checks, tests, and release gates.
 
+The core runtime now includes durable task event logs, a project intelligence
+cache, portable `SKILL.md` discovery/installation, typed subagents, MCP
+isolation, workspace switching, and verification/eval commands. Those are the
+stable kernel surfaces for future desktop, web, gateway, or messaging shells.
+
 This repository intentionally does not include the Electron desktop app,
 renderer, packaged build outputs, or Agent D UI experiments. Those layers can
 sit on top of CryptCore, but the terminal harness remains the source of truth.
@@ -27,11 +32,25 @@ sit on top of CryptCore, but the terminal harness remains the source of truth.
 python main.py
 ```
 
+Install/link the CLI so `crypt` works from any PowerShell directory:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install_crypt.ps1
+```
+
+After opening a new PowerShell window, run `crypt` from any project. Crypt uses
+the directory you launched it from as the workspace unless you pass `--cwd` or
+set `CRYPT_ROOT`.
+
 Useful commands:
 
 ```powershell
 python main.py setup
 python main.py doctor
+python main.py project --refresh
+python main.py project --json
+python main.py skills list
+python main.py tasks list
 python main.py --provider ollama --model gpt-oss:120b-cloud
 python -m crypt
 ```
@@ -55,3 +74,6 @@ python main.py bench --bench-list
 Before changing runtime behavior, read [docs/CORE_CONTRACT.md](docs/CORE_CONTRACT.md).
 The goal is simple: CryptCore can evolve, but the terminal coding harness must stay
 solid while UI, desktop, web, and Agent D layers change around it.
+
+For the reference-runtime audit and remaining parity gaps, see
+[docs/REFERENCE_PARITY.md](docs/REFERENCE_PARITY.md).

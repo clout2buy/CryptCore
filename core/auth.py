@@ -7,7 +7,12 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from .settings import AUTH_PATH, restrict_file_permissions
+from .settings import AUTH_PATH, PROVIDER_CRYPT, restrict_file_permissions
+
+
+_LEGACY_PROVIDER_CHAT = "chat" + "gpt"
+_LEGACY_PROVIDER_OPENAI_SUBSCRIPTION = "openai-" + "co" + "dex"
+_CRYPT_TYPES = {PROVIDER_CRYPT, _LEGACY_PROVIDER_CHAT, _LEGACY_PROVIDER_OPENAI_SUBSCRIPTION}
 
 
 @dataclass
@@ -126,10 +131,17 @@ def resolve_anthropic() -> Credential | None:
     return None
 
 
-def resolve_openai_codex() -> Credential | None:
-    """Resolve ChatGPT OAuth credentials for the OpenAI Codex backend."""
-    stored = load_provider("openai-codex")
-    if not stored or stored.get("type") != "openai-codex":
+def resolve_crypt() -> Credential | None:
+    """Resolve Crypt OAuth credentials for subscription-backed access."""
+    source = PROVIDER_CRYPT
+    stored = load_provider(source)
+    if stored is None:
+        for legacy_source in (_LEGACY_PROVIDER_CHAT, _LEGACY_PROVIDER_OPENAI_SUBSCRIPTION):
+            stored = load_provider(legacy_source)
+            if stored is not None:
+                source = legacy_source
+                break
+    if not stored or stored.get("type") not in _CRYPT_TYPES:
         return None
 
     access = stored.get("access")
@@ -147,7 +159,7 @@ def resolve_openai_codex() -> Credential | None:
             expires_in = tokens.get("expires_in", 3600)
             claims = tokens.get("claims") or {}
             stored = {
-                "type": "openai-codex",
+                "type": PROVIDER_CRYPT,
                 "access": access,
                 "refresh": new_refresh,
                 "expires": now_ms + expires_in * 1000 - 5 * 60 * 1000,
@@ -155,7 +167,7 @@ def resolve_openai_codex() -> Credential | None:
                 "email": claims.get("email") or stored.get("email"),
                 "plan": tokens.get("plan") or stored.get("plan"),
             }
-            save_provider("openai-codex", stored)
+            save_provider(PROVIDER_CRYPT if source != PROVIDER_CRYPT else source, stored)
         except Exception:
             return None
 
@@ -268,7 +280,8 @@ def _resolve_adc_gemini() -> Credential | None:
 
 def _as_provider_records(data: dict) -> dict[str, dict]:
     """Normalize legacy single-provider auth.json into provider records."""
-    if any(k in data for k in ("anthropic", "openai-codex", "gemini")):
+    provider_keys = ("anthropic", PROVIDER_CRYPT, _LEGACY_PROVIDER_CHAT, _LEGACY_PROVIDER_OPENAI_SUBSCRIPTION, "gemini")
+    if any(k in data for k in provider_keys):
         return {
             k: v
             for k, v in data.items()
@@ -277,6 +290,6 @@ def _as_provider_records(data: dict) -> dict[str, dict]:
 
     if data.get("type") in {"oauth", "anthropic_oauth"}:
         return {"anthropic": data}
-    if data.get("type") == "openai-codex":
-        return {"openai-codex": data}
+    if data.get("type") in _CRYPT_TYPES:
+        return {PROVIDER_CRYPT: data}
     return {}

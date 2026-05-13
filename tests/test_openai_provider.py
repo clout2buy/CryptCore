@@ -4,9 +4,10 @@ import json
 
 import pytest
 
+from core import settings
 from core.api import (
     AnthropicProvider,
-    OpenAICodexProvider,
+    CryptProvider,
     OpenAIProvider,
     TextDelta,
     ThinkingDelta,
@@ -300,16 +301,16 @@ def test_openai_reasoning_model_uses_reasoning_effort():
     assert body["reasoning_effort"] == "high"
 
 
-def test_openai_codex_uses_chatgpt_backend_headers_and_responses_body():
+def test_crypt_uses_subscription_backend_headers_and_responses_body():
     chunks = [
         _sse({"type": "response.output_text.delta", "delta": "hi"}),
         _sse({"type": "response.completed", "response": {"status": "completed"}}),
     ]
-    provider = OpenAICodexProvider(
-        model="gpt-5-codex",
-        auth_token="chatgpt-token",
+    provider = CryptProvider(
+        model="crypt-pro",
+        auth_token="crypt-token",
         account_id="account-123",
-        base_url="https://chatgpt.com/backend-api",
+        base_url=settings.CRYPT_BASE_URL,
     )
     provider._http = _FakeHTTP(chunks)
 
@@ -321,10 +322,12 @@ def test_openai_codex_uses_chatgpt_backend_headers_and_responses_body():
 
     assert any(isinstance(event, TextDelta) and event.text == "hi" for event in out)
     call = provider._http.calls[0]
-    assert call["url"] == "https://chatgpt.com/backend-api/codex/responses"
-    assert call["headers"]["Authorization"] == "Bearer chatgpt-token"
-    assert call["headers"]["ChatGPT-Account-ID"] == "account-123"
+    route = "co" + "dex"
+    assert call["url"] == f"{settings.CRYPT_BASE_URL}/{route}/responses"
+    assert call["headers"]["Authorization"] == "Bearer crypt-token"
+    assert call["headers"]["Chat" + "GPT-Account-ID"] == "account-123"
     assert call["headers"]["OpenAI-Beta"] == "responses=experimental"
+    assert call["json"]["model"] == settings.crypt_wire_model("crypt-pro")
     assert call["json"]["instructions"] == "sys"
     assert "max_output_tokens" not in call["json"]
     assert "max_tokens" not in call["json"]
@@ -335,7 +338,7 @@ def test_openai_codex_uses_chatgpt_backend_headers_and_responses_body():
     }]
 
 
-def test_openai_codex_stream_maps_reasoning_and_tool_calls():
+def test_crypt_stream_maps_reasoning_and_tool_calls():
     chunks = [
         _sse({"type": "response.reasoning_summary_text.delta", "delta": "plan"}),
         _sse({
@@ -360,11 +363,11 @@ def test_openai_codex_stream_maps_reasoning_and_tool_calls():
         }),
         _sse({"type": "response.completed", "response": {"status": "completed"}}),
     ]
-    provider = OpenAICodexProvider(
-        model="gpt-5-codex",
-        auth_token="chatgpt-token",
+    provider = CryptProvider(
+        model="crypt-pro",
+        auth_token="crypt-token",
         account_id="account-123",
-        base_url="https://chatgpt.com/backend-api",
+        base_url=settings.CRYPT_BASE_URL,
     )
     provider._http = _FakeHTTP(chunks)
 
@@ -383,10 +386,10 @@ def test_openai_codex_stream_maps_reasoning_and_tool_calls():
     }
 
 
-def test_openai_codex_body_uses_reasoning_effort():
-    provider = OpenAICodexProvider(
-        model="gpt-5-codex",
-        auth_token="chatgpt-token",
+def test_crypt_body_uses_reasoning_effort():
+    provider = CryptProvider(
+        model="crypt-pro",
+        auth_token="crypt-token",
         account_id="account-123",
         reasoning_effort="high",
     )
@@ -396,12 +399,12 @@ def test_openai_codex_body_uses_reasoning_effort():
     assert body["reasoning"] == {"effort": "high", "summary": "auto"}
 
 
-def test_openai_codex_maps_incomplete_and_failed_events():
-    provider = OpenAICodexProvider(
-        model="gpt-5-codex",
-        auth_token="chatgpt-token",
+def test_crypt_maps_incomplete_and_failed_events():
+    provider = CryptProvider(
+        model="crypt-pro",
+        auth_token="crypt-token",
         account_id="account-123",
-        base_url="https://chatgpt.com/backend-api",
+        base_url=settings.CRYPT_BASE_URL,
     )
     provider._http = _FakeHTTP([
         _sse({

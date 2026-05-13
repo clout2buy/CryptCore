@@ -68,7 +68,7 @@ TOOL = Tool(
         },
         "required": ["path"],
     },
-    permission="auto",
+    permission="ask",
     run=run,
     prompt=PROMPT,
     priority=5,

@@ -25,6 +25,7 @@ _approval_callback = contextvars.ContextVar("crypt_approval_callback", default=N
 _write_scope = contextvars.ContextVar("crypt_write_scope", default=None)
 _agent_type = contextvars.ContextVar("crypt_agent_type", default=None)
 _agent_task_id = contextvars.ContextVar("crypt_agent_task_id", default=None)
+_task_id = contextvars.ContextVar("crypt_task_id", default=None)
 _git_snapshot_cache: dict[str, str] = {}
 
 APPROVAL_NORMAL = "normal"
@@ -307,6 +308,19 @@ def current_agent_type() -> str | None:
 
 def current_agent_task_id() -> str | None:
     return _agent_task_id.get()
+
+
+def current_task_id() -> str | None:
+    return _task_id.get()
+
+
+@contextmanager
+def task_context(task_id: str | None):
+    token = _task_id.set(task_id)
+    try:
+        yield
+    finally:
+        _task_id.reset(token)
 
 
 def current_subagent_can_use_tool(tool_name: str) -> bool:

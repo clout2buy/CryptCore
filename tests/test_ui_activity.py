@@ -245,8 +245,8 @@ def test_matrix_rain_rows_can_fill_full_width_without_indent():
 
 def test_welcome_surface_fills_viewport_and_overlays_chrome():
     surface = ui._welcome_surface(
-        "openai-codex",
-        "gpt-5.3-codex",
+        "crypt",
+        "crypt-pro",
         "oauth",
         "operator@example.com",
         "Plus",
@@ -266,8 +266,8 @@ def test_welcome_surface_fills_viewport_and_overlays_chrome():
 
 def test_matrix_surface_renderable_includes_prompt_row():
     ui._state["surface_context"] = {
-        "provider": "openai-codex",
-        "model": "gpt-5.3-codex",
+        "provider": "crypt",
+        "model": "crypt-pro",
         "auth_kind": "oauth",
         "auth_email": "operator@example.com",
         "auth_plan": "Plus",
@@ -298,8 +298,8 @@ def test_prompt_pane_surface_is_compact_and_contains_input():
 
 def test_surface_live_stop_keeps_last_context():
     ui._state["surface_context"] = {
-        "provider": "openai-codex",
-        "model": "gpt-5.3-codex",
+        "provider": "crypt",
+        "model": "crypt-pro",
         "cwd": "D:\\Crypt",
     }
     ui._state["surface_live"] = None
@@ -307,7 +307,7 @@ def test_surface_live_stop_keeps_last_context():
     try:
         ui._surface_live_stop()
         assert ui._state["surface_context"] is None
-        assert ui._state["surface_last_context"]["model"] == "gpt-5.3-codex"
+        assert ui._state["surface_last_context"]["model"] == "crypt-pro"
     finally:
         ui._state["surface_context"] = None
         ui._state["surface_last_context"] = None
@@ -332,8 +332,8 @@ def test_resume_surface_for_prompt_starts_from_last_context(monkeypatch):
     }) or fake)
     ui._state["surface_live"] = None
     ui._state["surface_last_context"] = {
-        "provider": "openai-codex",
-        "model": "gpt-5.3-codex",
+        "provider": "crypt",
+        "model": "crypt-pro",
         "cwd": "D:\\Crypt",
     }
     try:
@@ -350,7 +350,7 @@ def test_resume_surface_for_prompt_starts_from_last_context(monkeypatch):
 def test_choice_surface_fills_viewport_and_overlays_options():
     surface = ui._choice_surface(
         "provider",
-        [("anthropic", "Anthropic OAuth"), ("openai-codex", "ChatGPT OAuth (Codex)")],
+        [("anthropic", "Anthropic OAuth"), ("crypt", "Crypt OAuth")],
         2,
         raw="2",
         frame=6,
@@ -362,7 +362,7 @@ def test_choice_surface_fills_viewport_and_overlays_options():
     assert len(rows) == ui._terminal_height()
     assert "SETUP" in plain
     assert "PROVIDER" in plain
-    assert "ChatGPT OAuth" in plain
+    assert "Crypt OAuth" in plain
     assert "2" in plain
 
 
@@ -578,14 +578,14 @@ def test_status_hides_abort_hint_when_response_complete(monkeypatch):
 def test_choice_surface_clears_background_after_option_text():
     surface = ui._choice_surface(
         "model",
-        [("gpt-5.5", "gpt-5.5"), ("spark", "gpt-5.3-codex-spark")],
+        [("crypt-max", "crypt-max"), ("spark", "crypt-spark")],
         1,
         frame=6,
     )
 
     plain_rows = [row.plain for row in surface.renderables]
-    option = next(row for row in plain_rows if "gpt-5.5" in row)
-    suffix = option.split("gpt-5.5", 1)[1][:3]
+    option = next(row for row in plain_rows if "crypt-max" in row)
+    suffix = option.split("crypt-max", 1)[1][:3]
     assert "·" not in suffix
 
 

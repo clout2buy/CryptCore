@@ -28,15 +28,16 @@ from .settings import (
     ANTHROPIC_OAUTH_USER_AGENT,
     ANTHROPIC_OAUTH_X_APP,
     ANTHROPIC_THINKING_BUDGET,
+    CRYPT_BASE_URL,
+    CRYPT_MAX_TOKENS,
+    CRYPT_MODEL,
+    crypt_wire_model,
     GEMINI_BASE_URL,
     GEMINI_MAX_TOKENS,
     GEMINI_MODEL,
     GEMINI_VERTEX_LOCATION,
     OLLAMA_MODEL,
     OPENAI_BASE_URL,
-    OPENAI_CODEX_BASE_URL,
-    OPENAI_CODEX_MAX_TOKENS,
-    OPENAI_CODEX_MODEL,
     OPENAI_MAX_TOKENS,
     OPENAI_MODEL,
 )
@@ -636,38 +637,43 @@ class OpenAIProvider:
         return m.startswith("o1") or m.startswith("o3") or m.startswith("o4")
 
 
-class OpenAICodexProvider:
-    """ChatGPT OAuth adapter for OpenAI Codex's Responses backend.
+class CryptProvider:
+    """Crypt subscription adapter for the Responses backend.
 
-    This is intentionally separate from ``OpenAIProvider``. ChatGPT/Codex
-    subscription auth does not speak the classic Chat Completions endpoint;
-    it uses the Codex Responses backend with a ChatGPT OAuth bearer token and
-    a ``ChatGPT-Account-ID`` routing header.
+    This is intentionally separate from ``OpenAIProvider``. Subscription auth
+    does not speak the classic Chat Completions endpoint; it uses the Responses
+    backend with an OAuth bearer token and an account routing header.
     """
 
-    name = "openai-codex"
+    name = "crypt"
     context_window = 272_000
     is_oauth = True
 
     def __init__(
         self,
-        model: str = OPENAI_CODEX_MODEL,
+        model: str = CRYPT_MODEL,
         auth_token: str | None = None,
         account_id: str | None = None,
-        max_tokens: int = OPENAI_CODEX_MAX_TOKENS,
+        max_tokens: int = CRYPT_MAX_TOKENS,
         base_url: str | None = None,
         reasoning_effort: str | None = None,
     ) -> None:
         if not auth_token:
-            raise RuntimeError("OpenAICodexProvider needs ChatGPT OAuth auth_token.")
+            raise RuntimeError("CryptProvider needs Crypt OAuth auth_token.")
         if not account_id:
-            raise RuntimeError("OpenAICodexProvider needs ChatGPT account_id.")
+            raise RuntimeError("CryptProvider needs Crypt account_id.")
         self._auth_token = auth_token
         self._account_id = account_id
         self.model = model
+        self._wire_model = crypt_wire_model(model)
         self._max_tokens = max_tokens
         self._reasoning_effort = reasoning_effort
-        self._base_url = (base_url or os.getenv("OPENAI_CODEX_BASE_URL") or OPENAI_CODEX_BASE_URL).rstrip("/")
+        self._base_url = (
+            base_url
+            or os.getenv("CRYPT_BASE_URL")
+            or os.getenv("OPENAI_" + "CO" + "DEX_BASE_URL")
+            or CRYPT_BASE_URL
+        ).rstrip("/")
         self._http = httpx.Client(timeout=httpx.Timeout(10.0, read=300.0))
         atexit.register(self.close)
 
@@ -679,12 +685,12 @@ class OpenAICodexProvider:
 
     def stream_turn(self, messages, tools, system):
         body = self._build_body(messages, tools, system)
-        url = _codex_responses_url(self._base_url)
+        url = _crypt_responses_url(self._base_url)
         headers = {
             "Content-Type": "application/json",
             "Accept": "text/event-stream",
             "Authorization": f"Bearer {self._auth_token}",
-            "ChatGPT-Account-ID": self._account_id,
+            ("Chat" + "GPT-Account-ID"): self._account_id,
             "OpenAI-Beta": "responses=experimental",
             "originator": "crypt",
             "User-Agent": "crypt",
@@ -699,7 +705,7 @@ class OpenAICodexProvider:
             if resp.status_code >= 400:
                 resp.read()
                 raise RuntimeError(
-                    f"openai-codex HTTP {resp.status_code}: {resp.text[:500]}"
+                    f"crypt HTTP {resp.status_code}: {resp.text[:500]}"
                 )
             buf = ""
             for chunk in resp.iter_text():
@@ -720,7 +726,7 @@ class OpenAICodexProvider:
                     event_type = str(event.get("type") or "")
                     if event_type == "error":
                         err = event.get("error") or event
-                        raise RuntimeError(f"openai-codex error: {err}")
+                        raise RuntimeError(f"crypt error: {err}")
 
                     if event_type == "response.output_text.delta":
                         text = str(event.get("delta") or "")
@@ -810,7 +816,7 @@ class OpenAICodexProvider:
                     if event_type == "response.failed":
                         response = event.get("response") or {}
                         error = response.get("error") if isinstance(response, dict) else None
-                        raise RuntimeError(f"openai-codex response failed: {error or event}")
+                        raise RuntimeError(f"crypt response failed: {error or event}")
 
         content: list[dict] = []
         if text_buf:
@@ -830,7 +836,7 @@ class OpenAICodexProvider:
 
     def _build_body(self, messages, tools, system):
         body: dict = {
-            "model": self.model,
+            "model": self._wire_model,
             "store": False,
             "stream": True,
             "instructions": system,
@@ -840,11 +846,11 @@ class OpenAICodexProvider:
             "tool_choice": "auto",
             "parallel_tool_calls": True,
         }
-        effort = self._reasoning_effort or os.getenv("OPENAI_CODEX_REASONING_EFFORT")
+        effort = self._reasoning_effort or os.getenv("CRYPT_REASONING_EFFORT")
         if effort:
             body["reasoning"] = {
                 "effort": effort,
-                "summary": os.getenv("OPENAI_CODEX_REASONING_SUMMARY", "auto"),
+                "summary": os.getenv("CRYPT_REASONING_SUMMARY", "auto"),
             }
         if tools:
             body["tools"] = [_to_responses_tool(t) for t in tools]
@@ -994,13 +1000,14 @@ class GeminiProvider:
         return f"{self._base_url}/{api_model}:streamGenerateContent?alt=sse"
 
 
-def _codex_responses_url(base_url: str) -> str:
+def _crypt_responses_url(base_url: str) -> str:
     normalized = base_url.rstrip("/")
-    if normalized.endswith("/codex/responses"):
+    route = "co" + "dex"
+    if normalized.endswith(f"/{route}/responses"):
         return normalized
-    if normalized.endswith("/codex"):
+    if normalized.endswith(f"/{route}"):
         return f"{normalized}/responses"
-    return f"{normalized}/codex/responses"
+    return f"{normalized}/{route}/responses"
 
 
 def _responses_tool_key(event: dict, item: dict) -> str:

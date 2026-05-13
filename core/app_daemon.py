@@ -17,12 +17,23 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable
 
-from . import auth, doctor, loop, redact, runtime, session as sessions, settings
+from . import auth, doctor, loop, redact, runtime, session as sessions, settings, skills
 from tools import REGISTRY
 
 
 Emit = Callable[[dict], None]
 ROUTE_ROLES = ("planner", "builder", "reviewer", "fast", "fallback")
+DEFAULT_APPROVAL_TIMEOUT_SECONDS = 30 * 60
+
+
+def _approval_timeout_seconds() -> int:
+    raw = os.getenv("CRYPT_APP_APPROVAL_TIMEOUT_SECONDS", "").strip()
+    if not raw:
+        return DEFAULT_APPROVAL_TIMEOUT_SECONDS
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return DEFAULT_APPROVAL_TIMEOUT_SECONDS
 
 
 def _stdin_lines():
@@ -56,8 +67,10 @@ class AppDaemon:
         self._sessions: dict[str, sessions.Session] = {}
         self._active_session_key = "default"
         self._task_session_keys: dict[str, str] = {}
+        self._task_threads: dict[str, threading.Thread] = {}
         self._approval_lock = threading.Lock()
         self._approval_waiters: dict[str, dict] = {}
+        self._approval_timeout = _approval_timeout_seconds()
 
     def run_forever(self) -> int:
         self.emit("ready", snapshot=self.snapshot())
@@ -151,6 +164,7 @@ class AppDaemon:
             "thinkingMode": runtime.thinking_mode(),
             "reasoningEffort": runtime.reasoning_effort() or "none",
             "tools": len(REGISTRY.schemas()),
+            "skills": len(skills.discover(self._cwd)),
             "sessionId": getattr(self._sessions.get(self._active_session_key), "id", None),
             "desktopSessionKey": self._active_session_key,
             "activeTask": self._active_task,
@@ -185,7 +199,22 @@ class AppDaemon:
             self._active_task = task_id
             self._active_session_key = session_key
             self._task_session_keys[task_id] = session_key
-        self._run_prompt_task(task_id, text, route_role)
+        thread = threading.Thread(
+            target=self._run_prompt_task,
+            args=(task_id, text, route_role),
+            name=f"crypt-task-{task_id}",
+            daemon=True,
+        )
+        with self._task_lock:
+            self._task_threads[task_id] = thread
+        try:
+            thread.start()
+        except RuntimeError as exc:
+            with self._task_lock:
+                self._active_task = None
+                self._task_session_keys.pop(task_id, None)
+                self._task_threads.pop(task_id, None)
+            self.emit("error", id=request_id, error=f"failed to start task thread: {exc}")
 
     def _run_prompt_task(self, task_id: str, text: str, route_role: str | None) -> None:
         session_key = self._task_session_keys.get(task_id, "default")
@@ -266,6 +295,7 @@ class AppDaemon:
             with self._task_lock:
                 self._active_task = None
                 self._task_session_keys.pop(task_id, None)
+                self._task_threads.pop(task_id, None)
             self.emit("snapshot", snapshot=self.snapshot())
 
     def _request_approval(
@@ -297,7 +327,18 @@ class AppDaemon:
             reason=str(reason or ""),
             text=str(summary or ""),
         )
-        done.wait()
+        if not done.wait(timeout=self._approval_timeout):
+            with self._approval_lock:
+                self._approval_waiters.pop(approval_id, None)
+            self.emit(
+                "approvalResolved",
+                id=task_id,
+                approvalId=approval_id,
+                sessionKey=session_key,
+                approved=False,
+                text="denied: approval timed out",
+            )
+            return False, "approval timed out"
         with self._approval_lock:
             self._approval_waiters.pop(approval_id, None)
             approved = bool(record.get("approved"))
@@ -328,7 +369,7 @@ class AppDaemon:
         if self._active_task:
             self.emit("error", id=request_id, error=f"task already running: {self._active_task}")
             return
-        provider = str(command.get("provider") or "").strip()
+        provider = settings.normalize_provider(str(command.get("provider") or "").strip())
         if provider not in settings.PROVIDERS:
             self.emit("error", id=request_id, error=f"unknown provider: {provider or '<missing>'}")
             return
@@ -348,7 +389,7 @@ class AppDaemon:
 
     def _set_route(self, command: dict, *, request_id: str) -> None:
         role = str(command.get("role") or "").strip().lower()
-        provider = str(command.get("provider") or "").strip()
+        provider = settings.normalize_provider(str(command.get("provider") or "").strip())
         model = str(command.get("model") or "").strip()
         if role not in ROUTE_ROLES:
             self.emit("error", id=request_id, error=f"unknown route role: {role or '<missing>'}")
@@ -389,6 +430,15 @@ class AppDaemon:
             return
         if name == "doctor":
             self.emit("commandResult", id=request_id, command=name, text=doctor.run_doctor(self._cwd))
+            self.emit("snapshot", id=request_id, snapshot=self.snapshot())
+            return
+        if name == "skills":
+            data = [skill.as_dict() for skill in skills.discover(self._cwd)]
+            text = "\n".join(
+                f"${item['name']} - {item.get('description') or item.get('title') or item['path']}"
+                for item in data
+            ) or "no skills found"
+            self.emit("commandResult", id=request_id, command=name, text=text, skills=data)
             self.emit("snapshot", id=request_id, snapshot=self.snapshot())
             return
         if name in {"clear", "new", "new-session"}:
@@ -492,7 +542,7 @@ def _provider_for_route(saved: dict, agent_type: str, *, fallback):
 
 
 def _provider_from_route(saved: dict, route: dict):
-    provider_name = str(route.get("provider") or "")
+    provider_name = settings.normalize_provider(str(route.get("provider") or ""))
     model = str(route.get("model") or "")
     if provider_name not in settings.PROVIDERS:
         raise RuntimeError(f"route {route.get('role')} has unknown provider: {provider_name}")
@@ -523,13 +573,14 @@ def _route_role_for_agent(agent_type: str) -> str:
 
 
 def _save_provider_model(saved: dict, provider_name: str, model: str, cwd: Path) -> dict:
+    provider_name = settings.normalize_provider(provider_name)
     values: dict[str, object] = {"provider": provider_name, "workspace": str(cwd)}
     if provider_name == settings.PROVIDER_ANTHROPIC:
         values["anthropic_model"] = model
     elif provider_name == settings.PROVIDER_OPENAI:
         values["openai_model"] = model
-    elif provider_name == settings.PROVIDER_OPENAI_CODEX:
-        values["openai_codex_model"] = model
+    elif provider_name == settings.PROVIDER_CRYPT:
+        values["crypt_model"] = model
     elif provider_name == settings.PROVIDER_GEMINI:
         values["gemini_model"] = model
         project_id = settings.gemini_project_id(saved)
@@ -554,12 +605,13 @@ def _desktop_ollama_host(model: str, saved: dict) -> str:
 
 
 def _auth_label(provider_name: str, cred: auth.Credential | None) -> str:
+    provider_name = settings.normalize_provider(provider_name)
     if provider_name == settings.PROVIDER_OPENAI:
         return "OPENAI_API_KEY" if os.getenv("OPENAI_API_KEY") else "missing OPENAI_API_KEY"
     if provider_name == settings.PROVIDER_ANTHROPIC:
         return cred.kind if cred else "missing Anthropic auth"
-    if provider_name == settings.PROVIDER_OPENAI_CODEX:
-        return "ChatGPT OAuth" if cred else "missing ChatGPT OAuth"
+    if provider_name == settings.PROVIDER_CRYPT:
+        return "Crypt OAuth" if cred else "missing Crypt OAuth"
     if provider_name == settings.PROVIDER_GEMINI:
         if os.getenv("GEMINI_API_KEY"):
             return "GEMINI_API_KEY"
@@ -582,9 +634,9 @@ def _provider_inventory(saved: dict) -> list[dict]:
             status="ready",
         ),
         _provider_row(
-            settings.PROVIDER_OPENAI_CODEX,
-            "ChatGPT / Codex OAuth",
-            settings.OPENAI_CODEX_MODELS,
+            settings.PROVIDER_CRYPT,
+            "Crypt OAuth",
+            settings.CRYPT_MODELS,
             status="ready",
         ),
         _provider_row(
@@ -634,7 +686,7 @@ def _routes(saved: dict) -> list[dict]:
             if not isinstance(item, dict):
                 continue
             role = str(item.get("role") or "").lower()
-            provider = str(item.get("provider") or "")
+            provider = settings.normalize_provider(str(item.get("provider") or ""))
             if role not in ROUTE_ROLES or provider not in settings.PROVIDERS:
                 continue
             model = str(item.get("model") or settings.model_default(provider, saved))
@@ -669,6 +721,7 @@ def _status_text(snapshot: dict) -> str:
         f"approval: {snapshot['approval']}",
         f"thinking: {snapshot['thinkingMode']}",
         f"tools: {snapshot['tools']} armed",
+        f"skills: {snapshot.get('skills', 0)} available",
     ]
     if snapshot.get("activeTask"):
         lines.append(f"active task: {snapshot['activeTask']}")
@@ -683,6 +736,7 @@ def _help_text() -> str:
             "Crypt desktop commands",
             "/status - print engine state",
             "/doctor - run local harness checks",
+            "/skills - list local skills",
             "/clear - start a fresh session",
             "/yolo - auto-approve all tool work",
             "/yolo edits - auto-approve edit tools only",

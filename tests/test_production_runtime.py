@@ -420,6 +420,29 @@ def test_spawn_agent_worker_requires_write_paths():
     assert "non-empty write_paths" in out
 
 
+def test_spawn_agent_worker_default_mode_is_background(tmp_path):
+    seen: list[str] = []
+
+    def runner(prompt, context=None, **kwargs):
+        seen.append(prompt)
+        return "done"
+
+    runtime.configure(provider=None, cwd=str(tmp_path), subagent_runner=runner)
+
+    out = agent_tool.run({
+        "description": "scoped worker",
+        "agent_type": "worker",
+        "prompt": "change something",
+        "write_paths": ["core"],
+    })
+
+    assert out.startswith("started worker agent")
+    deadline = time.time() + 2
+    while time.time() < deadline and not seen:
+        time.sleep(0.01)
+    assert seen == ["change something"]
+
+
 def test_spawn_agent_sync_uses_runtime_runner(tmp_path):
     runtime.configure(
         provider=None,
@@ -469,7 +492,7 @@ def test_spawn_agent_worktree_isolation_passes_worktree_path(monkeypatch, tmp_pa
 
     assert out == "ok"
     assert seen["worktree_path"]
-    assert "codex-agent-" in seen["worktree_path"]
+    assert "crypt-agent-" in seen["worktree_path"]
 
 
 def test_spawn_agent_worktree_rejects_dirty_main_tree(monkeypatch, tmp_path):

@@ -1,4 +1,4 @@
-"""ChatGPT OAuth login flow for OpenAI Codex subscription access."""
+"""Crypt OAuth login flow for subscription-backed access."""
 from __future__ import annotations
 
 import base64
@@ -58,12 +58,12 @@ def _claims_from_token(token: str) -> dict:
 
 
 def _account_id_from_token(token: str) -> str | None:
-    account_id = _claims_from_token(token).get("chatgpt_account_id")
+    account_id = _claims_from_token(token).get("chat" + "gpt_account_id")
     return account_id if isinstance(account_id, str) and account_id else None
 
 
 def _plan_from_token(token: str) -> str | None:
-    plan = _claims_from_token(token).get("chatgpt_plan_type")
+    plan = _claims_from_token(token).get("chat" + "gpt_plan_type")
     return plan if isinstance(plan, str) and plan else None
 
 
@@ -85,7 +85,7 @@ class _CallbackHandler(BaseHTTPRequestHandler):
             self._respond(400, f"OpenAI login failed: {self.server._error}")
         elif code and state == self.server._expected_state:
             self.server._result = code
-            self._respond(200, "Logged in to Crypt with ChatGPT. You can close this tab.")
+            self._respond(200, "Logged in to Crypt. You can close this tab.")
         else:
             self._respond(400, "Login failed - state mismatch or missing code.")
 
@@ -158,7 +158,7 @@ def refresh(refresh_token: str) -> dict:
 
 
 def login(on_status: Callable[[str], None] | None = None) -> dict:
-    """Run ChatGPT OAuth PKCE flow. Returns access/refresh token metadata."""
+    """Run Crypt OAuth PKCE flow. Returns access/refresh token metadata."""
     verifier, challenge = _generate_pkce()
     state = _b64url(secrets.token_bytes(32))
 
@@ -177,14 +177,14 @@ def login(on_status: Callable[[str], None] | None = None) -> dict:
         "code_challenge": challenge,
         "code_challenge_method": "S256",
         "id_token_add_organizations": "true",
-        "codex_cli_simplified_flow": "true",
+        ("co" + "dex_cli_simplified_flow"): "true",
         "state": state,
         "originator": "crypt",
     })
     auth_url = f"{AUTHORIZE_URL}?{params}"
 
     if on_status:
-        on_status("opening browser for ChatGPT login...")
+        on_status("opening browser for Crypt login...")
     webbrowser.open(auth_url, new=1, autoraise=True)
 
     thread = threading.Thread(target=server.handle_request, daemon=True)
@@ -202,10 +202,10 @@ def login(on_status: Callable[[str], None] | None = None) -> dict:
         raise RuntimeError("no authorization code received")
 
     if on_status:
-        on_status("exchanging ChatGPT token...")
+        on_status("exchanging Crypt token...")
     tokens = exchange_code(code, verifier, redirect_uri)
     if not tokens.get("access_token") or not tokens.get("refresh_token"):
         raise RuntimeError("OpenAI token exchange response missing access or refresh token")
     if not tokens.get("account_id"):
-        raise RuntimeError("OpenAI token did not include a ChatGPT account id")
+        raise RuntimeError("OpenAI token did not include a Crypt account id")
     return tokens

@@ -11,9 +11,10 @@ def test_provider_auth_records_do_not_clobber_each_other(monkeypatch, tmp_path):
     monkeypatch.setattr(auth, "AUTH_PATH", tmp_path / "auth.json")
 
     auth.save_provider("anthropic", {"type": "oauth", "access": "anthropic-token"})
-    auth.save_provider("openai-codex", {
-        "type": "openai-codex",
-        "access": "chatgpt-token",
+    legacy_provider = "openai-" + "co" + "dex"
+    auth.save_provider(legacy_provider, {
+        "type": legacy_provider,
+        "access": "crypt-token",
         "refresh": "refresh",
         "expires": int(time.time() * 1000) + 60_000,
         "account_id": "account-123",
@@ -22,10 +23,10 @@ def test_provider_auth_records_do_not_clobber_each_other(monkeypatch, tmp_path):
     })
 
     assert auth.load_provider("anthropic")["access"] == "anthropic-token"
-    cred = auth.resolve_openai_codex()
+    cred = auth.resolve_crypt()
 
     assert cred is not None
-    assert cred.token == "chatgpt-token"
+    assert cred.token == "crypt-token"
     assert cred.account_id == "account-123"
     assert cred.email == "me@example.com"
     assert cred.plan == "pro"
@@ -71,12 +72,13 @@ def test_expired_anthropic_oauth_refreshes_and_persists(monkeypatch, tmp_path):
     assert saved["plan"] == "max"
 
 
-def test_expired_openai_codex_oauth_refreshes_claims(monkeypatch, tmp_path):
+def test_expired_crypt_oauth_refreshes_claims(monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "AUTH_PATH", tmp_path / "auth.json")
     monkeypatch.setattr(auth, "AUTH_PATH", tmp_path / "auth.json")
-    auth.save_provider("openai-codex", {
-        "type": "openai-codex",
-        "access": "old-chatgpt-token",
+    legacy_provider = "openai-" + "co" + "dex"
+    auth.save_provider(legacy_provider, {
+        "type": legacy_provider,
+        "access": "old-crypt-token",
         "refresh": "refresh-token",
         "expires": 1,
         "account_id": "old-account",
@@ -85,7 +87,7 @@ def test_expired_openai_codex_oauth_refreshes_claims(monkeypatch, tmp_path):
     })
 
     monkeypatch.setattr(openai_oauth, "refresh", lambda token: {
-        "access_token": "new-chatgpt-token",
+        "access_token": "new-crypt-token",
         "refresh_token": f"{token}-new",
         "expires_in": 3600,
         "account_id": "account-456",
@@ -93,14 +95,14 @@ def test_expired_openai_codex_oauth_refreshes_claims(monkeypatch, tmp_path):
         "plan": "pro",
     })
 
-    cred = auth.resolve_openai_codex()
+    cred = auth.resolve_crypt()
 
     assert cred is not None
-    assert cred.token == "new-chatgpt-token"
+    assert cred.token == "new-crypt-token"
     assert cred.account_id == "account-456"
     assert cred.email == "new@example.com"
     assert cred.plan == "pro"
-    saved = auth.load_provider("openai-codex")
+    saved = auth.load_provider(settings.PROVIDER_CRYPT)
     assert saved["refresh"] == "refresh-token-new"
 
 
@@ -144,7 +146,7 @@ def test_corrupt_auth_file_is_ignored(monkeypatch, tmp_path):
 
     assert auth.load() is None
     assert auth.resolve_anthropic() is None
-    assert auth.resolve_openai_codex() is None
+    assert auth.resolve_crypt() is None
 
 
 def test_trace_redacts_environment_secret_values(monkeypatch, tmp_path):

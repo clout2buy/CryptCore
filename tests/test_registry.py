@@ -287,6 +287,70 @@ def test_permissions_deny_short_circuits(monkeypatch, tmp_path):
     assert "permissions rule" in msg
 
 
+def test_permissions_allow_does_not_bypass_danger(monkeypatch, tmp_path):
+    from core import permissions
+
+    pf = tmp_path / "permissions.json"
+    pf.write_text('{"allow": ["bash:*"]}')
+    monkeypatch.setattr(permissions, "PERMISSIONS_PATH", pf)
+    monkeypatch.setattr(permissions, "_CACHE", None)
+    monkeypatch.setattr(permissions, "_CACHE_MTIME", None)
+
+    tool = Tool(
+        name="bash",
+        description="shell",
+        schema={"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]},
+        permission="ask",
+        run=lambda args: "ran",
+        classify=lambda args: "danger",
+        summary=lambda args: str(args.get("command", "")),
+    )
+    monkeypatch.setitem(registry.REGISTRY._tools, tool.name, tool)
+
+    ok, msg = registry.dispatch("bash", {"command": "git reset --hard"}, render=False)
+
+    assert ok is False
+    assert "destructive tool call" in msg
+
+
+def test_permissions_prefix_prompt_overrides_auto_work(monkeypatch, tmp_path):
+    """A prompt prefix rule forces approval even for auto-work shell commands."""
+    from core import permissions
+
+    pf = tmp_path / "permissions.json"
+    pf.write_text('{"prefix_rules": [{"pattern": ["npm", "install"], "decision": "prompt"}]}')
+    monkeypatch.setattr(permissions, "PERMISSIONS_PATH", pf)
+    monkeypatch.setattr(permissions, "_CACHE", None)
+    monkeypatch.setattr(permissions, "_CACHE_MTIME", None)
+
+    previous = runtime.approval_mode()
+    runtime.set_approval_mode(runtime.APPROVAL_EDITS)
+    calls: list[dict] = []
+    try:
+        tool = Tool(
+            name="bash",
+            description="shell",
+            schema={"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]},
+            permission="ask",
+            run=lambda args: "ran",
+            summary=lambda args: str(args.get("command", "")),
+        )
+        monkeypatch.setitem(registry.REGISTRY._tools, tool.name, tool)
+
+        def approve(**kwargs):
+            calls.append(kwargs)
+            return True, ""
+
+        with runtime.approval_handler(approve):
+            ok, output = registry.dispatch("bash", {"command": "npm install left-pad"}, render=False)
+
+        assert ok is True
+        assert output == "ran"
+        assert calls and "prefix_rule:npm install" in calls[0]["reason"]
+    finally:
+        runtime.set_approval_mode(previous)
+
+
 def test_run_exception_surfaces_as_failure(monkeypatch):
     def bad_run(args):
         raise RuntimeError("boom")

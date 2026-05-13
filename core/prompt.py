@@ -11,7 +11,7 @@ import subprocess
 import textwrap
 from pathlib import Path
 
-from . import memory, runtime
+from . import memory, project_index, runtime, skills
 
 
 def build_system_prompt(
@@ -21,6 +21,7 @@ def build_system_prompt(
     cwd: str,
     tool_guidance: str,
     turn_guidance: str = "",
+    skill_guidance: str = "",
 ) -> str:
     sections = [
         _identity(),
@@ -32,8 +33,11 @@ def build_system_prompt(
         _verification(),
         _communication(),
         _environment(provider_name, model, cwd),
+        _project_intelligence(cwd),
         runtime.git_snapshot(cwd),
         _project_instructions(cwd),
+        _available_skills(cwd),
+        _skill_guidance(skill_guidance),
         _memory(),
         _active_runtime(),
         _turn_guidance(turn_guidance),
@@ -163,6 +167,13 @@ def _environment(provider_name: str, model: str, cwd: str) -> str:
     ).strip()
 
 
+def _project_intelligence(cwd: str) -> str:
+    try:
+        return project_index.prompt_section(cwd)
+    except Exception:
+        return ""
+
+
 def compute_git_snapshot(cwd: str) -> str:
     """Snapshot once per session via runtime.git_snapshot(). Running git on
     every turn taxes latency AND drifts the cached system prompt, defeating
@@ -200,6 +211,23 @@ def _project_instructions(cwd: str) -> str:
     if not text:
         return ""
     return "# Project Instructions\n" + text
+
+
+def _available_skills(cwd: str) -> str:
+    text = skills.available_summary(cwd)
+    if not text:
+        return ""
+    return (
+        "# Available Skills\n"
+        "The user can invoke a skill for the current turn with $skill-name.\n"
+        + text
+    )
+
+
+def _skill_guidance(skill_guidance: str) -> str:
+    if not skill_guidance.strip():
+        return ""
+    return skill_guidance.strip()
 
 
 def _memory() -> str:

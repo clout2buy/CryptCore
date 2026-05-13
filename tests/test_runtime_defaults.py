@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from core import runtime
+from tools import dispatch
 
 
 def test_default_approval_mode_auto_approves_work_tools():
@@ -19,3 +20,16 @@ def test_default_approval_mode_auto_approves_work_tools():
         assert runtime.can_auto_approve("spawn_agent") is False
     finally:
         runtime.set_approval_mode(previous)
+
+
+def test_set_workspace_tool_requires_approval_in_noninteractive_auto_work(tmp_path):
+    previous = runtime.approval_mode()
+    runtime.configure(None, str(tmp_path), session=None)
+    runtime.set_approval_mode(runtime.APPROVAL_EDITS)
+    try:
+        ok, msg = dispatch("set_workspace", {"path": str(tmp_path)}, render=False)
+    finally:
+        runtime.set_approval_mode(previous)
+
+    assert ok is False
+    assert "approval required" in msg

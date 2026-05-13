@@ -67,21 +67,23 @@ def run(args: dict) -> str:
     context = str(args.get("context", "")).strip() or None
     agent_type = str(args.get("agent_type") or "explorer").strip() or "explorer"
     name = str(args.get("name") or description).strip() or description
-    mode = str(args.get("mode") or "sync").strip().lower()
+    mode = str(args.get("mode") or "").strip().lower()
     scope = str(args.get("scope") or "").strip()
     isolation = str(args.get("isolation") or "shared").strip().lower()
     write_paths = args.get("write_paths") or []
     if not isinstance(write_paths, list):
         return "spawn_agent: write_paths must be an array of strings"
     write_paths = [str(item).strip() for item in write_paths if str(item).strip()]
-    if mode not in {"sync", "background"}:
-        return "spawn_agent: mode must be sync or background"
     if isolation not in {"shared", "worktree"}:
         return "spawn_agent: isolation must be shared or worktree"
     try:
         definition = agent_registry.get_agent(agent_type)
     except KeyError as exc:
         return f"spawn_agent: {exc}"
+    if not mode:
+        mode = definition.default_mode or "sync"
+    if mode not in {"sync", "background"}:
+        return "spawn_agent: mode must be sync or background"
     if definition.requires_write_paths and not write_paths:
         return "spawn_agent: worker agents require non-empty write_paths"
     worktree_path = ""
@@ -94,7 +96,7 @@ def run(args: dict) -> str:
                 )
         except Exception as exc:
             return f"spawn_agent: worktree isolation failed: {type(exc).__name__}: {exc}"
-        branch = f"codex/agent-{uuid.uuid4().hex[:8]}"
+        branch = f"crypt/agent-{uuid.uuid4().hex[:8]}"
         path = settings.APP_DIR / "worktrees" / branch.replace("/", "-")
         try:
             worktree_path = str(worktrees.create(

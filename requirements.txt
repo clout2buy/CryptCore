@@ -1,6 +1,6 @@
-anthropic
-google-auth
-google-auth-oauthlib
-pypdf
-python-dotenv
-rich
+anthropic>=0.72,<1
+google-auth>=2.40,<3
+google-auth-oauthlib>=1.2,<2
+pypdf>=5.9,<7
+python-dotenv>=1.1,<2
+rich>=14,<15

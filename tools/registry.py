@@ -116,7 +116,7 @@ def dispatch(
     ``tool_call`` + ``tool_result`` calls so callers that don't have an ID
     (CLI invocations, ad-hoc test paths) still render correctly.
     """
-    from core import evidence, permissions, runtime, tool_policy
+    from core import evidence, permissions, runtime, task_state, tool_policy
 
     tool = REGISTRY.get(name)
     if tool is None:
@@ -230,9 +230,9 @@ def dispatch(
             return False, warning
         ui.info(warning)
 
-    # User-defined rules first. Deny always wins; explicit allow trumps the
-    # danger prompt because the user opted in by writing the rule.
-    rule_decision, rule_pattern = permissions.check(name, summary_text)
+    # User-defined rules first. Deny always wins. Allow rules skip normal
+    # prompts, but they do not bypass hard danger classification.
+    rule_decision, rule_pattern = permissions.check(name, summary_text, args)
     if rule_decision == "deny":
         msg = f"denied by permissions rule: {rule_pattern}"
         _emit_failure(msg)
@@ -244,13 +244,14 @@ def dispatch(
         and tool.permission == "ask"
         and not _subagent_can_run_ask_tool(tool.name, classification)
     )
-    if rule_decision == "allow":
-        # Explicit user pre-approval — skip every prompt below.
+    if rule_decision == "allow" and classification != "danger":
+        # Explicit user pre-approval for non-dangerous calls.
         if render:
             ui.info(f"auto-approved by rule: {rule_pattern}")
     elif classification == "danger":
-        # Danger always confirms unless explicitly allow-listed above.
+        # Danger always confirms, including in yolo and for allow-listed calls.
         reason = _danger_reason(tool, args) or "destructive operation"
+        _record_task_approval_wait(task_state, runtime, reason)
         if not render:
             approval = runtime.approval_callback()
             if approval is None:
@@ -278,6 +279,36 @@ def dispatch(
                 msg += f": {feedback}"
             _emit_failure(msg)
             return False, msg
+    elif rule_decision == "prompt":
+        _record_task_approval_wait(task_state, runtime, str(rule_pattern or "permissions prefix rule"))
+        if not render:
+            approval = runtime.approval_callback()
+            if approval is None:
+                return False, (
+                    "approval required by permissions prefix rule: "
+                    f"{rule_pattern or '<unknown rule>'}"
+                )
+            approved, feedback = approval(
+                question="run this?",
+                tool_name=tool.name,
+                args=args,
+                danger=False,
+                reason=str(rule_pattern or "permissions prefix rule"),
+                summary=summary_text,
+            )
+        else:
+            if using_lifecycle:
+                ui.tool_set_state(tool_use_id, "approval")
+            else:
+                ui.activity(f"waiting for approval: {tool.name}")
+            _render_preview(tool, args)
+            approved, feedback = ui.confirm(f"run this? ({rule_pattern})")
+        if not approved:
+            msg = "denied by user"
+            if feedback:
+                msg += f": {feedback}"
+            _emit_failure(msg)
+            return False, msg
     elif classification == "safe":
         # Read-only / harmless. Skip the prompt regardless of mode.
         pass
@@ -288,6 +319,7 @@ def dispatch(
         or subagent_needs_prompt
         or (tool.permission == "ask" and not runtime.can_auto_approve(tool.name))
     ):
+        _record_task_approval_wait(task_state, runtime, f"{tool.name} requires approval")
         if not render:
             approval = runtime.approval_callback()
             if approval is None:
@@ -360,6 +392,16 @@ def dispatch(
         elif not quiet:
             ui.tool_result(True, display)
     return True, redact.content(_model_output(out))
+
+
+def _record_task_approval_wait(task_state_module, runtime_module, reason: str) -> None:
+    task_id = runtime_module.current_task_id()
+    if not task_id:
+        return
+    try:
+        task_state_module.set_status(runtime_module.cwd(), task_id, "waiting_approval", reason)
+    except Exception:
+        return
 
 
 def _summary_or_invalid(args, tool: Tool) -> str:

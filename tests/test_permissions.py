@@ -27,6 +27,14 @@ def write(f: Path, allow=None, deny=None):
     f.write_text(json.dumps({"allow": allow or [], "deny": deny or []}))
 
 
+def write_policy(f: Path, *, allow=None, deny=None, prefix_rules=None):
+    f.write_text(json.dumps({
+        "allow": allow or [],
+        "deny": deny or [],
+        "prefix_rules": prefix_rules or [],
+    }))
+
+
 def test_default_when_no_file(rules_file):
     assert permissions.check("bash", "git status") == ("default", None)
 
@@ -80,3 +88,60 @@ def test_malformed_json_does_not_crash(rules_file):
     rules_file.write_text("{ this is not json")
     # Should silently degrade to no rules, not raise into the dispatcher.
     assert permissions.check("bash", "anything") == ("default", None)
+
+
+def test_prefix_rule_allows_shell_command(rules_file):
+    write_policy(
+        rules_file,
+        prefix_rules=[{"pattern": ["git", "status"], "decision": "allow"}],
+    )
+
+    decision, rule = permissions.check("bash", "git status --short", {"command": "git status --short"})
+
+    assert decision == "allow"
+    assert rule == "prefix_rule:git status"
+
+
+def test_prefix_rule_prompt_overrides_default(rules_file):
+    write_policy(
+        rules_file,
+        prefix_rules=[{"pattern": ["npm", "install"], "decision": "prompt"}],
+    )
+
+    decision, rule = permissions.check("bash", "npm install", {"command": "npm install left-pad"})
+
+    assert decision == "prompt"
+    assert rule == "prefix_rule:npm install"
+
+
+def test_prefix_rule_forbidden_beats_glob_allow(rules_file):
+    write_policy(
+        rules_file,
+        allow=["bash:git push*"],
+        prefix_rules=[{"pattern": ["git", "push", "--force"], "decision": "forbidden"}],
+    )
+
+    decision, rule = permissions.check("bash", "git push --force", {"command": "git push --force origin main"})
+
+    assert decision == "deny"
+    assert "git push --force" in rule
+
+
+def test_prefix_rule_alternatives(rules_file):
+    write_policy(
+        rules_file,
+        prefix_rules=[{"pattern": ["git", ["diff", "show"]], "decision": "allow"}],
+    )
+
+    assert permissions.check("bash", "git diff", {"command": "git diff -- README.md"})[0] == "allow"
+    assert permissions.check("bash", "git show", {"command": "git show HEAD"})[0] == "allow"
+    assert permissions.check("bash", "git status", {"command": "git status"})[0] == "default"
+
+
+def test_prefix_rule_matching_is_case_insensitive(rules_file):
+    write_policy(
+        rules_file,
+        prefix_rules=[{"pattern": ["git", "status"], "decision": "allow"}],
+    )
+
+    assert permissions.check("bash", "Git Status", {"command": "Git Status --short"})[0] == "allow"

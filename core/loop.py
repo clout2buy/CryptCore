@@ -20,6 +20,8 @@ from . import (
     memory,
     prompt as prompt_builder,
     runtime,
+    skills,
+    task_state,
     tool_recovery,
 )
 from .agents import orchestrator
@@ -144,18 +146,29 @@ def run_prompt(
     messages.append(user_msg)
     if runtime.session():
         runtime.session().record_message(user_msg)
+    task = task_state.start_task(
+        user_text,
+        cwd=cwd,
+        provider=getattr(provider, "name", ""),
+        model=getattr(provider, "model", ""),
+        session_id=getattr(session_obj, "id", "") if session_obj else "",
+    )
+    _emit_event(event_sink, {"event": "taskStarted", "taskId": task.task_id, "status": task.status})
     tracing.emit("run_start", mode="non_interactive", prompt=user_text, max_turns=max_turns)
     try:
-        current_tokens, session_tokens = _run_until_done(
-            provider,
-            messages,
-            0,
-            compact.rough_tokens(messages),
-            max_turns=max_turns,
-            render=render,
-            event_sink=event_sink,
-        )
-        final_text = _extract_text(messages[-1]) if messages else ""
+        with runtime.task_context(task.task_id):
+            current_tokens, session_tokens = _run_until_done(
+                provider,
+                messages,
+                0,
+                compact.rough_tokens(messages),
+                max_turns=max_turns,
+                render=render,
+                event_sink=event_sink,
+            )
+            final_text = _extract_text(messages[-1]) if messages else ""
+            task_state.set_status(cwd, task.task_id, "completed", final_text[:500])
+            _emit_event(event_sink, {"event": "taskEnded", "taskId": task.task_id, "status": "completed"})
         tracing.emit(
             "run_stop",
             mode="non_interactive",
@@ -171,6 +184,8 @@ def run_prompt(
             session_tokens=session_tokens,
         )
     except Exception as exc:
+        task_state.set_status(cwd, task.task_id, "failed", f"{type(exc).__name__}: {exc}")
+        _emit_event(event_sink, {"event": "taskEnded", "taskId": task.task_id, "status": "failed"})
         tracing.emit("run_error", mode="non_interactive", error=f"{type(exc).__name__}: {exc}")
         raise
     finally:
@@ -271,6 +286,15 @@ def run(
         if user_text.startswith("/memory"):
             _handle_memory(user_text)
             continue
+        if user_text.startswith("/skills"):
+            _show_skills(runtime.cwd())
+            continue
+        if user_text.startswith("/tasks"):
+            _show_tasks(user_text)
+            continue
+        if user_text.startswith("/project"):
+            _show_project(user_text)
+            continue
         if user_text.startswith("/background"):
             _show_background()
             continue
@@ -305,6 +329,13 @@ def run(
         messages.append(user_msg)
         if runtime.session():
             runtime.session().record_message(user_msg)
+        task = task_state.start_task(
+            user_text,
+            cwd=runtime.cwd(),
+            provider=getattr(provider, "name", ""),
+            model=getattr(provider, "model", ""),
+            session_id=runtime.session_id() or "",
+        )
 
         try:
             if compact.should_compact(messages, getattr(provider, "context_window", 200_000)):
@@ -314,16 +345,21 @@ def run(
                 current_tokens = compact.rough_tokens(messages)
                 if runtime.session():
                     runtime.session().record_compaction(summary, len(messages), messages)
-            current_tokens, session_tokens = _run_until_done(
-                provider, messages, current_tokens, session_tokens,
-            )
+            with runtime.task_context(task.task_id):
+                current_tokens, session_tokens = _run_until_done(
+                    provider, messages, current_tokens, session_tokens,
+                )
+            final_text = _extract_text(messages[-1]) if messages else ""
+            task_state.set_status(runtime.cwd(), task.task_id, "completed", final_text[:500])
         except KeyboardInterrupt:
             del messages[checkpoint:]
             _stub_dangling_tools(messages)
+            task_state.set_status(runtime.cwd(), task.task_id, "cancelled", "interrupted by user")
             ui.info("interrupted - turn cancelled")
         except Exception as e:
             del messages[checkpoint:]
             _stub_dangling_tools(messages)
+            task_state.set_status(runtime.cwd(), task.task_id, "failed", f"{type(e).__name__}: {e}")
             ui.error(_format_error(e))
             if _is_rate_limit(e) and model_switcher:
                 if ui.ask("switch model now?"):
@@ -707,6 +743,7 @@ def _stream_one_turn(
             cwd=runtime.cwd(),
             tool_guidance=REGISTRY.prompts(only={str(tool.get("name", "")) for tool in tools}),
             turn_guidance=_turn_guidance(messages, artifact_fast_lane=artifact_fast_lane),
+            skill_guidance=skills.render_for_messages(messages, runtime.cwd()),
         )
         for event in provider.stream_turn(messages, tools, system_prompt):
             event_at = time.monotonic()
@@ -1414,6 +1451,14 @@ def _dispatch_one(
     tool_name = str(block.get("name", ""))
     tool_id = str(block.get("id", ""))
     args = block.get("input") or {}
+    task_id = runtime.current_task_id()
+    if task_id:
+        task_state.set_status(
+            runtime.cwd(),
+            task_id,
+            _task_status_for_tool(tool_name, args),
+            f"{tool_name}: {_tool_summary(block)}",
+        )
     _emit_event(
         event_sink,
         {
@@ -1450,7 +1495,26 @@ def _dispatch_one(
             "text": _event_text_preview(output),
         },
     )
+    if task_id:
+        task_state.record_event(
+            runtime.cwd(),
+            task_id,
+            "tool_result",
+            f"{tool_name} {'ok' if ok else 'failed'}",
+            data={"tool": tool_name, "ok": ok, "output": str(output)[:1000]},
+        )
     return ok, output
+
+
+def _task_status_for_tool(tool_name: str, args) -> str:
+    if tool_name in {"write_file", "edit_file", "multi_edit"}:
+        return "editing"
+    if tool_name in {"bash", "bash_start"}:
+        command = str(args.get("command", "")) if isinstance(args, dict) else ""
+        low = command.lower()
+        if any(token in low for token in ("pytest", "ruff", "mypy", "pyright", "tsc", "eslint", "vitest", "jest", "go test", "cargo test")):
+            return "verifying"
+    return "tool_calling"
 
 
 def _tool_result_block(block: dict, ok: bool, output) -> dict:
@@ -1695,6 +1759,9 @@ def _show_help() -> None:
     ui.info("/compact           summarize old context and keep working")
     ui.info("/memory            show durable Crypt memory")
     ui.info("/memory add <txt>  save durable memory")
+    ui.info("/skills            list local SKILL.md bundles")
+    ui.info("/tasks [id|--all]  list or inspect durable task logs")
+    ui.info("/project [--refresh] show project intelligence cache")
     ui.info("/background        list background shell jobs")
     ui.info("/doctor            run local Crypt harness self-checks")
     ui.info("/model             switch provider/model in this session")
@@ -1772,6 +1839,37 @@ def _handle_memory(command: str) -> None:
         ui.info("usage: /memory, /memory add <text>, /memory search <text>")
     except Exception as e:
         ui.error(f"memory failed: {type(e).__name__}: {e}")
+
+
+def _show_skills(cwd: str) -> None:
+    found = skills.discover(cwd)
+    if not found:
+        ui.info("no skills found")
+        return
+    rows = {
+        f"${skill.name}": (
+            f"{skill.description or skill.title or '(no description)'} - {skill.path}"
+        )
+        for skill in found
+    }
+    ui.status_panel(rows)
+
+
+def _show_tasks(command: str) -> None:
+    arg = command[len("/tasks"):].strip()
+    all_projects = "--all" in arg
+    query = arg.replace("--all", "").strip()
+    if query:
+        ui.info(task_state.format_task(runtime.cwd(), query))
+        return
+    ui.info(task_state.format_task_list(runtime.cwd(), all_projects=all_projects))
+
+
+def _show_project(command: str) -> None:
+    from . import project_index
+
+    refresh = "--refresh" in command
+    ui.info(project_index.format_profile(runtime.cwd(), refresh_first=refresh))
 
 
 def _show_background() -> None:

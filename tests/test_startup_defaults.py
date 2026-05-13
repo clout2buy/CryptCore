@@ -15,8 +15,8 @@ def _clear_provider_env(monkeypatch) -> None:
         "ANTHROPIC_API_KEY",
         "OPENAI_API_KEY",
         "OPENAI_BASE_URL",
-        "OPENAI_CODEX_BASE_URL",
-        "OPENAI_CODEX_MODEL",
+        "CRYPT_BASE_URL",
+        "CRYPT_MODEL",
         "GEMINI_API_KEY",
         "GEMINI_BASE_URL",
         "GEMINI_CLIENT_SECRET_FILE",
@@ -54,6 +54,20 @@ def test_fresh_clone_defaults_to_ollama_without_setup(monkeypatch):
     assert main._needs_setup({}, _args()) is False
 
 
+def test_workspace_defaults_to_current_shell_directory(monkeypatch, tmp_path):
+    _clear_provider_env(monkeypatch)
+    monkeypatch.delenv("CRYPT_ROOT", raising=False)
+    current = tmp_path / "current"
+    saved = tmp_path / "saved"
+    current.mkdir()
+    saved.mkdir()
+    monkeypatch.chdir(current)
+
+    resolved = settings.resolve_workspace(None, {"workspace": str(saved)})
+
+    assert resolved == current.resolve()
+
+
 def test_env_and_saved_provider_precedence(monkeypatch):
     _clear_provider_env(monkeypatch)
 
@@ -66,8 +80,8 @@ def test_env_and_saved_provider_precedence(monkeypatch):
     monkeypatch.setenv("CRYPT_PROVIDER", settings.PROVIDER_OPENAI)
     assert settings.provider_default({"provider": settings.PROVIDER_ANTHROPIC}) == settings.PROVIDER_OPENAI
 
-    monkeypatch.setenv("CRYPT_PROVIDER", settings.PROVIDER_OPENAI_CODEX)
-    assert settings.provider_default({}) == settings.PROVIDER_OPENAI_CODEX
+    monkeypatch.setenv("CRYPT_PROVIDER", settings.PROVIDER_CRYPT)
+    assert settings.provider_default({}) == settings.PROVIDER_CRYPT
 
 
 def test_startup_choice_does_not_prompt_on_first_run(monkeypatch):
@@ -112,22 +126,22 @@ def test_ollama_host_normalization_classifies_bare_hosts():
     assert settings.is_ollama_cloud_host("ollama.com") is True
 
 
-def test_openai_codex_auth_label_uses_chatgpt_oauth(monkeypatch):
+def test_crypt_auth_label_uses_crypt_oauth(monkeypatch):
     _clear_provider_env(monkeypatch)
 
-    missing = main._provider_auth_label(settings.PROVIDER_OPENAI_CODEX, _args(), {}, None)
+    missing = main._provider_auth_label(settings.PROVIDER_CRYPT, _args(), {}, None)
     present = main._provider_auth_label(
-        settings.PROVIDER_OPENAI_CODEX,
+        settings.PROVIDER_CRYPT,
         _args(),
         {},
         main.auth.Credential(kind="oauth", token="token", email="me@example.com"),
     )
 
-    assert missing == "missing ChatGPT OAuth"
-    assert present == "ChatGPT OAuth (me@example.com)"
+    assert missing == "missing Crypt OAuth"
+    assert present == "Crypt OAuth (me@example.com)"
 
 
-def test_login_if_needed_runs_chatgpt_login_before_provider(monkeypatch):
+def test_login_if_needed_runs_crypt_login_before_provider(monkeypatch):
     _clear_provider_env(monkeypatch)
     calls: list[str] = []
 
@@ -141,14 +155,14 @@ def test_login_if_needed_runs_chatgpt_login_before_provider(monkeypatch):
         else None,
     )
 
-    cred = main._login_if_needed(settings.PROVIDER_OPENAI_CODEX, None)
+    cred = main._login_if_needed(settings.PROVIDER_CRYPT, None)
 
-    assert calls == [settings.PROVIDER_OPENAI_CODEX]
+    assert calls == [settings.PROVIDER_CRYPT]
     assert cred is not None
     assert cred.account_id == "account-123"
 
 
-def test_login_if_needed_repairs_incomplete_chatgpt_credential(monkeypatch):
+def test_login_if_needed_repairs_incomplete_crypt_credential(monkeypatch):
     _clear_provider_env(monkeypatch)
     calls: list[str] = []
     incomplete = main.auth.Credential(kind="oauth", token="token")
@@ -161,9 +175,9 @@ def test_login_if_needed_repairs_incomplete_chatgpt_credential(monkeypatch):
         lambda provider: main.auth.Credential(kind="oauth", token="token-2", account_id="account-456"),
     )
 
-    cred = main._login_if_needed(settings.PROVIDER_OPENAI_CODEX, incomplete)
+    cred = main._login_if_needed(settings.PROVIDER_CRYPT, incomplete)
 
-    assert calls == [settings.PROVIDER_OPENAI_CODEX]
+    assert calls == [settings.PROVIDER_CRYPT]
     assert cred is not None
     assert cred.token == "token-2"
     assert cred.account_id == "account-456"
@@ -188,7 +202,7 @@ def test_login_if_needed_does_not_prompt_when_non_interactive(monkeypatch):
 
     monkeypatch.setattr(main.ui, "ask", fail_if_called)
 
-    assert main._login_if_needed(settings.PROVIDER_OPENAI_CODEX, None, interactive=False) is None
+    assert main._login_if_needed(settings.PROVIDER_CRYPT, None, interactive=False) is None
 
 
 def test_login_if_needed_runs_gemini_login_before_provider(monkeypatch):
@@ -292,19 +306,19 @@ def test_ollama_model_choices_match_host():
     assert "gpt-oss:20b" not in cloud
 
 
-def test_openai_codex_model_default_and_choices(monkeypatch):
+def test_crypt_model_default_and_choices(monkeypatch):
     _clear_provider_env(monkeypatch)
     seen: list[str] = []
 
     def fake_pick(label, options, default):
         seen.extend(value for value, _ in options)
-        return settings.OPENAI_CODEX_MODEL
+        return settings.CRYPT_MODEL
 
     monkeypatch.setattr(main, "_pick", fake_pick)
 
-    assert settings.model_default(settings.PROVIDER_OPENAI_CODEX, {}) == settings.OPENAI_CODEX_MODEL
-    assert main._pick_model(settings.PROVIDER_OPENAI_CODEX, {}) == settings.OPENAI_CODEX_MODEL
-    assert settings.OPENAI_CODEX_MODEL in seen
+    assert settings.model_default(settings.PROVIDER_CRYPT, {}) == settings.CRYPT_MODEL
+    assert main._pick_model(settings.PROVIDER_CRYPT, {}) == settings.CRYPT_MODEL
+    assert settings.CRYPT_MODEL in seen
 
 
 def test_ollama_picker_offers_local_and_cloud_models(monkeypatch):

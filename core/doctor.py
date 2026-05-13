@@ -9,7 +9,21 @@ from pathlib import Path
 
 from tools import REGISTRY
 
-from . import background, evidence, file_state, final_claims, prompt, redact, session, tool_policy, verifiers
+from . import (
+    background,
+    evidence,
+    file_state,
+    final_claims,
+    mcp,
+    project_index,
+    prompt,
+    redact,
+    session,
+    skills,
+    task_state,
+    tool_policy,
+    verifiers,
+)
 from .agents import registry as agent_registry
 
 
@@ -30,11 +44,15 @@ def run_doctor(cwd: str | Path) -> str:
         _check_registry(),
         _check_tool_load_failures(),
         _check_session(),
+        _check_task_state(cwd),
+        _check_project_index(cwd),
         _check_file_state(),
         _check_background(),
         _check_redaction(),
         _check_identity_strings(cwd),
         _check_ripgrep(),
+        _check_skills(cwd),
+        _check_mcp_config(),
         _check_app_dir_writable(),
         _check_provider_auth(),
         _check_known_model(),
@@ -178,6 +196,32 @@ def _check_session() -> Check:
         return Check("session persistence", False, f"{type(e).__name__}: {e}")
 
 
+def _check_task_state(cwd: Path) -> Check:
+    try:
+        task = task_state.start_task(
+            "doctor task",
+            cwd=cwd,
+            provider="doctor",
+            model="doctor",
+            session_id="doctor",
+        )
+        task_state.set_status(cwd, task.task_id, "completed", "doctor ok")
+        loaded = task_state.info(cwd, task.task_id)
+        ok = loaded.status == "completed" and loaded.event_count >= 3
+        return Check("task state log", ok, task.task_id)
+    except Exception as e:
+        return Check("task state log", False, f"{type(e).__name__}: {e}")
+
+
+def _check_project_index(cwd: Path) -> Check:
+    try:
+        profile = project_index.refresh(cwd)
+        detail = f"{len(profile.languages)} language(s), {len(profile.test_commands)} test command(s)"
+        return Check("project intelligence", True, detail)
+    except Exception as e:
+        return Check("project intelligence", False, f"{type(e).__name__}: {e}")
+
+
 def _check_file_state() -> Check:
     try:
         with tempfile.TemporaryDirectory(prefix="crypt-doctor-file-") as td:
@@ -307,6 +351,26 @@ def _check_ripgrep() -> Check:
     )
 
 
+def _check_skills(cwd: Path) -> Check:
+    try:
+        found = skills.discover(cwd)
+        blocked = [skill for skill in skills.discover(cwd, include_disabled=True) if not skill.enabled]
+        detail = f"{len(found)} local skill(s) visible"
+        if blocked:
+            detail += f"; {len(blocked)} blocked by safety scan"
+        return Check("skills", True, detail)
+    except Exception as e:
+        return Check("skills", False, f"{type(e).__name__}: {e}")
+
+
+def _check_mcp_config() -> Check:
+    try:
+        servers = mcp.configured_servers()
+        return Check("MCP config", True, f"{len(servers)} server(s) configured")
+    except Exception as e:
+        return Check("MCP config", False, f"{type(e).__name__}: {e}")
+
+
 def _check_app_dir_writable() -> Check:
     from .settings import APP_DIR
 
@@ -326,7 +390,7 @@ def _check_provider_auth() -> Check:
         PROVIDER_ANTHROPIC,
         PROVIDER_OLLAMA,
         PROVIDER_OPENAI,
-        PROVIDER_OPENAI_CODEX,
+        PROVIDER_CRYPT,
         PROVIDER_GEMINI,
         is_local_host,
         is_ollama_cloud_host,
@@ -349,11 +413,11 @@ def _check_provider_auth() -> Check:
                 return Check("provider auth", True, "OPENAI_API_KEY is set")
             return Check("provider auth", False, "OpenAI selected; set OPENAI_API_KEY")
 
-        if provider == PROVIDER_OPENAI_CODEX:
-            stored = auth.load_provider("openai-codex") or {}
-            if stored.get("access") and stored.get("account_id"):
-                return Check("provider auth", True, "ChatGPT OAuth credentials available")
-            return Check("provider auth", False, "OpenAI Codex selected; run login --provider openai-codex")
+        if provider == PROVIDER_CRYPT:
+            cred = auth.resolve_crypt()
+            if cred and cred.token and cred.account_id:
+                return Check("provider auth", True, "Crypt OAuth credentials available")
+            return Check("provider auth", False, "Crypt OAuth selected; run login --provider crypt")
 
         if provider == PROVIDER_GEMINI:
             if os.getenv("GEMINI_API_KEY"):
@@ -395,7 +459,7 @@ def _check_known_model() -> Check:
         ANTHROPIC_MODELS,
         OLLAMA_MODELS,
         OPENAI_MODELS,
-        OPENAI_CODEX_MODELS,
+        CRYPT_MODELS,
         GEMINI_MODELS,
         load_config,
         provider_default,
@@ -409,8 +473,8 @@ def _check_known_model() -> Check:
         known = ANTHROPIC_MODELS
     elif provider == "openai":
         known = OPENAI_MODELS
-    elif provider == "openai-codex":
-        known = OPENAI_CODEX_MODELS
+    elif provider == "crypt":
+        known = CRYPT_MODELS
     elif provider == "gemini":
         known = GEMINI_MODELS
     else:

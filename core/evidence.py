@@ -87,6 +87,13 @@ def record_tool_result(
     output: str,
     task_id: str | None = None,
 ) -> EvidenceEntry:
+    if task_id is None:
+        try:
+            from . import runtime
+
+            task_id = runtime.current_agent_task_id() or runtime.current_task_id()
+        except Exception:
+            task_id = None
     kind = _tool_kind(tool_name, args, ok)
     summary = _tool_summary(tool_name, args, ok)
     details = {

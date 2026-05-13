@@ -84,17 +84,17 @@ def test_app_daemon_sets_provider_and_model(monkeypatch, tmp_path):
     daemon.handle_command(
         {
             "type": "setProviderModel",
-            "provider": settings.PROVIDER_OPENAI_CODEX,
+            "provider": settings.PROVIDER_CRYPT,
             "model": "gpt-5.5",
             "id": "engine-1",
         }
     )
 
     saved = settings.load_config()
-    assert saved["provider"] == settings.PROVIDER_OPENAI_CODEX
-    assert saved["openai_codex_model"] == "gpt-5.5"
+    assert saved["provider"] == settings.PROVIDER_CRYPT
+    assert saved["crypt_model"] == "gpt-5.5"
     assert events[-1]["event"] == "snapshot"
-    assert events[-1]["snapshot"]["provider"] == settings.PROVIDER_OPENAI_CODEX
+    assert events[-1]["snapshot"]["provider"] == settings.PROVIDER_CRYPT
     assert events[-1]["snapshot"]["model"] == "gpt-5.5"
 
 
@@ -216,18 +216,65 @@ def test_app_daemon_routes_slash_status_to_command_result(monkeypatch, tmp_path)
     assert all(event["event"] != "taskStarted" for event in events)
 
 
-def test_app_daemon_start_prompt_runs_synchronously(monkeypatch, tmp_path):
+def test_app_daemon_start_prompt_runs_in_background(monkeypatch, tmp_path):
     daemon = app_daemon.AppDaemon(emit=lambda event: None, cwd=str(tmp_path))
     calls: list[tuple[str, str, str | None]] = []
 
     def fake_run(task_id: str, text: str, route_role: str | None) -> None:
         calls.append((task_id, text, route_role))
+        with daemon._task_lock:
+            daemon._active_task = None
+            daemon._task_session_keys.pop(task_id, None)
+            daemon._task_threads.pop(task_id, None)
 
     monkeypatch.setattr(daemon, "_run_prompt_task", fake_run)
 
     daemon.handle_command({"type": "sendPrompt", "text": "hi", "route": "builder", "id": "sync-1"})
 
+    deadline = time.time() + 2
+    while time.time() < deadline and not calls:
+        time.sleep(0.01)
     assert calls == [("sync-1", "hi", "builder")]
+
+
+def test_app_daemon_accepts_approval_response_while_task_is_running(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "CONFIG_PATH", tmp_path / "config.json")
+    events: list[dict] = []
+    daemon = app_daemon.AppDaemon(emit=events.append, cwd=str(tmp_path))
+    result: list[tuple[bool, str]] = []
+
+    def fake_run(task_id: str, text: str, route_role: str | None) -> None:
+        try:
+            result.append(
+                daemon._request_approval(
+                    task_id=task_id,
+                    session_key="default",
+                    question="run this?",
+                    tool_name="bash",
+                    args={"command": "npm install"},
+                    summary="npm install",
+                )
+            )
+        finally:
+            with daemon._task_lock:
+                daemon._active_task = None
+                daemon._task_session_keys.pop(task_id, None)
+                daemon._task_threads.pop(task_id, None)
+
+    monkeypatch.setattr(daemon, "_run_prompt_task", fake_run)
+
+    daemon.handle_command({"type": "sendPrompt", "text": "needs approval", "id": "task-1"})
+    deadline = time.time() + 2
+    while time.time() < deadline and not any(event["event"] == "approvalRequested" for event in events):
+        time.sleep(0.01)
+    approval = next(event for event in events if event["event"] == "approvalRequested")
+
+    daemon.handle_command({"type": "approvalResponse", "approvalId": approval["approvalId"], "approved": True})
+    deadline = time.time() + 2
+    while time.time() < deadline and not result:
+        time.sleep(0.01)
+
+    assert result == [(True, "")]
 
 
 def test_app_daemon_provider_args_follow_thinking_mode():

@@ -27,9 +27,13 @@ if [ "${1:-}" = "--quick" ]; then
   python -m pytest \
     tests/test_registry.py \
     tests/test_runtime_defaults.py \
-    tests/test_production_runtime.py \
-    tests/test_permissions.py \
-    tests/test_bash_safety.py \
+  tests/test_production_runtime.py \
+  tests/test_permissions.py \
+  tests/test_mcp.py \
+  tests/test_skills.py \
+  tests/test_task_state.py \
+  tests/test_project_index.py \
+  tests/test_bash_safety.py \
     tests/test_read_tools.py \
     tests/test_edit_file.py \
     tests/test_write_file.py

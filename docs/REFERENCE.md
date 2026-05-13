@@ -10,7 +10,7 @@ needed to run, fork, and debug Crypt.
 | Ollama | `ollama serve` then `python -m crypt` | Default for fresh clones. Uses `http://localhost:11434`. |
 | Anthropic | `python -m crypt login` or `ANTHROPIC_API_KEY` | OAuth tokens live in `~/.crypt/auth.json`. |
 | OpenAI-compatible | `OPENAI_API_KEY=...` | Supports OpenAI Chat Completions-compatible servers. |
-| ChatGPT/Codex OAuth | `python -m crypt login --provider openai-codex` | Uses ChatGPT/Codex OAuth, separate from Platform API keys. |
+| Crypt OAuth | `python -m crypt login --provider crypt` | Uses Crypt subscription OAuth, separate from Platform API keys. |
 | Gemini | `GEMINI_API_KEY=...` or `python -m crypt login --provider gemini` | API keys use Gemini Developer API. OAuth uses Vertex AI and needs `GEMINI_PROJECT_ID`. |
 
 ## Approval Modes
@@ -22,7 +22,22 @@ needed to run, fork, and debug Crypt.
 | YOLO-all | `/yolo all` or `CRYPT_APPROVAL=all` | Bypass normal prompts; danger checks still apply |
 
 Dangerous commands such as `rm -rf`, `git reset --hard`, `git clean`, and
-`git push --force` remain approval-gated.
+`git push --force` remain approval-gated even when an allow rule matches.
+
+`~/.crypt/permissions.json` also supports shell prefix rules:
+
+```json
+{
+  "prefix_rules": [
+    {"pattern": ["git", "status"], "decision": "allow"},
+    {"pattern": ["npm", "install"], "decision": "prompt"},
+    {"pattern": ["git", "push", "--force"], "decision": "forbidden"}
+  ]
+}
+```
+
+Decisions are `allow`, `prompt`, or `forbidden`; list entries inside a pattern
+act as alternatives.
 
 ## Runtime Bridge
 
@@ -39,6 +54,11 @@ consume structured events from stdout.
 UI clients are outside this repository. They should treat the daemon as an API
 over CryptCore, not as a reason to fork terminal behavior.
 
+When installed with `scripts\install_crypt.ps1` or `pip install -e .`, the
+`crypt` console command uses the current shell directory as the workspace by
+default. Saved setup workspace is only a fallback for bad launch locations such
+as `System32`; `--cwd` and `CRYPT_ROOT` remain explicit overrides.
+
 ## Slash Commands
 
 | Command | Effect |
@@ -48,6 +68,9 @@ over CryptCore, not as a reason to fork terminal behavior.
 | `/compact` | Summarize old context into a continuation snapshot |
 | `/memory` | Read durable memory |
 | `/memory add <text>` | Save durable memory |
+| `/skills` | List local `SKILL.md` bundles visible to the workspace |
+| `/tasks [id\|--all]` | List or inspect durable task event logs |
+| `/project [--refresh]` | Show the project intelligence cache |
 | `/background` | List background shell jobs |
 | `/doctor` | Run local self-checks |
 | `/safe` | Switch to manual approvals |
@@ -64,14 +87,15 @@ over CryptCore, not as a reason to fork terminal behavior.
 | Web | `web_search`, `web_fetch` |
 | Planning | `present_plan`, `todos`, `ask_user`, `memory` |
 | Agents | `spawn_agent`, `list_agents`, `agent_output`, `send_agent_message`, `stop_agent`, `cleanup_agent` |
+| Connectors | `mcp` |
 | Workspace | `set_workspace`, `open_file` |
 
 ## Environment Variables
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `CRYPT_ROOT` | saved setup or cwd | Workspace root |
-| `CRYPT_PROVIDER` | saved setup or `ollama` | `anthropic`, `openai`, `openai-codex`, `gemini`, or `ollama` |
+| `CRYPT_ROOT` | current cwd | Explicit workspace root override |
+| `CRYPT_PROVIDER` | saved setup or `ollama` | `anthropic`, `openai`, `crypt`, `gemini`, or `ollama` |
 | `CRYPT_APPROVAL` | `edits` | `normal`, `edits`, or `all` |
 | `CRYPT_REASONING_STALL_SECONDS` | `45` | Abort hidden reasoning-only stalls; `0` disables |
 | `CRYPT_NO_ANIMATION` | unset | Disable startup animation |
@@ -84,9 +108,9 @@ over CryptCore, not as a reason to fork terminal behavior.
 | `OPENAI_MODEL` | provider default | Default OpenAI-compatible model |
 | `OPENAI_BASE_URL` | OpenAI API | Compatible endpoint base URL |
 | `OPENAI_MAX_TOKENS` | `8000` | OpenAI-compatible output cap |
-| `OPENAI_CODEX_MODEL` | `gpt-5-codex` | ChatGPT/Codex OAuth model |
-| `OPENAI_CODEX_BASE_URL` | ChatGPT backend | Codex backend base URL |
-| `OPENAI_CODEX_MAX_TOKENS` | `32000` | Codex output cap |
+| `CRYPT_MODEL` | provider default | Crypt OAuth model |
+| `CRYPT_BASE_URL` | Crypt backend | Crypt backend base URL |
+| `CRYPT_MAX_TOKENS` | `32000` | Crypt OAuth output cap |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | Default Gemini model |
 | `GEMINI_API_KEY` | unset | Gemini Developer API key auth |
 | `GEMINI_PROJECT_ID` | unset | Google Cloud project for Gemini OAuth through Vertex AI |
@@ -107,6 +131,79 @@ Crypt auto-loads project guidance from the workspace and parent directories:
 - `AGENTS.md`
 - `CLAUDE.md`
 - `.crypt/instructions.md`
+
+## Skills
+
+Crypt discovers local skills from these roots:
+
+- `<workspace>/.crypt/skills/*/SKILL.md`
+- `<workspace>/.agents/skills/*/SKILL.md`
+- `~/.crypt/skills/*/SKILL.md`
+- `~/.agents/skills/*/SKILL.md`
+- `~/.codex/skills/*/SKILL.md`
+- `~/.config/agents/skills/*/SKILL.md`
+
+Invoke a skill in a prompt with `$skill-name`. The active skill body is injected
+for that turn, while the system prompt lists available skill names. Env-var-like
+all-caps mentions such as `$PATH` are ignored, and skills that contain obvious
+prompt-injection or secret-exfiltration language are blocked from injection.
+
+Manage skills from the terminal:
+
+```powershell
+python main.py skills list
+python main.py skills add .\local-skills
+python main.py skills add vercel-labs/agent-skills --skill frontend-design -y
+python main.py skills remove frontend-design
+```
+
+Remote sources are delegated to the upstream `npx skills add` CLI with the
+Codex agent target. Local sources are copied into `.agents/skills` by default
+or `~/.crypt/skills` with `--global`, and a small lock file records source and
+content hash.
+
+## Tasks And Project Intelligence
+
+Every user prompt creates an append-only JSONL task log under the workspace's
+`~/.crypt/projects/<project>/tasks/` directory. Statuses include `planning`,
+`tool_calling`, `waiting_approval`, `editing`, `verifying`, `completed`,
+`failed`, and `cancelled`. Inspect them with:
+
+```powershell
+python main.py tasks list
+python main.py tasks show <task_id>
+```
+
+Crypt also maintains a project profile cache with languages, package managers,
+frameworks/libraries, entry points, CI files, likely test/build commands,
+instruction files, visible skills, git state, and attention flags. It is
+included in the system prompt and can be refreshed manually:
+
+```powershell
+python main.py project --refresh
+python main.py project --json
+```
+
+## MCP Servers
+
+Configure stdio MCP servers in `~/.crypt/config.json`:
+
+```json
+{
+  "mcp_servers": {
+    "demo": {
+      "command": "python",
+      "args": ["server.py"],
+      "framing": "headers"
+    }
+  }
+}
+```
+
+Use the `mcp` tool with `action=servers`, `action=tools`, or `action=call`.
+Calls start the configured server as a one-shot subprocess and require normal
+tool approval. MCP subprocesses receive only a small OS/PATH environment by
+default; put required server tokens in that server's explicit `env` block.
 
 ## Files Written Outside The Repo
 

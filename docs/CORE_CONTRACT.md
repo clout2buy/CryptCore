@@ -6,7 +6,7 @@ but this core must preserve the coding harness behavior that makes Crypt useful.
 ## Must Keep Working
 
 - Terminal startup through `python main.py` and `python -m crypt`.
-- Provider routing for configured Anthropic, OpenAI-compatible, ChatGPT/Codex OAuth,
+- Provider routing for configured Anthropic, OpenAI-compatible, Crypt OAuth,
   Gemini, and Ollama backends.
 - Interactive setup, login, logout, doctor, benchmark, eval-target, and session resume
   commands.
@@ -14,7 +14,9 @@ but this core must preserve the coding harness behavior that makes Crypt useful.
 - Shell tools: foreground commands and background process start, poll, and kill.
 - Git tools: status/log/diff style inspection, branch, stage, and commit helpers.
 - Web tools: search and fetch with local-network/private-address protections.
+- Connector tools: configured stdio MCP server list/call bridge.
 - Planning and memory tools: plan presentation, todos, ask-user, durable memory.
+- Skills: local `SKILL.md` discovery and `$skill-name` turn injection.
 - Subagent tools: spawn, list, message, output, stop, and cleanup agents.
 - Runtime safety: approval modes, read-before-edit checks, stale write protection,
   shell danger checks, scoped worker writes, trace redaction, and session redaction.

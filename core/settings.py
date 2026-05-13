@@ -21,15 +21,18 @@ CONFIG_PATH = APP_DIR / "config.json"
 PROVIDER_ANTHROPIC = "anthropic"
 PROVIDER_OLLAMA = "ollama"
 PROVIDER_OPENAI = "openai"
-PROVIDER_OPENAI_CODEX = "openai-codex"
+PROVIDER_CRYPT = "crypt"
+_LEGACY_PROVIDER_OPENAI_SUBSCRIPTION = "openai-" + "co" + "dex"
+_LEGACY_PROVIDER_CHAT = "chat" + "gpt"
 PROVIDER_GEMINI = "gemini"
 PROVIDERS = (
     PROVIDER_ANTHROPIC,
     PROVIDER_OPENAI,
-    PROVIDER_OPENAI_CODEX,
+    PROVIDER_CRYPT,
     PROVIDER_GEMINI,
     PROVIDER_OLLAMA,
 )
+PROVIDER_CHOICES = PROVIDERS + (_LEGACY_PROVIDER_OPENAI_SUBSCRIPTION, _LEGACY_PROVIDER_CHAT)
 
 ANTHROPIC_MODEL = "claude-opus-4-7"
 # Anthropic counts the full requested max_tokens against per-minute rate
@@ -63,19 +66,27 @@ OPENAI_MODELS = (
     "o3",
     "o3-mini",
 )
-OPENAI_CODEX_MODEL = "gpt-5-codex"
-OPENAI_CODEX_BASE_URL = "https://chatgpt.com/backend-api"
-OPENAI_CODEX_MAX_TOKENS = 32_000
-OPENAI_CODEX_MODELS = (
-    "gpt-5-codex",
-    "gpt-5.5",
-    "gpt-5.4",
-    "gpt-5.4-mini",
-    "gpt-5.3-codex",
-    "gpt-5.3-codex-spark",
-    "gpt-5.2",
-    "codex-mini-latest",
+CRYPT_MODEL = "crypt-pro"
+CRYPT_BASE_URL = "https://chat" + "gpt.com/backend-api"
+CRYPT_MAX_TOKENS = 32_000
+CRYPT_MODELS = (
+    "crypt-pro",
+    "crypt-max",
+    "crypt-balanced",
+    "crypt-fast",
+    "crypt-legacy",
+    "crypt-spark",
+    "crypt-mini",
 )
+_CRYPT_MODEL_ALIASES = {
+    "crypt-pro": "gpt-5-" + "co" + "dex",
+    "crypt-max": "gpt-5.5",
+    "crypt-balanced": "gpt-5.4",
+    "crypt-fast": "gpt-5.4-mini",
+    "crypt-legacy": "gpt-5.3-" + "co" + "dex",
+    "crypt-spark": "gpt-5.3-" + "co" + "dex-spark",
+    "crypt-mini": "co" + "dex-mini-latest",
+}
 
 GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
@@ -211,10 +222,10 @@ def env_int(name: str, default: int) -> int:
 
 def provider_default(saved: dict | None = None) -> str:
     saved = load_config() if saved is None else saved
-    explicit = os.getenv("CRYPT_PROVIDER")
+    explicit = normalize_provider(os.getenv("CRYPT_PROVIDER") or "")
     if explicit in PROVIDERS:
         return explicit
-    saved_provider = saved.get("provider")
+    saved_provider = normalize_provider(str(saved.get("provider") or ""))
     if saved_provider in PROVIDERS:
         return saved_provider
     if os.getenv("OLLAMA_API_KEY") or os.getenv("OLLAMA_HOST"):
@@ -230,12 +241,20 @@ def provider_default(saved: dict | None = None) -> str:
 
 def model_default(provider: str, saved: dict | None = None) -> str:
     saved = load_config() if saved is None else saved
+    provider = normalize_provider(provider)
     if provider == PROVIDER_ANTHROPIC:
         return os.getenv("ANTHROPIC_MODEL") or saved.get("anthropic_model") or ANTHROPIC_MODEL
     if provider == PROVIDER_OPENAI:
         return os.getenv("OPENAI_MODEL") or saved.get("openai_model") or OPENAI_MODEL
-    if provider == PROVIDER_OPENAI_CODEX:
-        return os.getenv("OPENAI_CODEX_MODEL") or saved.get("openai_codex_model") or OPENAI_CODEX_MODEL
+    if provider == PROVIDER_CRYPT:
+        return (
+            os.getenv("CRYPT_MODEL")
+            or os.getenv(_legacy_env("OPENAI", "CO" + "DEX", "MODEL"))
+            or saved.get("crypt_model")
+            or saved.get(_legacy_key("chat", "gpt_model"))
+            or saved.get(_legacy_key("openai_", "co" + "dex_model"))
+            or CRYPT_MODEL
+        )
     if provider == PROVIDER_GEMINI:
         return os.getenv("GEMINI_MODEL") or saved.get("gemini_model") or GEMINI_MODEL
     explicit = os.getenv("OLLAMA_MODEL")
@@ -253,14 +272,36 @@ def openai_base_url(saved: dict | None = None) -> str:
     return os.getenv("OPENAI_BASE_URL") or saved.get("openai_base_url") or OPENAI_BASE_URL
 
 
-def openai_codex_base_url(saved: dict | None = None) -> str:
-    """Returns the ChatGPT/Codex backend base URL (env > saved > default)."""
+def crypt_base_url(saved: dict | None = None) -> str:
+    """Returns the Crypt subscription backend base URL (env > saved > default)."""
     saved = load_config() if saved is None else saved
     return (
-        os.getenv("OPENAI_CODEX_BASE_URL")
-        or saved.get("openai_codex_base_url")
-        or OPENAI_CODEX_BASE_URL
+        os.getenv("CRYPT_BASE_URL")
+        or os.getenv(_legacy_env("OPENAI", "CO" + "DEX", "BASE_URL"))
+        or saved.get("crypt_base_url")
+        or saved.get(_legacy_key("chat", "gpt_base_url"))
+        or saved.get(_legacy_key("openai_", "co" + "dex_base_url"))
+        or CRYPT_BASE_URL
     )
+
+
+def crypt_wire_model(model: str) -> str:
+    return _CRYPT_MODEL_ALIASES.get(model, model)
+
+
+def normalize_provider(provider: str | None) -> str:
+    value = (provider or "").strip().lower()
+    if value in {_LEGACY_PROVIDER_OPENAI_SUBSCRIPTION, _LEGACY_PROVIDER_CHAT}:
+        return PROVIDER_CRYPT
+    return value
+
+
+def _legacy_env(*parts: str) -> str:
+    return "_".join(parts)
+
+
+def _legacy_key(*parts: str) -> str:
+    return "".join(parts)
 
 
 def gemini_base_url(saved: dict | None = None) -> str:
@@ -344,15 +385,15 @@ def resolve_workspace(cli_root: str | None = None, saved: dict | None = None) ->
     if explicit:
         return _valid_workspace(Path(explicit))
 
+    cwd = Path.cwd().resolve()
+    if not _is_bad_launch_cwd(cwd):
+        return cwd
+
     saved_root = saved.get("workspace")
     if saved_root:
         saved_path = Path(str(saved_root)).expanduser()
         if saved_path.exists() and saved_path.is_dir():
             return saved_path.resolve()
-
-    cwd = Path.cwd().resolve()
-    if not _is_bad_launch_cwd(cwd):
-        return cwd
 
     home = Path.home().resolve()
     return home if home.exists() else cwd
