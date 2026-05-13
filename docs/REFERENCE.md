@@ -68,6 +68,9 @@ as `System32`; `--cwd` and `CRYPT_ROOT` remain explicit overrides.
 | `/compact` | Summarize old context into a continuation snapshot |
 | `/memory` | Read durable memory |
 | `/memory add <text>` | Save durable memory |
+| `/learn` | List learned project lessons |
+| `/learn search <text>` | Search learned lessons and prior task episodes |
+| `/learn add <text>` | Save an explicit structured lesson |
 | `/skills` | List local `SKILL.md` bundles visible to the workspace |
 | `/tasks [id\|--all]` | List or inspect durable task event logs |
 | `/project [--refresh]` | Show the project intelligence cache |
@@ -85,7 +88,7 @@ as `System32`; `--cwd` and `CRYPT_ROOT` remain explicit overrides.
 | Shell | `bash`, `bash_start`, `bash_poll`, `bash_kill` |
 | Git | `git`, `git_branch`, `git_stage`, `git_commit` |
 | Web | `web_search`, `web_fetch` |
-| Planning | `present_plan`, `todos`, `ask_user`, `memory` |
+| Planning | `present_plan`, `todos`, `ask_user`, `memory`, `learn` |
 | Agents | `spawn_agent`, `list_agents`, `agent_output`, `send_agent_message`, `stop_agent`, `cleanup_agent` |
 | Connectors | `mcp` |
 | Workspace | `set_workspace`, `open_file` |
@@ -97,6 +100,7 @@ as `System32`; `--cwd` and `CRYPT_ROOT` remain explicit overrides.
 | `CRYPT_ROOT` | current cwd | Explicit workspace root override |
 | `CRYPT_PROVIDER` | saved setup or `ollama` | `anthropic`, `openai`, `crypt`, `gemini`, or `ollama` |
 | `CRYPT_APPROVAL` | `edits` | `normal`, `edits`, or `all` |
+| `CRYPT_LEARNING_DISABLE` | unset | Disable learned-context retrieval in prompts |
 | `CRYPT_REASONING_STALL_SECONDS` | `45` | Abort hidden reasoning-only stalls; `0` disables |
 | `CRYPT_NO_ANIMATION` | unset | Disable startup animation |
 | `CRYPT_WEB_ALLOW_PRIVATE` | unset | Allow private network `web_fetch` targets |
@@ -174,6 +178,19 @@ python main.py tasks list
 python main.py tasks show <task_id>
 ```
 
+Completed and failed turns are also summarized into a structured learning store
+under `~/.crypt/learning/`. Completed turns derive reusable lessons from runtime
+evidence such as passing verification commands, recently changed paths, and
+tool recovery hints. Relevant lessons and prior episodes are retrieved into the
+next system prompt. Inspect or curate the store with:
+
+```powershell
+python main.py learn list
+python main.py learn search "parser pytest"
+python main.py learn add "For release work, run scripts\verify_core.ps1 -Quick."
+python main.py learn episodes
+```
+
 Crypt also maintains a project profile cache with languages, package managers,
 frameworks/libraries, entry points, CI files, likely test/build commands,
 instruction files, visible skills, git state, and attention flags. It is
@@ -216,6 +233,7 @@ default; put required server tokens in that server's explicit `env` block.
   bench-runs/          benchmark workspaces and reports
   target-evals/        target-eval snapshots, traces, reports
   projects/<slug>/     session JSONL transcripts
+  learning/            structured task episodes and reusable lessons
   runs/                shell output spill files
   tasks/<sid>/         background shell job logs
   worktrees/           isolated subagent worktrees

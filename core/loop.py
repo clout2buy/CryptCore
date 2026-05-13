@@ -17,6 +17,7 @@ from . import (
     evidence,
     file_state,
     final_claims,
+    learning,
     memory,
     prompt as prompt_builder,
     runtime,
@@ -168,6 +169,15 @@ def run_prompt(
             )
             final_text = _extract_text(messages[-1]) if messages else ""
             task_state.set_status(cwd, task.task_id, "completed", final_text[:500])
+            _record_learning_outcome(
+                cwd,
+                task.task_id,
+                user_text,
+                "completed",
+                final_text,
+                provider,
+                session_obj,
+            )
             _emit_event(event_sink, {"event": "taskEnded", "taskId": task.task_id, "status": "completed"})
         tracing.emit(
             "run_stop",
@@ -185,6 +195,15 @@ def run_prompt(
         )
     except Exception as exc:
         task_state.set_status(cwd, task.task_id, "failed", f"{type(exc).__name__}: {exc}")
+        _record_learning_outcome(
+            cwd,
+            task.task_id,
+            user_text,
+            "failed",
+            f"{type(exc).__name__}: {exc}",
+            provider,
+            session_obj,
+        )
         _emit_event(event_sink, {"event": "taskEnded", "taskId": task.task_id, "status": "failed"})
         tracing.emit("run_error", mode="non_interactive", error=f"{type(exc).__name__}: {exc}")
         raise
@@ -286,6 +305,9 @@ def run(
         if user_text.startswith("/memory"):
             _handle_memory(user_text)
             continue
+        if user_text.startswith("/learn"):
+            _handle_learn(user_text)
+            continue
         if user_text.startswith("/skills"):
             _show_skills(runtime.cwd())
             continue
@@ -351,6 +373,15 @@ def run(
                 )
             final_text = _extract_text(messages[-1]) if messages else ""
             task_state.set_status(runtime.cwd(), task.task_id, "completed", final_text[:500])
+            _record_learning_outcome(
+                runtime.cwd(),
+                task.task_id,
+                user_text,
+                "completed",
+                final_text,
+                provider,
+                runtime.session(),
+            )
         except KeyboardInterrupt:
             del messages[checkpoint:]
             _stub_dangling_tools(messages)
@@ -360,6 +391,15 @@ def run(
             del messages[checkpoint:]
             _stub_dangling_tools(messages)
             task_state.set_status(runtime.cwd(), task.task_id, "failed", f"{type(e).__name__}: {e}")
+            _record_learning_outcome(
+                runtime.cwd(),
+                task.task_id,
+                user_text,
+                "failed",
+                f"{type(e).__name__}: {e}",
+                provider,
+                runtime.session(),
+            )
             ui.error(_format_error(e))
             if _is_rate_limit(e) and model_switcher:
                 if ui.ask("switch model now?"):
@@ -744,6 +784,7 @@ def _stream_one_turn(
             tool_guidance=REGISTRY.prompts(only={str(tool.get("name", "")) for tool in tools}),
             turn_guidance=_turn_guidance(messages, artifact_fast_lane=artifact_fast_lane),
             skill_guidance=skills.render_for_messages(messages, runtime.cwd()),
+            learning_query=_latest_user_text(messages),
         )
         for event in provider.stream_turn(messages, tools, system_prompt):
             event_at = time.monotonic()
@@ -1704,6 +1745,59 @@ def _extract_text(message: dict) -> str:
     ).strip()
 
 
+def _latest_user_text(messages: list[dict]) -> str:
+    for message in reversed(messages):
+        if message.get("role") != "user":
+            continue
+        content = message.get("content", "")
+        if isinstance(content, str):
+            text = content.strip()
+            if text:
+                return text
+        elif isinstance(content, list):
+            parts = [
+                str(block.get("text") or "").strip()
+                for block in content
+                if isinstance(block, dict) and block.get("type") == "text"
+            ]
+            text = "\n".join(part for part in parts if part).strip()
+            if text:
+                return text
+    return ""
+
+
+def _record_learning_outcome(
+    cwd: str,
+    task_id: str,
+    prompt_text: str,
+    status: str,
+    final_text: str,
+    provider: Provider,
+    session_obj,
+) -> None:
+    try:
+        result = learning.record_task_outcome(
+            cwd=cwd,
+            task_id=task_id,
+            prompt=prompt_text,
+            status=status,
+            final_text=final_text,
+            provider=getattr(provider, "name", ""),
+            model=getattr(provider, "model", ""),
+            session_id=getattr(session_obj, "id", "") if session_obj else "",
+        )
+        if result.get("lesson_count"):
+            task_state.record_event(
+                cwd,
+                task_id,
+                "learning",
+                f"recorded {result['lesson_count']} learned lesson(s)",
+                data=result,
+            )
+    except Exception as exc:
+        tracing.emit("learning_error", task_id=task_id, error=f"{type(exc).__name__}: {exc}")
+
+
 def _maybe_complete_todos_after_final(messages: list[dict]) -> None:
     try:
         from tools import todos
@@ -1759,6 +1853,9 @@ def _show_help() -> None:
     ui.info("/compact           summarize old context and keep working")
     ui.info("/memory            show durable Crypt memory")
     ui.info("/memory add <txt>  save durable memory")
+    ui.info("/learn             show learned project lessons")
+    ui.info("/learn search <txt> search lessons and task episodes")
+    ui.info("/learn add <txt>   save an explicit learned lesson")
     ui.info("/skills            list local SKILL.md bundles")
     ui.info("/tasks [id|--all]  list or inspect durable task logs")
     ui.info("/project [--refresh] show project intelligence cache")
@@ -1839,6 +1936,33 @@ def _handle_memory(command: str) -> None:
         ui.info("usage: /memory, /memory add <text>, /memory search <text>")
     except Exception as e:
         ui.error(f"memory failed: {type(e).__name__}: {e}")
+
+
+def _handle_learn(command: str) -> None:
+    arg = command[len("/learn"):].strip()
+    try:
+        if not arg or arg == "list":
+            ui.info(learning.format_lessons(runtime.cwd(), limit=12))
+            return
+        if arg.startswith("search "):
+            query = arg[len("search "):].strip()
+            ui.info(
+                learning.format_lessons(runtime.cwd(), query=query, limit=8)
+                + "\n\n"
+                + learning.format_episodes(runtime.cwd(), query=query, limit=5)
+            )
+            return
+        if arg.startswith("add "):
+            lesson = learning.add_lesson(arg[len("add "):].strip(), cwd=runtime.cwd(), scope="project")
+            ui.info(f"learned {lesson.lesson_id}: {lesson.text}")
+            return
+        if arg.startswith("episodes"):
+            query = arg[len("episodes"):].strip()
+            ui.info(learning.format_episodes(runtime.cwd(), query=query, limit=12))
+            return
+        ui.info("usage: /learn, /learn search <text>, /learn add <text>, /learn episodes [text]")
+    except Exception as e:
+        ui.error(f"learn failed: {type(e).__name__}: {e}")
 
 
 def _show_skills(cwd: str) -> None:

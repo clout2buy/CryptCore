@@ -17,7 +17,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable
 
-from . import auth, doctor, loop, redact, runtime, session as sessions, settings, skills
+from . import auth, doctor, learning, loop, redact, runtime, session as sessions, settings, skills
 from tools import REGISTRY
 
 
@@ -165,6 +165,7 @@ class AppDaemon:
             "reasoningEffort": runtime.reasoning_effort() or "none",
             "tools": len(REGISTRY.schemas()),
             "skills": len(skills.discover(self._cwd)),
+            "lessons": len(learning.list_lessons(self._cwd)),
             "sessionId": getattr(self._sessions.get(self._active_session_key), "id", None),
             "desktopSessionKey": self._active_session_key,
             "activeTask": self._active_task,
@@ -439,6 +440,16 @@ class AppDaemon:
                 for item in data
             ) or "no skills found"
             self.emit("commandResult", id=request_id, command=name, text=text, skills=data)
+            self.emit("snapshot", id=request_id, snapshot=self.snapshot())
+            return
+        if name == "learn":
+            query = " ".join(args).strip()
+            text = (
+                learning.format_lessons(self._cwd, query=query, limit=12)
+                if query
+                else learning.format_lessons(self._cwd, limit=12)
+            )
+            self.emit("commandResult", id=request_id, command=name, text=text)
             self.emit("snapshot", id=request_id, snapshot=self.snapshot())
             return
         if name in {"clear", "new", "new-session"}:
@@ -722,6 +733,7 @@ def _status_text(snapshot: dict) -> str:
         f"thinking: {snapshot['thinkingMode']}",
         f"tools: {snapshot['tools']} armed",
         f"skills: {snapshot.get('skills', 0)} available",
+        f"lessons: {snapshot.get('lessons', 0)} learned",
     ]
     if snapshot.get("activeTask"):
         lines.append(f"active task: {snapshot['activeTask']}")
@@ -737,6 +749,7 @@ def _help_text() -> str:
             "/status - print engine state",
             "/doctor - run local harness checks",
             "/skills - list local skills",
+            "/learn [query] - list or search learned lessons",
             "/clear - start a fresh session",
             "/yolo - auto-approve all tool work",
             "/yolo edits - auto-approve edit tools only",

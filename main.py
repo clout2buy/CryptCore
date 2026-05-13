@@ -66,12 +66,24 @@ def main() -> int:
     p.add_argument(
         "command",
         nargs="?",
-        choices=["login", "logout", "setup", "doctor", "bench", "eval-target", "app-daemon", "skills", "tasks", "project"],
-        help="login | logout | setup | doctor | bench | eval-target | app-daemon | skills | tasks | project",
+        choices=[
+            "login",
+            "logout",
+            "setup",
+            "doctor",
+            "bench",
+            "eval-target",
+            "app-daemon",
+            "skills",
+            "tasks",
+            "project",
+            "learn",
+        ],
+        help="login | logout | setup | doctor | bench | eval-target | app-daemon | skills | tasks | project | learn",
     )
     args, command_args = p.parse_known_args()
     args.command_args = command_args
-    if command_args and args.command not in {"skills", "tasks", "project"}:
+    if command_args and args.command not in {"skills", "tasks", "project", "learn"}:
         p.error(f"unrecognized arguments: {' '.join(command_args)}")
 
     if args.command == "login":
@@ -92,6 +104,8 @@ def main() -> int:
         return _do_tasks(saved, args)
     if args.command == "project":
         return _do_project(saved, args)
+    if args.command == "learn":
+        return _do_learn(saved, args)
     if args.command == "bench":
         return _do_bench(saved, args)
     if args.command == "eval-target":
@@ -663,6 +677,48 @@ def _do_project(saved: dict, args: argparse.Namespace) -> int:
         return 0
     print(project_index.format_profile(cwd, refresh_first=parsed.refresh))
     return 0
+
+
+def _do_learn(saved: dict, args: argparse.Namespace) -> int:
+    from core import learning
+
+    parser = argparse.ArgumentParser(prog="crypt learn", description="inspect Crypt's structured learning store")
+    sub = parser.add_subparsers(dest="action")
+    list_p = sub.add_parser("list", help="list learned lessons")
+    list_p.add_argument("--limit", type=int, default=12)
+    search_p = sub.add_parser("search", help="search lessons and prior task episodes")
+    search_p.add_argument("query")
+    search_p.add_argument("--limit", type=int, default=8)
+    add_p = sub.add_parser("add", help="add an explicit learned lesson")
+    add_p.add_argument("text")
+    add_p.add_argument("--global", action="store_true", dest="global_scope")
+    episodes_p = sub.add_parser("episodes", help="list prior learning episodes")
+    episodes_p.add_argument("--query", default="")
+    episodes_p.add_argument("--limit", type=int, default=12)
+    parsed = parser.parse_args(args.command_args or ["list"])
+    cwd = settings.resolve_workspace(args.cwd, saved)
+    if parsed.action in (None, "list"):
+        print(learning.format_lessons(cwd, limit=parsed.limit))
+        return 0
+    if parsed.action == "search":
+        print(learning.format_lessons(cwd, query=parsed.query, limit=parsed.limit))
+        print()
+        print(learning.format_episodes(cwd, query=parsed.query, limit=parsed.limit))
+        return 0
+    if parsed.action == "add":
+        lesson = learning.add_lesson(
+            parsed.text,
+            cwd=cwd,
+            scope="global" if parsed.global_scope else "project",
+            source="cli",
+        )
+        print(f"learned {lesson.lesson_id}: {lesson.text}")
+        return 0
+    if parsed.action == "episodes":
+        print(learning.format_episodes(cwd, query=parsed.query, limit=parsed.limit))
+        return 0
+    parser.print_help()
+    return 1
 
 
 def _do_bench(saved: dict, args: argparse.Namespace) -> int:

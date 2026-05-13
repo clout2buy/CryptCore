@@ -6,8 +6,9 @@ sessions, memory, subagents, safety checks, tests, and release gates.
 
 The core runtime now includes durable task event logs, a project intelligence
 cache, portable `SKILL.md` discovery/installation, typed subagents, MCP
-isolation, workspace switching, and verification/eval commands. Those are the
-stable kernel surfaces for future desktop, web, gateway, or messaging shells.
+isolation, structured runtime learning, workspace switching, and
+verification/eval commands. Those are the stable kernel surfaces for future
+desktop, web, gateway, or messaging shells.
 
 This repository intentionally does not include the Electron desktop app,
 renderer, packaged build outputs, or Agent D UI experiments. Those layers can
@@ -49,6 +50,8 @@ python main.py setup
 python main.py doctor
 python main.py project --refresh
 python main.py project --json
+python main.py learn list
+python main.py learn search "pytest"
 python main.py skills list
 python main.py tasks list
 python main.py --provider ollama --model gpt-oss:120b-cloud

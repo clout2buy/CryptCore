@@ -15,6 +15,7 @@ flowchart LR
     Runtime --> Agents["core.agents"]
     Runtime --> Skills["core.skills"]
     Runtime --> MCP["core.mcp"]
+    Runtime --> Learning["core.learning"]
     Loop --> Store["sessions, task logs, traces, evidence"]
     Loop --> Project["core.project_index"]
     Loop --> UI["core.ui + core.ui_kit"]
@@ -36,6 +37,7 @@ flowchart LR
 | `core/mcp.py` | one-shot stdio MCP client helpers | long-lived connector process lifecycle |
 | `core/task_state.py` | durable task status/event logs | model/tool execution |
 | `core/project_index.py` | cached workspace profile and likely commands | deep semantic indexing |
+| `core/learning.py` | task episodes, reusable lessons, prompt retrieval | raw transcript replay or secret storage |
 | `core/agents/` | typed subagent registry, task state, worktree diffs | parent-loop provider setup |
 | `core/ui.py` | public terminal UI facade | raw styling primitives |
 | `core/ui_kit/` | reusable terminal components | model/runtime decisions |
@@ -109,6 +111,16 @@ entry points, CI files, likely test/build commands, instruction files, visible
 skills, key files, git dirtiness, and attention flags. The profile is included
 in the system prompt and can be refreshed with `crypt project --refresh` or
 exported with `crypt project --json`.
+
+## Learning Loop
+
+`core.learning` records structured task episodes after each completed or failed
+turn. Completed turns derive reusable project lessons from runtime evidence:
+successful verification commands, recently changed code areas, and recovery
+hints from failed tools. The prompt retrieves relevant lessons and prior
+episodes for the next user request, so Crypt improves its local operating
+knowledge without replaying entire transcripts. Users can inspect and curate
+that store with `/learn`, `crypt learn`, or the `learn` tool.
 
 ## Safety Model
 

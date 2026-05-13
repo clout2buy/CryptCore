@@ -51,6 +51,9 @@ CryptCore already covers the core coding-agent harness:
 - Project intelligence v2: workspace profiles now surface framework/library
   signals, entry points, CI files, and attention flags, with JSON export for
   UI clients and tooling.
+- Structured learning loop: completed and failed turns are stored as episodes,
+  completed turns derive reusable lessons from runtime evidence, and relevant
+  learned context is retrieved into later prompts.
 
 ## Remaining Product-Scale Gaps
 

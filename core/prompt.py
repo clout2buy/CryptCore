@@ -11,7 +11,7 @@ import subprocess
 import textwrap
 from pathlib import Path
 
-from . import memory, project_index, runtime, skills
+from . import learning, memory, project_index, runtime, skills
 
 
 def build_system_prompt(
@@ -22,6 +22,7 @@ def build_system_prompt(
     tool_guidance: str,
     turn_guidance: str = "",
     skill_guidance: str = "",
+    learning_query: str = "",
 ) -> str:
     sections = [
         _identity(),
@@ -38,6 +39,7 @@ def build_system_prompt(
         _project_instructions(cwd),
         _available_skills(cwd),
         _skill_guidance(skill_guidance),
+        _learned_context(cwd, learning_query),
         _memory(),
         _active_runtime(),
         _turn_guidance(turn_guidance),
@@ -228,6 +230,13 @@ def _skill_guidance(skill_guidance: str) -> str:
     if not skill_guidance.strip():
         return ""
     return skill_guidance.strip()
+
+
+def _learned_context(cwd: str, query: str) -> str:
+    try:
+        return learning.prompt_section(cwd, query)
+    except Exception:
+        return ""
 
 
 def _memory() -> str:

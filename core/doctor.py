@@ -14,6 +14,7 @@ from . import (
     evidence,
     file_state,
     final_claims,
+    learning,
     mcp,
     project_index,
     prompt,
@@ -45,6 +46,7 @@ def run_doctor(cwd: str | Path) -> str:
         _check_tool_load_failures(),
         _check_session(),
         _check_task_state(cwd),
+        _check_learning(cwd),
         _check_project_index(cwd),
         _check_file_state(),
         _check_background(),
@@ -211,6 +213,29 @@ def _check_task_state(cwd: Path) -> Check:
         return Check("task state log", ok, task.task_id)
     except Exception as e:
         return Check("task state log", False, f"{type(e).__name__}: {e}")
+
+
+def _check_learning(cwd: Path) -> Check:
+    old_app_dir = session.settings.APP_DIR
+    try:
+        with tempfile.TemporaryDirectory(prefix="crypt-doctor-learning-") as td:
+            session.settings.APP_DIR = Path(td)
+            before = len(learning.list_lessons(cwd))
+            lesson = learning.add_lesson(
+                "Doctor confirms structured learning store can save project lessons.",
+                cwd=cwd,
+                scope="project",
+                source="doctor",
+                confidence=0.4,
+            )
+            found = learning.search_lessons(cwd, "structured learning store", limit=3)
+            ok = any(item.lesson_id == lesson.lesson_id for item in found)
+            after = len(learning.list_lessons(cwd))
+            return Check("learning store", ok, f"{after} lesson(s), was {before}")
+    except Exception as e:
+        return Check("learning store", False, f"{type(e).__name__}: {e}")
+    finally:
+        session.settings.APP_DIR = old_app_dir
 
 
 def _check_project_index(cwd: Path) -> Check:
