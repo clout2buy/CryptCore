@@ -7,6 +7,9 @@ const state = {
   snapshot: null,
   events: [],
   messages: [],
+  sessions: [],
+  currentSessionId: "",
+  taskSessions: {},
   messageSeq: 0,
   animationStarted: false,
   shellKeys: {
@@ -31,6 +34,10 @@ const state = {
     supported: null,
   },
 };
+
+const CHAT_STORE_KEY = "crypt.webui.chatSessions.v2";
+const MAX_STORED_SESSIONS = 30;
+const MAX_SESSION_MESSAGES = 200;
 
 const viewMeta = {
   panel: ["Home", "Crypt Console"],
@@ -97,27 +104,125 @@ function setStatus(text) {
   $("#sideStatus").textContent = text;
 }
 
+function newSessionId() {
+  if (window.crypto?.randomUUID) return `web-${window.crypto.randomUUID()}`;
+  return `web-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function loadChatSessions() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CHAT_STORE_KEY) || "[]");
+    state.sessions = Array.isArray(parsed)
+      ? parsed.filter((item) => item && item.id).slice(0, MAX_STORED_SESSIONS)
+      : [];
+  } catch (error) {
+    state.sessions = [];
+  }
+  if (!state.sessions.length) {
+    state.sessions.push(emptySession());
+  }
+  state.currentSessionId = state.sessions[0].id;
+  hydrateCurrentSession();
+  saveChatSessions();
+}
+
+function emptySession() {
+  const now = Date.now();
+  return {
+    id: newSessionId(),
+    title: "New conversation",
+    createdAt: now,
+    updatedAt: now,
+    messages: [],
+  };
+}
+
+function currentSession() {
+  let session = state.sessions.find((item) => item.id === state.currentSessionId);
+  if (!session) {
+    session = state.sessions[0] || emptySession();
+    state.currentSessionId = session.id;
+    if (!state.sessions.length) state.sessions.push(session);
+  }
+  return session;
+}
+
+function hydrateCurrentSession() {
+  state.messages = (currentSession().messages || []).map((message) => ({ ...message, typing: false }));
+}
+
+function saveChatSessions() {
+  try {
+    localStorage.setItem(CHAT_STORE_KEY, JSON.stringify(state.sessions.slice(0, MAX_STORED_SESSIONS)));
+  } catch (error) {
+    addActivity("Sessions", "Could not save browser chat sessions.");
+  }
+}
+
+function persistCurrentSession() {
+  const session = currentSession();
+  session.messages = state.messages
+    .slice(-MAX_SESSION_MESSAGES)
+    .map(({ role, label, text, id, uiId }) => ({ role, label, text, id, uiId }));
+  session.updatedAt = Date.now();
+  const firstUser = session.messages.find((message) => message.role === "user" && message.text);
+  if (firstUser) session.title = oneLine(firstUser.text, 54);
+  state.sessions = [session, ...state.sessions.filter((item) => item.id !== session.id)].slice(0, MAX_STORED_SESSIONS);
+  saveChatSessions();
+  renderSessionList();
+}
+
+function createChatSession() {
+  const session = emptySession();
+  state.sessions = [session, ...state.sessions.filter((item) => item.messages?.length || item.id === state.currentSessionId)]
+    .slice(0, MAX_STORED_SESSIONS);
+  state.currentSessionId = session.id;
+  state.messages = [];
+  saveChatSessions();
+  renderSessionList();
+}
+
+function switchChatSession(sessionId) {
+  if (!sessionId || sessionId === state.currentSessionId) return;
+  persistCurrentSession();
+  state.currentSessionId = sessionId;
+  hydrateCurrentSession();
+  renderSessionList();
+  setView("chat");
+}
+
+function renderSessionList() {
+  const list = $("#sessionList");
+  if (!list) return;
+  setText("#sessionCount", state.sessions.length);
+  list.innerHTML = state.sessions
+    .slice(0, 8)
+    .map((session) => `
+      <button class="mini-item session-item${session.id === state.currentSessionId ? " active" : ""}" type="button" data-session-id="${escapeHtml(session.id)}">
+        <b>${escapeHtml(session.title || "New conversation")}</b>
+        <span>${escapeHtml((session.messages || []).length)} msgs / ${escapeHtml(relativeTime(session.updatedAt))}</span>
+      </button>
+    `)
+    .join("");
+}
+
+function relativeTime(ts) {
+  const delta = Math.max(0, Date.now() - Number(ts || Date.now()));
+  const min = Math.floor(delta / 60000);
+  if (min < 1) return "now";
+  if (min < 60) return `${min}m ago`;
+  const hours = Math.floor(min / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
 function renderShell(snapshot = state.snapshot) {
   if (!snapshot) return;
   const engineText = `${snapshot.provider || "crypt"} / ${snapshot.model || "auto"}`;
   setText("#enginePill", engineText);
-  setText("#sessionCount", (snapshot.sessionsPreview || []).length);
+  renderSessionList();
   syncEngineControls(snapshot);
   syncAgentControl(snapshot);
-
-  const sessionKey = stableJson((snapshot.sessionsPreview || []).slice(0, 6));
-  if (sessionKey !== state.shellKeys.sessions) {
-    state.shellKeys.sessions = sessionKey;
-    $("#sessionList").innerHTML = (snapshot.sessionsPreview || [])
-      .slice(0, 6)
-      .map((session) => `
-        <article class="mini-item">
-          <b>${escapeHtml(session.title || "New conversation")}</b>
-          <span>${escapeHtml(session.message_count || 0)} msgs / ${escapeHtml(session.model || "auto")}</span>
-        </article>
-      `)
-      .join("") || `<article class="mini-item empty"><b>No sessions yet</b><span>Start talking.</span></article>`;
-  }
 
   const coreKey = stableJson(snapshot.coreFeatures || []);
   if (coreKey !== state.shellKeys.core) {
@@ -164,6 +269,51 @@ function optionMarkup(options, selected) {
   }).join("");
 }
 
+function modelLabel(model) {
+  const raw = String(model || "");
+  const labels = {
+    "crypt-pro": "Crypt Pro",
+    "crypt-max": "Crypt Max",
+    "crypt-balanced": "Crypt Balanced",
+    "crypt-fast": "Crypt Fast",
+    "crypt-legacy": "Crypt Legacy",
+    "crypt-spark": "Crypt Spark",
+    "crypt-mini": "Crypt Mini",
+    "gpt-5.3-codex-spark": "Crypt Spark",
+    "gpt-5.4-mini": "GPT-5.4 Mini",
+    "gpt-5.4": "GPT-5.4",
+    "gpt-5.5": "GPT-5.5",
+  };
+  if (labels[raw]) return labels[raw];
+  return raw
+    .replace(/:cloud$/i, " Cloud")
+    .replace(/[-_:]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .replace(/\bGpt\b/g, "GPT")
+    .replace(/\bUi\b/g, "UI");
+}
+
+function routeLabel(role) {
+  return {
+    planner: "Think",
+    builder: "Build",
+    reviewer: "Review",
+    fast: "Fast",
+    fallback: "Fallback",
+  }[role] || oneLine(role || "Route", 24);
+}
+
+function providerLabel(providerId, snapshot = state.snapshot) {
+  const provider = providerRows(snapshot).find((item) => item.id === providerId);
+  return provider?.label || providerId || "Provider";
+}
+
+function modelOptionMarkup(options, selected) {
+  return options.map((value) => (
+    `<option value="${escapeHtml(value)}"${value === selected ? " selected" : ""}>${escapeHtml(modelLabel(value))}</option>`
+  )).join("");
+}
+
 function syncEngineControls(snapshot = state.snapshot) {
   const providerSelect = $("#providerSelect");
   const modelSelect = $("#modelSelect");
@@ -187,7 +337,7 @@ function syncEngineControls(snapshot = state.snapshot) {
   const modelKey = stableJson({ provider, models: modelOptions, model });
   if (modelKey !== state.shellKeys.engine) {
     state.shellKeys.engine = modelKey;
-    modelSelect.innerHTML = optionMarkup(modelOptions, model);
+    modelSelect.innerHTML = modelOptionMarkup(modelOptions, model);
   }
 
   if (routeSelect) routeSelect.value = state.engine.route || "auto";
@@ -248,22 +398,26 @@ function renderCurrentView() {
 
 function panelView(snapshot) {
   const features = snapshot.coreFeatures || [];
+  const lookup = Object.fromEntries(features.map((feature) => [feature.id, feature]));
   const active = [
     ["Engine", `${snapshot.provider || "crypt"} / ${snapshot.model || "auto"}`],
-    ["Tools", snapshot.tools || 0],
-    ["Memory", snapshot.lessons || 0],
-    ["Autonomy", snapshot.autonomyCycles || 0],
+    ["Chats", state.sessions.length],
+    ["Memory", `${snapshot.lessons || 0} learned`],
+    ["Agents", (snapshot.agentProfiles || []).length],
   ];
+  const calmCards = ["chat", "agents", "memory", "models"]
+    .map((id) => lookup[id])
+    .filter(Boolean);
   return `
     <section class="command-center">
       <div class="hero-card">
         <p>Crypt is online</p>
-        <h3>Say it. Crypt handles the rest.</h3>
-        <div class="hero-copy">No prompt engineering. Talk normal. Crypt can inspect files, use tools, remember what matters, delegate to agents, and turn vague goals into real work.</div>
+        <h3>Say it. I will handle the machinery.</h3>
+        <div class="hero-copy">Chat stays simple. Crypt routes work, remembers useful signals, updates persona, delegates to agents, and verifies the boring parts without making you drive every button.</div>
         <div class="hero-meta">
-          <span>Autonomous runtime</span>
-          <span>Memory online</span>
-          <span>Tool access ready</span>
+          <span>Passive memory</span>
+          <span>Saved sessions</span>
+          <span>Agent routing</span>
         </div>
         <div class="signal-strip" aria-hidden="true"><span></span></div>
       </div>
@@ -271,8 +425,8 @@ function panelView(snapshot) {
         ${active.map(([label, value]) => statCard(label, value)).join("")}
       </div>
     </section>
-    <section class="feature-grid">
-      ${features.slice(0, 12).map((feature) => featureCard(feature)).join("")}
+    <section class="feature-grid calm-grid">
+      ${calmCards.map((feature) => featureCard(feature)).join("")}
     </section>
   `;
 }
@@ -399,7 +553,7 @@ function agentsView(snapshot) {
             ${optionMarkup(providerOptions, provider)}
           </select>
           <select name="model" id="agentModelSelect">
-            ${optionMarkup(safeModels, model)}
+            ${modelOptionMarkup(safeModels, model)}
           </select>
         </div>
         <textarea name="purpose" rows="3" placeholder="What should this agent own? Example: find customers, write launch copy, monitor income, ship site changes."></textarea>
@@ -426,11 +580,11 @@ function memoryView(snapshot) {
   const lessons = snapshot.lessonsPreview || [];
   return `
     <section class="two-col">
-      <form id="lessonForm" class="panel-card form-card wide">
-        <h3>Teach Crypt</h3>
-        <textarea name="text" rows="3" placeholder="Something Crypt should remember permanently..."></textarea>
-        <button type="submit">Remember</button>
-      </form>
+      <div class="panel-card wide">
+        <h3>Passive Memory</h3>
+        <p>Crypt now watches normal conversation for useful preferences, product direction, persona feedback, and workflow cues. You should not have to file memories by hand.</p>
+        <button class="ask-button primary" data-ask="Audit my current memory, remove weak assumptions, and tell me what you will remember going forward.">Audit memory</button>
+      </div>
       <div class="panel-card">
         <h3>Memory</h3>
         ${statCard("Lessons", snapshot.lessons || 0)}
@@ -463,26 +617,51 @@ function skillsView(snapshot) {
 function personaView(snapshot) {
   return `
     <section class="two-col">
-      <form id="preferenceForm" class="panel-card form-card wide">
-        <h3>Shape Crypt</h3>
-        <textarea name="text" rows="3" placeholder="Example: Crypt should sound direct, calm, and less robotic."></textarea>
-        <button type="submit">Save preference</button>
-      </form>
+      <div class="panel-card wide">
+        <h3>Self-Shaping Persona</h3>
+        <p>Crypt evolves its own working voice from durable memory and feedback. The goal is blunt, useful, and real without pretending to be conscious.</p>
+        <button class="ask-button primary" data-ask="Review your current persona and update it from what you have learned about how I want Crypt to act.">Evolve persona</button>
+      </div>
       <div class="panel-card">
         <h3>Soul File</h3>
         <p>${escapeHtml(snapshot.soul?.path || "No soul file yet")}</p>
         ${statCard("Status", snapshot.soul?.active ? "active" : "new")}
+        ${statCard("Preferences", snapshot.soul?.preferenceCount || 0)}
       </div>
     </section>
   `;
 }
 
 function modelsView(snapshot) {
-  return `<section class="feature-grid">${(snapshot.routes || []).map((route) => featureCard({ label: route.role, value: route.model, status: route.provider, detail: route.status })).join("")}</section>`;
+  return `
+    <section class="route-board">
+      ${(snapshot.routes || []).map((route) => `
+        <article class="route-card">
+          <span>${escapeHtml(route.status || "route")}</span>
+          <h3>${escapeHtml(routeLabel(route.role))}</h3>
+          <b>${escapeHtml(modelLabel(route.model))}</b>
+          <p>${escapeHtml(providerLabel(route.provider, snapshot))}</p>
+        </article>
+      `).join("")}
+    </section>
+  `;
 }
 
 function providersView(snapshot) {
-  return `<section class="feature-grid">${(snapshot.providers || []).map((provider) => featureCard({ label: provider.label || provider.id, value: provider.status, status: provider.id, detail: provider.note || (provider.models || []).slice(0, 4).join(", ") })).join("")}</section>`;
+  return `
+    <section class="feature-grid provider-grid">
+      ${(snapshot.providers || []).map((provider) => `
+        <article class="feature-card provider-card">
+          <div><span>${escapeHtml(provider.status || "")}</span><b>${escapeHtml(provider.label || provider.id)}</b></div>
+          <strong>${escapeHtml(provider.id || "")}</strong>
+          <p>${escapeHtml(provider.note || "Models")}</p>
+          <div class="model-chip-row">
+            ${(provider.models || []).slice(0, 5).map((model) => `<em>${escapeHtml(modelLabel(model))}</em>`).join("")}
+          </div>
+        </article>
+      `).join("")}
+    </section>
+  `;
 }
 
 function toolsView(snapshot) {
@@ -594,13 +773,14 @@ function syncAgentModelSelect() {
   const modelSelect = $("#agentModelSelect");
   if (!providerSelect || !modelSelect) return;
   const models = modelsFor(providerSelect.value, state.snapshot);
-  modelSelect.innerHTML = optionMarkup(models, models[0] || "");
+  modelSelect.innerHTML = modelOptionMarkup(models, models[0] || "");
 }
 
 function pushMessage(message) {
   ensureMessageId(message);
   state.messages.push(message);
-  if (state.messages.length > 200) state.messages = state.messages.slice(-200);
+  if (state.messages.length > MAX_SESSION_MESSAGES) state.messages = state.messages.slice(-MAX_SESSION_MESSAGES);
+  persistCurrentSession();
   if (state.currentView === "chat") appendMessageNode(message);
 }
 
@@ -613,6 +793,7 @@ function updateAssistantMessage(id, text, { append = false, typing = false } = {
   }
   message.text = append ? message.text + text : text;
   message.typing = typing;
+  persistCurrentSession();
   if (state.currentView === "chat") updateMessageNode(message);
 }
 
@@ -696,6 +877,7 @@ function handleEvent(event) {
       state.busy = false;
       setStatus("Ready");
       updateAssistantMessage(id, event.text || "Done.", { typing: false });
+      delete state.taskSessions[id];
       if (event.snapshot) state.snapshot = event.snapshot;
       renderShell();
       if (state.currentView !== "chat") renderCurrentView();
@@ -705,6 +887,7 @@ function handleEvent(event) {
       state.busy = false;
       setStatus("Needs attention");
       updateAssistantMessage(id, event.error || "Something failed.", { typing: false });
+      delete state.taskSessions[id];
       addActivity("Stopped", event.error || "");
       break;
     case "toolCall":
@@ -727,6 +910,9 @@ function handleEvent(event) {
       break;
     case "autonomyQuiet":
       addActivity("Autonomy", event.text === "no autonomous changes needed" ? "Nothing new to update." : textFrom(event));
+      break;
+    case "memoryLearned":
+      addActivity("Memory updated", oneLine(event.text || "Saved a useful signal.", 160));
       break;
     case "error":
       state.busy = false;
@@ -780,7 +966,7 @@ function handleProviderChange() {
   const models = modelsFor(provider, state.snapshot);
   const model = models[0] || "";
   const modelSelect = $("#modelSelect");
-  if (modelSelect) modelSelect.innerHTML = optionMarkup(models, model);
+  if (modelSelect) modelSelect.innerHTML = modelOptionMarkup(models, model);
   setEngine(provider, model);
 }
 
@@ -802,9 +988,12 @@ function selectedRoute() {
 async function sendPrompt(text) {
   const trimmed = text.trim();
   if (!trimmed || state.busy) return;
+  const requestId = `web-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const sessionId = currentSession().id;
   $("#prompt").value = "";
   resizePrompt();
   pushMessage({ role: "user", label: "You", text: trimmed });
+  state.taskSessions[requestId] = sessionId;
   state.busy = true;
   setStatus("Working");
   setView("chat");
@@ -812,12 +1001,15 @@ async function sendPrompt(text) {
     await json("/api/prompt", {
       method: "POST",
       body: JSON.stringify({
+        id: requestId,
         text: trimmed,
         route: selectedRoute(),
         agentId: state.engine.agentId || "",
+        sessionKey: sessionId,
       }),
     });
   } catch (error) {
+    delete state.taskSessions[requestId];
     state.busy = false;
     setStatus("Needs attention");
     pushMessage({ role: "system", label: "Crypt", text: error.message });
@@ -1125,6 +1317,10 @@ $("#agentSelect").addEventListener("change", (event) => {
   $("#prompt").focus();
 });
 $("#voiceButton").addEventListener("click", toggleVoice);
+$("#sessionList").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-session-id]");
+  if (button) switchChatSession(button.dataset.sessionId || "");
+});
 
 $("#searchButton").addEventListener("click", () => {
   setView("chat");
@@ -1132,9 +1328,8 @@ $("#searchButton").addEventListener("click", () => {
   $("#prompt").focus();
   resizePrompt();
 });
-$("#newChatButton").addEventListener("click", async () => {
-  state.messages = [];
-  await json("/api/command", { method: "POST", body: JSON.stringify({ command: "clear" }) });
+$("#newChatButton").addEventListener("click", () => {
+  createChatSession();
   setView("chat");
 });
 $("#activityButton").addEventListener("click", () => toggleActivity());
@@ -1143,5 +1338,6 @@ $("#closeActivityButton").addEventListener("click", () => toggleActivity(false))
 $("#approveButton").addEventListener("click", () => answerApproval(true));
 $("#denyButton").addEventListener("click", () => answerApproval(false));
 
+loadChatSessions();
 startAmbient();
 refresh().then(poll);

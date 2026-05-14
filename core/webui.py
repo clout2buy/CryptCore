@@ -21,6 +21,7 @@ from . import (
     autonomy,
     goals,
     learning,
+    passive_memory,
     project_index,
     reflection,
     session as sessions,
@@ -141,6 +142,21 @@ class CryptWebHandler(BaseHTTPRequestHandler):
             if not text:
                 self._error(HTTPStatus.BAD_REQUEST, "prompt is empty")
                 return
+            try:
+                memory_result = passive_memory.observe(self.server.cwd, text)
+            except Exception as exc:
+                self.server.emit_event({"event": "memoryError", "error": f"{type(exc).__name__}: {exc}"})
+            else:
+                if memory_result.learned:
+                    self.server.emit_event(
+                        {
+                            "event": "memoryLearned",
+                            "text": memory_result.text,
+                            "lessonId": memory_result.lesson_id,
+                            "tags": list(memory_result.tags),
+                            "soulChanged": memory_result.soul_changed,
+                        }
+                    )
             intents = _intent_hints(body.get("intents"))
             profile = agent_profiles.get_profile(self.server.cwd, str(body.get("agentId") or ""))
             prompt_text = _prompt_with_context(text, intents, profile)
@@ -281,7 +297,12 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["reflections"] = [asdict(item) for item in reflection.list_reflections(self.server.cwd, limit=5)]
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
         soul_path = soul.ensure_soul()
-        snapshot["soul"] = {"active": soul_path.exists(), "path": str(soul_path)}
+        soul_update = soul.evolve(self.server.cwd)
+        snapshot["soul"] = {
+            "active": soul_path.exists(),
+            "path": str(soul_path),
+            "preferenceCount": soul_update.preference_count,
+        }
         snapshot["sessionsPreview"] = [_session_preview(item) for item in sessions.list_sessions(self.server.cwd)[:12]]
         snapshot["agentProfiles"] = [profile.to_dict() for profile in agent_profiles.list_profiles(self.server.cwd)]
         snapshot["agentDefinitions"] = _agent_definition_previews()

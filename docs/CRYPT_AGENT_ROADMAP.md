@@ -310,3 +310,7 @@ The first concrete slice of this roadmap is now in the WebUI/runtime:
   runtime route so delegated work uses the selected provider/model
 - the UI has an Agents panel for creating reusable specialists without making
   the user hand-orchestrate every task
+- chat sessions persist locally and "New Session" no longer destroys the old
+  conversation list
+- passive memory captures useful user signals from normal chat and refreshes
+  Crypt's managed soul/persona block automatically

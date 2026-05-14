@@ -58,6 +58,9 @@ def test_webui_static_is_chat_first():
     assert "providerSelect" in html
     assert "data-view=\"missions\"" in html
     assert "data-view=\"agents\"" in html
+    assert "CHAT_STORE_KEY" in script
+    assert "Passive Memory" in script
+    assert "Something Crypt should remember permanently" not in script
     assert "surface-dock" not in html
     assert "Skill Forge" not in html
     assert "Start a business" not in html
