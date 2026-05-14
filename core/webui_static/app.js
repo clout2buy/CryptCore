@@ -3,7 +3,7 @@ const state = {
   busy: false,
   activeApproval: null,
   activityOpen: false,
-  currentView: "panel",
+  currentView: "chat",
   snapshot: null,
   events: [],
   messages: [],
@@ -40,8 +40,8 @@ const MAX_STORED_SESSIONS = 30;
 const MAX_SESSION_MESSAGES = 200;
 
 const viewMeta = {
-  panel: ["Home", "Crypt Console"],
-  chat: ["Chat", "Conversation"],
+  panel: ["Home", "Command Center"],
+  chat: ["Chat", "Crypt"],
   files: ["Files", "Workspace Files"],
   terminal: ["Terminal", "Command Surface"],
   jobs: ["Jobs", "Runtime Work"],
@@ -159,7 +159,7 @@ function saveChatSessions() {
   }
 }
 
-function persistCurrentSession() {
+function persistCurrentSession(renderList = true) {
   const session = currentSession();
   session.messages = state.messages
     .slice(-MAX_SESSION_MESSAGES)
@@ -169,7 +169,7 @@ function persistCurrentSession() {
   if (firstUser) session.title = oneLine(firstUser.text, 54);
   state.sessions = [session, ...state.sessions.filter((item) => item.id !== session.id)].slice(0, MAX_STORED_SESSIONS);
   saveChatSessions();
-  renderSessionList();
+  if (renderList) renderSessionList();
 }
 
 function createChatSession() {
@@ -438,8 +438,8 @@ function chatView() {
         ${state.messages.map(messageMarkup).join("") || `
           <article class="empty-chat">
             <p>Crypt</p>
-            <h3>Talk normal.</h3>
-            <span>I will figure out the route, tools, memory, and agents. Just say the thing.</span>
+            <h3>Say it.</h3>
+            <span>I will figure out the route, tools, memory, and agents. No ceremony.</span>
           </article>
         `}
       </div>
@@ -785,6 +785,24 @@ function pushMessage(message) {
 }
 
 function updateAssistantMessage(id, text, { append = false, typing = false } = {}) {
+  const targetSessionId = state.taskSessions[id];
+  if (targetSessionId && targetSessionId !== state.currentSessionId) {
+    const session = state.sessions.find((item) => item.id === targetSessionId);
+    if (session) {
+      const messages = session.messages || [];
+      let message = messages.find((item) => item.id === id && item.role === "assistant");
+      if (!message) {
+        message = { id, role: "assistant", label: "Crypt", text: "", uiId: `stored-${id}` };
+        messages.push(message);
+      }
+      message.text = append ? `${message.text || ""}${text}` : text;
+      session.messages = messages.slice(-MAX_SESSION_MESSAGES);
+      session.updatedAt = Date.now();
+      saveChatSessions();
+      if (!typing) renderSessionList();
+    }
+    return;
+  }
   let message = state.messages.find((item) => item.id === id && item.role === "assistant");
   if (!message) {
     message = { id, role: "assistant", label: "Crypt", text: "", typing };
@@ -793,7 +811,7 @@ function updateAssistantMessage(id, text, { append = false, typing = false } = {
   }
   message.text = append ? message.text + text : text;
   message.typing = typing;
-  persistCurrentSession();
+  persistCurrentSession(!typing);
   if (state.currentView === "chat") updateMessageNode(message);
 }
 

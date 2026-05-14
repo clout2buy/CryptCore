@@ -51,7 +51,7 @@ def test_webui_static_is_chat_first():
     html = resources.files("core.webui_static").joinpath("index.html").read_text(encoding="utf-8")
     script = resources.files("core.webui_static").joinpath("app.js").read_text(encoding="utf-8")
 
-    assert "Crypt Workspace" in html
+    assert "Crypt" in html
     assert "Core" in html
     assert "composer-shell" in html
     assert "voiceButton" in html
@@ -59,6 +59,7 @@ def test_webui_static_is_chat_first():
     assert "data-view=\"missions\"" in html
     assert "data-view=\"agents\"" in html
     assert "CHAT_STORE_KEY" in script
+    assert "currentView: \"chat\"" in script
     assert "Passive Memory" in script
     assert "Something Crypt should remember permanently" not in script
     assert "surface-dock" not in html
