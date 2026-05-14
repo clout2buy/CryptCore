@@ -7,6 +7,17 @@
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
+    <video
+      class="ambient-video"
+      src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_080021_d598092b-c4c2-4e53-8e46-94cf9064cd50.mp4"
+      autoplay
+      muted
+      playsinline
+      loop
+      preload="metadata"
+      aria-hidden="true"
+    ></video>
+    <div class="video-shade" aria-hidden="true"></div>
     <canvas id="ambient" aria-hidden="true"></canvas>
     <div class="workspace-shell">
       <aside class="sidebar" aria-label="Crypt workspace navigation">
@@ -66,8 +77,8 @@
       <main class="main-stage">
         <header class="topbar">
           <div>
-            <p id="viewEyebrow">Panel</p>
-            <h2 id="viewTitle">Mission Control</h2>
+            <p id="viewEyebrow">Home</p>
+            <h2 id="viewTitle">Crypt Console</h2>
           </div>
           <div class="top-actions">
             <button class="quiet-button" type="button" data-view="chat">Chat</button>

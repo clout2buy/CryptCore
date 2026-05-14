@@ -12,7 +12,7 @@ const state = {
 };
 
 const viewMeta = {
-  panel: ["Panel", "Mission Control"],
+  panel: ["Home", "Crypt Console"],
   chat: ["Chat", "Conversation"],
   files: ["Files", "Workspace Files"],
   terminal: ["Terminal", "Command Surface"],
@@ -117,6 +117,9 @@ function setView(view) {
 function renderCurrentView() {
   const snapshot = state.snapshot || {};
   const host = $("#viewHost");
+  const [eyebrow, title] = viewMeta[state.currentView] || viewMeta.panel;
+  $("#viewEyebrow").textContent = eyebrow;
+  $("#viewTitle").textContent = title;
   if (state.currentView === "panel") host.innerHTML = panelView(snapshot);
   else if (state.currentView === "chat") host.innerHTML = chatView();
   else if (state.currentView === "files") host.innerHTML = filesView(snapshot);
@@ -147,7 +150,13 @@ function panelView(snapshot) {
     <section class="command-center">
       <div class="hero-card">
         <p>Crypt is listening</p>
-        <h3>Tell it the outcome. It handles the workflow.</h3>
+        <h3>What should Crypt handle?</h3>
+        <div class="hero-copy">Talk normally. Crypt can inspect files, use tools, remember what matters, and turn vague goals into concrete work.</div>
+        <div class="hero-meta">
+          <span>Autonomous runtime</span>
+          <span>Memory online</span>
+          <span>Tool access ready</span>
+        </div>
         <div class="signal-strip" aria-hidden="true"><span></span></div>
       </div>
       <div class="stat-grid">
