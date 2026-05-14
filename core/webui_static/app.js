@@ -8,6 +8,7 @@ const state = {
   snapshot: null,
   events: [],
   messages: [],
+  messageSeq: 0,
   animationStarted: false,
 };
 
@@ -394,8 +395,9 @@ function emptyRow(text) {
 }
 
 function messageMarkup(message) {
+  const uiId = ensureMessageId(message);
   return `
-    <article class="message ${escapeHtml(message.role)}${message.typing ? " typing" : ""}">
+    <article class="message ${escapeHtml(message.role)}${message.typing ? " typing" : ""}" data-message-id="${uiId}">
       <span class="message-label">${escapeHtml(message.label || (message.role === "user" ? "You" : "Crypt"))}</span>
       <div class="bubble">${escapeHtml(message.text || (message.typing ? "Working on it." : ""))}</div>
     </article>
@@ -428,20 +430,54 @@ function attachViewHandlers() {
 }
 
 function pushMessage(message) {
+  ensureMessageId(message);
   state.messages.push(message);
   if (state.messages.length > 200) state.messages = state.messages.slice(-200);
-  if (state.currentView === "chat") renderCurrentView();
+  if (state.currentView === "chat") appendMessageNode(message);
 }
 
 function updateAssistantMessage(id, text, { append = false, typing = false } = {}) {
   let message = state.messages.find((item) => item.id === id && item.role === "assistant");
   if (!message) {
     message = { id, role: "assistant", label: "Crypt", text: "", typing };
+    ensureMessageId(message);
     state.messages.push(message);
   }
   message.text = append ? message.text + text : text;
   message.typing = typing;
-  if (state.currentView === "chat") renderCurrentView();
+  if (state.currentView === "chat") updateMessageNode(message);
+}
+
+function ensureMessageId(message) {
+  if (!message.uiId) {
+    state.messageSeq += 1;
+    message.uiId = `msg${state.messageSeq}`;
+  }
+  return message.uiId;
+}
+
+function appendMessageNode(message) {
+  const feed = $("#feed");
+  if (!feed) return;
+  const empty = feed.querySelector(".empty-chat");
+  if (empty) empty.remove();
+  feed.insertAdjacentHTML("beforeend", messageMarkup(message));
+  scrollFeed();
+}
+
+function updateMessageNode(message) {
+  const feed = $("#feed");
+  if (!feed) return;
+  const uiId = ensureMessageId(message);
+  const node = feed.querySelector(`[data-message-id="${uiId}"]`);
+  if (!node) {
+    appendMessageNode(message);
+    return;
+  }
+  const bubble = node.querySelector(".bubble");
+  if (bubble) bubble.textContent = message.text || (message.typing ? "Working on it." : "");
+  node.className = `message ${message.role}${message.typing ? " typing" : ""}`;
+  scrollFeed();
 }
 
 function addActivity(title, body = "") {
@@ -477,7 +513,6 @@ function handleEvent(event) {
       if (event.snapshot) {
         state.snapshot = event.snapshot;
         renderShell();
-        renderCurrentView();
       }
       break;
     case "taskStarted":
@@ -495,7 +530,7 @@ function handleEvent(event) {
       updateAssistantMessage(id, event.text || "Done.", { typing: false });
       if (event.snapshot) state.snapshot = event.snapshot;
       renderShell();
-      renderCurrentView();
+      if (state.currentView !== "chat") renderCurrentView();
       addActivity("Finished", "Request complete");
       break;
     case "taskFailed":
@@ -537,18 +572,19 @@ function handleEvent(event) {
   if (state.currentView === "jobs") renderCurrentView();
 }
 
-async function refresh() {
+async function refresh({ renderView = false } = {}) {
   const snapshot = await json("/api/snapshot");
+  const firstSnapshot = !state.snapshot;
   state.snapshot = snapshot;
   renderShell(snapshot);
-  renderCurrentView();
+  if (firstSnapshot || renderView) renderCurrentView();
 }
 
 async function poll() {
   try {
     const data = await json(`/api/events?since=${state.seq}`);
     (data.events || []).forEach(handleEvent);
-    await refresh();
+    await refresh({ renderView: false });
   } catch (error) {
     addActivity("WebUI", error.message);
   } finally {
@@ -590,7 +626,7 @@ async function submitGoal(event) {
     }),
   });
   event.currentTarget.reset();
-  await refresh();
+  await refresh({ renderView: true });
 }
 
 async function submitLesson(event) {
@@ -601,7 +637,7 @@ async function submitLesson(event) {
     body: JSON.stringify({ text: form.get("text"), tags: ["webui", "memory"] }),
   });
   event.currentTarget.reset();
-  await refresh();
+  await refresh({ renderView: true });
 }
 
 async function submitPreference(event) {
@@ -613,7 +649,7 @@ async function submitPreference(event) {
   });
   event.currentTarget.reset();
   await json("/api/autonomy", { method: "POST", body: JSON.stringify({ limit: 3 }) });
-  await refresh();
+  await refresh({ renderView: true });
 }
 
 async function submitForge(event) {
@@ -624,12 +660,12 @@ async function submitForge(event) {
     body: JSON.stringify({ topic: form.get("topic"), minLessons: 1 }),
   });
   event.currentTarget.reset();
-  await refresh();
+  await refresh({ renderView: true });
 }
 
 async function runAutonomy() {
   await json("/api/autonomy", { method: "POST", body: JSON.stringify({ limit: 5 }) });
-  await refresh();
+  await refresh({ renderView: true });
 }
 
 function resizePrompt() {

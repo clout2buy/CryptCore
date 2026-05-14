@@ -62,6 +62,8 @@ def test_webui_static_is_chat_first():
     assert "approvalRequested" in script
     assert "coreFeatures" in script
     assert "renderCurrentView" in script
+    assert "data-message-id" in script
+    assert "renderView = false" in script
     assert "Crypt UI intent hints" not in html
 
 
