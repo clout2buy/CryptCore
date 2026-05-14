@@ -63,7 +63,9 @@ python -m crypt
 
 The WebUI is chat-first: talk to Crypt normally and it handles planning,
 tools, learning, reflection, and skill promotion behind the scenes. There are
-no prompt recipes to manage.
+no prompt recipes to manage. Crypt also maintains a private `SOUL.md` that
+shapes its voice and evolves from durable lessons, so it can feel consistent
+without pretending to be literally conscious.
 
 ## Verify
 

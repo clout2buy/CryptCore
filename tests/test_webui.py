@@ -45,12 +45,13 @@ def test_webui_static_is_chat_first():
     script = resources.files("core.webui_static").joinpath("app.js").read_text(encoding="utf-8")
 
     assert "Message Crypt" in html
-    assert "Activity" in html
+    assert "Core" in html
     assert "Skill Forge" not in html
     assert "Start a business" not in html
     assert "planner" not in html
     assert "data-prompt" not in html
     assert "approvalRequested" in script
+    assert '"Soul"' in script
 
 
 def test_webui_autonomy_interval(monkeypatch):

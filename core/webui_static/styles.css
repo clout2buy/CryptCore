@@ -366,6 +366,15 @@ textarea::placeholder {
   border-bottom: 1px solid var(--line);
 }
 
+.activity-panel header > div {
+  min-width: 0;
+}
+
+.activity-panel header .quiet-button {
+  flex: 0 0 auto;
+  min-width: 68px;
+}
+
 .activity-panel p {
   color: var(--accent);
   font-size: 11px;

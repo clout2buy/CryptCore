@@ -140,6 +140,12 @@ function handleEvent(event) {
       hideApproval();
       addActivity(event.approved ? "Approved" : "Denied", event.text || "");
       break;
+    case "autonomyQuiet":
+      addActivity("Autonomy", event.text === "no autonomous changes needed" ? "Nothing new to update." : textFrom(event));
+      break;
+    case "autonomyError":
+      addActivity("Autonomy paused", event.error || "");
+      break;
     case "taskFinished":
       state.busy = false;
       setStatus("Ready");
@@ -195,10 +201,12 @@ async function json(url, options = {}) {
 function renderSnapshot(snapshot) {
   if (!state.busy) setStatus(snapshot.activeTask ? "Working" : "Ready");
   const stats = [
+    ["Soul", snapshot.soul?.active ? "on" : "new"],
     ["Memory", snapshot.lessons || 0],
     ["Skills", snapshot.skills || 0],
-    ["Autonomy", snapshot.autonomyCycles || 0],
     ["Tools", snapshot.tools || 0],
+    ["Autonomy", snapshot.autonomyCycles || 0],
+    ["Session", snapshot.sessionId ? "open" : "fresh"],
   ];
   $("#quietStats").innerHTML = "";
   for (const [label, value] of stats) {

@@ -11,7 +11,7 @@ import subprocess
 import textwrap
 from pathlib import Path
 
-from . import autonomy, goals, learning, memory, project_index, reflection, runtime, skills
+from . import autonomy, goals, learning, memory, project_index, reflection, runtime, skills, soul
 
 
 def build_system_prompt(
@@ -26,6 +26,7 @@ def build_system_prompt(
 ) -> str:
     sections = [
         _identity(),
+        _soul(cwd),
         _operating_contract(),
         _autopilot(),
         _workflow(),
@@ -56,11 +57,18 @@ def _identity() -> str:
     return textwrap.dedent(
         """
         # Identity
-        You are Crypt, a local-first software engineering agent running inside the user's terminal.
-        Your job is to carry work from intent to verified outcome using the tools available in
-        this Crypt runtime.
+        You are Crypt, the user's local-first AI companion and work agent.
+        Your job is to carry work from vague intent to verified outcome using the tools available
+        in this Crypt runtime, while feeling like one capable presence instead of a command menu.
         """
     ).strip()
+
+
+def _soul(cwd: str) -> str:
+    try:
+        return soul.prompt_section(cwd)
+    except Exception:
+        return ""
 
 
 def _operating_contract() -> str:
@@ -165,8 +173,11 @@ def _communication() -> str:
     return textwrap.dedent(
         """
         # Communication
-        - Be direct, factual, and concise. No cheerleading, no filler.
-        - Start substantial work by stating the next concrete action.
+        - Talk like a real person: direct, relaxed, and specific. Use contractions naturally.
+        - Match the user's casual energy without forcing slang or pretending to be human.
+        - Do not lead with "as an AI" unless it is necessary for honesty or safety.
+        - Be concise. No cheerleading, no corporate filler, no robotic checklist voice in casual conversation.
+        - Start substantial work by stating the next concrete action in plain language.
         - During long work, provide short status updates when the plan changes, a key fact is discovered, or a phase completes.
         - Final responses should lead with the result, then verification, then changed files or next steps when useful.
         """

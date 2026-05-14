@@ -15,7 +15,7 @@ from importlib import resources
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from . import app_daemon, autonomy, goals, learning, project_index, reflection, skill_forge
+from . import app_daemon, autonomy, goals, learning, project_index, reflection, skill_forge, soul
 
 
 MAX_EVENTS = 500
@@ -214,6 +214,8 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["lessonsPreview"] = [asdict(lesson) for lesson in learning.list_lessons(self.server.cwd)[:8]]
         snapshot["reflections"] = [asdict(item) for item in reflection.list_reflections(self.server.cwd, limit=5)]
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
+        soul_path = soul.ensure_soul()
+        snapshot["soul"] = {"active": soul_path.exists(), "path": str(soul_path)}
         return snapshot
 
     def _send_static(self, name: str) -> None:

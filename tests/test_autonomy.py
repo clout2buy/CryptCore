@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core import autonomy, evidence, goals, learning, reflection, settings, skill_forge
+from core import autonomy, evidence, goals, learning, reflection, settings, skill_forge, soul
 
 
 def test_autonomy_cycle_reflects_and_reviews_due_goals(monkeypatch, tmp_path: Path):
@@ -41,6 +41,7 @@ def test_autonomy_cycle_reflects_and_reviews_due_goals(monkeypatch, tmp_path: Pa
         assert cycle.lessons_added >= 1
         assert autonomy.list_cycles(workspace)[0].cycle_id == cycle.cycle_id
         assert reflection.list_reflections(workspace)
+        assert soul.soul_path().exists()
         assert any("Improve Crypt reliability" in lesson.text for lesson in learning.list_lessons(workspace))
     finally:
         evidence.clear()
@@ -72,3 +73,24 @@ def test_skill_forge_creates_project_skill_from_lessons(monkeypatch, tmp_path: P
     text = result.path.read_text(encoding="utf-8")
     assert "scripts/verify_core.ps1" in text
     assert "docs/REFERENCE.md" in text
+
+
+def test_soul_evolves_from_preference_lessons(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    learning.add_lesson(
+        "User prefers Crypt to sound natural and not robotic.",
+        cwd=workspace,
+        scope="project",
+        tags=["voice", "preference"],
+        confidence=0.85,
+    )
+
+    update = soul.evolve(workspace)
+    text = soul.read_soul()
+
+    assert update.changed is True
+    assert update.preference_count == 1
+    assert "User prefers Crypt to sound natural" in text
+    assert "Do not claim literal sentience" in text

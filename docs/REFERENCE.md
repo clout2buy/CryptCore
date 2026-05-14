@@ -203,8 +203,10 @@ python main.py forge release --min-lessons 2
 ```
 
 The autonomous cycle is deliberately safe. It teaches, reviews, remembers, and
-forges local skills. It does not spend money, send messages, or mutate external
-systems without going through normal tool permissions.
+forges local skills. It also refreshes Crypt's private `SOUL.md` from learned
+preferences so the assistant voice can improve over time. It does not spend
+money, send messages, or mutate external systems without going through normal
+tool permissions.
 
 Start the local browser cockpit with:
 
@@ -213,9 +215,11 @@ python main.py webui --open
 ```
 
 The browser view is intentionally chat-first. There are no prompt recipes or
-route controls to manage. Goals, lessons, reflection, autonomy cycles, and
-skill forging stay in the background unless Crypt needs permission or the user
-opens the activity drawer.
+route controls to manage. The small Core drawer exposes quiet state for the
+same kind of systems Hermes/OpenClaw-style agents surface as sections: soul,
+memory, skills, tools, autonomy, and session state. Goals, lessons, reflection,
+autonomy cycles, and skill forging stay in the background unless Crypt needs
+permission or the user opens that drawer.
 
 Crypt also maintains a project profile cache with languages, package managers,
 frameworks/libraries, entry points, CI files, likely test/build commands,
@@ -260,6 +264,7 @@ default; put required server tokens in that server's explicit `env` block.
   target-evals/        target-eval snapshots, traces, reports
   projects/<slug>/     session JSONL transcripts
   learning/            structured task episodes and reusable lessons
+  soul/SOUL.md         evolving Crypt voice and preference layer
   autonomy/            self-review cycle logs
   goals/               durable objectives
   runs/                shell output spill files

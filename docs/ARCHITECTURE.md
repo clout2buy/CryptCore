@@ -16,6 +16,7 @@ flowchart LR
     Runtime --> Skills["core.skills"]
     Runtime --> MCP["core.mcp"]
     Runtime --> Learning["core.learning"]
+    Runtime --> Soul["core.soul"]
     Runtime --> Autonomy["core.autonomy"]
     Loop --> Store["sessions, task logs, traces, evidence"]
     Loop --> Project["core.project_index"]
@@ -39,6 +40,7 @@ flowchart LR
 | `core/task_state.py` | durable task status/event logs | model/tool execution |
 | `core/project_index.py` | cached workspace profile and likely commands | deep semantic indexing |
 | `core/learning.py` | task episodes, reusable lessons, prompt retrieval | raw transcript replay or secret storage |
+| `core/soul.py` | durable voice/persona layer and learned preferences | claims of literal consciousness |
 | `core/reflection.py` | post-task reflection and lesson extraction | model/tool execution |
 | `core/goals.py` | durable objectives and review cadence | external side effects |
 | `core/autonomy.py` | safe self-review cycles | spending money, messaging, or unsandboxed actions |
@@ -129,14 +131,18 @@ knowledge without replaying entire transcripts. Users can inspect and curate
 that store with `/learn`, `crypt learn`, or the `learn` tool.
 
 `core.autonomy` runs a safe self-review cycle. It reflects on recent task
-episodes, reviews due goals, updates lessons, and can forge project-local
-`SKILL.md` bundles from repeated patterns. This is intentionally bounded to
-Crypt's own memory/skill state; external actions still go through tools,
-permissions, and user approval.
+episodes, reviews due goals, updates lessons, evolves Crypt's `SOUL.md`, and
+can forge project-local `SKILL.md` bundles from repeated patterns. This is
+intentionally bounded to Crypt's own memory/skill state; external actions still
+go through tools, permissions, and user approval.
+
+`core.soul` supplies the stable voice/persona layer. It lets Crypt maintain
+continuity, learned preferences, and a less robotic tone while explicitly
+avoiding false claims of literal sentience or consciousness.
 
 `core.webui` exposes a small local browser cockpit centered on chat. Runtime
-state, goals, learning, reflections, autonomy cycles, approvals, and skill
-forging remain available through the API and activity drawer, but the main
+state, soul, goals, learning, reflections, autonomy cycles, approvals, and
+skill forging remain available through the API and Core drawer, but the main
 interaction keeps Crypt presented as one assistant with no visible prompt
 recipes or route controls. When launched through `python main.py webui`, it
 also starts a safe background autonomy heartbeat. It talks to the same

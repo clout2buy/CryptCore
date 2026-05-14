@@ -14,7 +14,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import goals, learning, reflection, settings, skill_forge
+from . import goals, learning, reflection, settings, skill_forge, soul
 
 
 SCHEMA_VERSION = 1
@@ -56,6 +56,9 @@ def run_cycle(
 
     goal_reviews = _review_goals(root, notes)
     forged = _forge_from_repeated_lessons(root, notes, force=force_forge)
+    soul_update = soul.evolve(root)
+    if soul_update.changed:
+        notes.append(f"evolved Crypt soul from {soul_update.preference_count} learned preference(s)")
 
     cycle = AutonomyCycle(
         cycle_id=learning._new_id("auto", str(root)),  # noqa: SLF001 - shared local id helper
