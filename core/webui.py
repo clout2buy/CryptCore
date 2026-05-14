@@ -16,6 +16,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 from . import (
+    agent_profiles,
     app_daemon,
     autonomy,
     goals,
@@ -28,6 +29,7 @@ from . import (
     skills,
     soul,
 )
+from .agents import registry as agent_registry
 from tools import REGISTRY
 
 
@@ -126,6 +128,9 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         if path == "/api/goals":
             self._json({"goals": [asdict(goal) for goal in goals.list_goals(self.server.cwd, include_all=True)]})
             return
+        if path == "/api/agents":
+            self._json({"agents": [profile.to_dict() for profile in agent_profiles.list_profiles(self.server.cwd)]})
+            return
         self._error(HTTPStatus.NOT_FOUND, "not found")
 
     def do_POST(self) -> None:  # noqa: N802 - stdlib handler API
@@ -137,7 +142,8 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                 self._error(HTTPStatus.BAD_REQUEST, "prompt is empty")
                 return
             intents = _intent_hints(body.get("intents"))
-            prompt_text = _prompt_with_intents(text, intents)
+            profile = agent_profiles.get_profile(self.server.cwd, str(body.get("agentId") or ""))
+            prompt_text = _prompt_with_context(text, intents, profile)
             request_id = str(body.get("id") or f"web-{uuid.uuid4().hex[:10]}")
             self.server.daemon.handle_command(
                 {
@@ -149,6 +155,46 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                 }
             )
             self._json({"id": request_id})
+            return
+        if path == "/api/engine":
+            provider = str(body.get("provider") or "").strip()
+            model = str(body.get("model") or "").strip()
+            request_id = str(body.get("id") or f"engine-{uuid.uuid4().hex[:10]}")
+            self.server.daemon.handle_command(
+                {"type": "setProviderModel", "id": request_id, "provider": provider, "model": model}
+            )
+            self._json({"id": request_id})
+            return
+        if path == "/api/route":
+            role = str(body.get("role") or "").strip()
+            provider = str(body.get("provider") or "").strip()
+            model = str(body.get("model") or "").strip()
+            request_id = str(body.get("id") or f"route-{uuid.uuid4().hex[:10]}")
+            self.server.daemon.handle_command(
+                {"type": "setRoute", "id": request_id, "role": role, "provider": provider, "model": model}
+            )
+            self._json({"id": request_id})
+            return
+        if path == "/api/agents":
+            profile = agent_profiles.create_profile(
+                self.server.cwd,
+                name=str(body.get("name") or ""),
+                purpose=str(body.get("purpose") or ""),
+                agent_type=str(body.get("agentType") or ""),
+                provider=str(body.get("provider") or ""),
+                model=str(body.get("model") or ""),
+            )
+            if profile.provider and profile.model:
+                self.server.daemon.handle_command(
+                    {
+                        "type": "setRoute",
+                        "id": f"agent-route-{profile.id}",
+                        "role": profile.route_role,
+                        "provider": profile.provider,
+                        "model": profile.model,
+                    }
+                )
+            self._json({"agent": profile.to_dict()})
             return
         if path == "/api/command":
             command = str(body.get("command") or "").strip()
@@ -237,6 +283,8 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         soul_path = soul.ensure_soul()
         snapshot["soul"] = {"active": soul_path.exists(), "path": str(soul_path)}
         snapshot["sessionsPreview"] = [_session_preview(item) for item in sessions.list_sessions(self.server.cwd)[:12]]
+        snapshot["agentProfiles"] = [profile.to_dict() for profile in agent_profiles.list_profiles(self.server.cwd)]
+        snapshot["agentDefinitions"] = _agent_definition_previews()
         snapshot["skillsPreview"] = [skill.as_dict() for skill in skills.discover(self.server.cwd, include_disabled=True)[:40]]
         snapshot["toolsPreview"] = _tool_previews()
         snapshot["filesPreview"] = _workspace_files(self.server.cwd)
@@ -305,6 +353,7 @@ def core_features(cwd: str | Path, snapshot: dict) -> list[dict]:
     frameworks = project.get("frameworks") if isinstance(project.get("frameworks"), list) else []
     git_branch = str(project.get("git_branch") or "not a git repo")
     active_goals = goals.list_goals(root)
+    custom_agents = agent_profiles.list_profiles(root)
     return [
         {
             "id": "chat",
@@ -347,6 +396,13 @@ def core_features(cwd: str | Path, snapshot: dict) -> list[dict]:
             "value": "default",
             "status": "active",
             "detail": "Workspace-scoped memory, skills, config, and session state.",
+        },
+        {
+            "id": "agents",
+            "label": "Agents",
+            "value": len(custom_agents),
+            "status": "delegation",
+            "detail": _first_nonempty([profile.name for profile in custom_agents[:3]], "Create a specialist once, then let Crypt reuse it."),
         },
         {
             "id": "office",
@@ -473,6 +529,21 @@ def _looks_office_tool(name: str) -> bool:
     return any(token in lowered for token in ("doc", "sheet", "slide", "ppt", "pdf", "office"))
 
 
+def _agent_definition_previews() -> list[dict]:
+    out = []
+    for definition in agent_registry.list_agents():
+        out.append(
+            {
+                "name": definition.name,
+                "label": definition.ui_label,
+                "description": definition.description,
+                "defaultMode": definition.default_mode,
+                "readOnly": definition.read_only,
+            }
+        )
+    return out
+
+
 def _tool_previews(limit: int = 60) -> list[dict]:
     out = []
     for schema in REGISTRY.schemas()[:limit]:
@@ -529,14 +600,23 @@ def _intent_hints(value: object) -> list[str]:
     return out
 
 
-def _prompt_with_intents(text: str, intents: list[str]) -> str:
-    if not intents:
-        return text
+def _prompt_with_context(text: str, intents: list[str], profile: agent_profiles.AgentProfile | None = None) -> str:
+    hints: list[str] = []
     hint_map = {
         "web": "use web research if it helps",
         "files": "inspect local files if needed",
         "build": "prefer implementing the next concrete change",
         "auto": "handle safe follow-up steps without extra orchestration",
     }
-    hints = "; ".join(hint_map[item] for item in intents if item in hint_map)
-    return f"{text}\n\n[Crypt UI intent hints: {hints}]"
+    hints.extend(hint_map[item] for item in intents if item in hint_map)
+    if profile:
+        hints.append(
+            (
+                f"selected saved agent '{profile.name}' "
+                f"({profile.agent_type}, route {profile.route_role}, {profile.provider}/{profile.model}); "
+                "delegate with the matching built-in agent type when that helps"
+            )
+        )
+    if not hints:
+        return text
+    return f"{text}\n\n[Crypt runtime hints: {'; '.join(hints)}]"

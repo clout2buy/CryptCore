@@ -295,3 +295,18 @@ The next serious implementation sequence should be:
 This order matters because autonomy without stable memory, missions, routing,
 and audit trails becomes chaotic. Crypt should become more independent by
 becoming more structured underneath, while staying simple on the surface.
+
+## Current Shipped Increment
+
+The first concrete slice of this roadmap is now in the WebUI/runtime:
+
+- chat polling skips unchanged shell/session/core DOM writes, so the message
+  feed no longer resets every polling tick
+- the composer is simplified around one natural input, voice, provider, model,
+  route, and optional saved agent
+- voice input uses a restart-tolerant Web Speech toggle instead of flipping off
+  immediately after a short/no-speech event
+- saved agent profiles persist under the workspace and update the matching
+  runtime route so delegated work uses the selected provider/model
+- the UI has an Agents panel for creating reusable specialists without making
+  the user hand-orchestrate every task

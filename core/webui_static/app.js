@@ -4,12 +4,32 @@ const state = {
   activeApproval: null,
   activityOpen: false,
   currentView: "panel",
-  intents: new Set(),
   snapshot: null,
   events: [],
   messages: [],
   messageSeq: 0,
   animationStarted: false,
+  shellKeys: {
+    engine: "",
+    providers: "",
+    sessions: "",
+    core: "",
+    agents: "",
+  },
+  engine: {
+    provider: "",
+    model: "",
+    route: "",
+    agentId: "",
+  },
+  voice: {
+    recognition: null,
+    desired: false,
+    listening: false,
+    manuallyStopping: false,
+    restartAttempts: 0,
+    supported: null,
+  },
 };
 
 const viewMeta = {
@@ -19,6 +39,7 @@ const viewMeta = {
   terminal: ["Terminal", "Command Surface"],
   jobs: ["Jobs", "Runtime Work"],
   missions: ["Missions", "Goals And Schedules"],
+  agents: ["Agents", "Specialists"],
   memory: ["Memory", "Durable Memory"],
   skills: ["Skills", "Skill Library"],
   persona: ["Persona", "Crypt Soul"],
@@ -53,6 +74,15 @@ function textFrom(event) {
   return JSON.stringify(event, null, 2);
 }
 
+function stableJson(value) {
+  return JSON.stringify(value ?? null);
+}
+
+function setText(selector, text) {
+  const node = $(selector);
+  if (node && node.textContent !== String(text)) node.textContent = String(text);
+}
+
 async function json(url, options = {}) {
   const response = await fetch(url, {
     headers: { "Content-Type": "application/json" },
@@ -69,18 +99,31 @@ function setStatus(text) {
 
 function renderShell(snapshot = state.snapshot) {
   if (!snapshot) return;
-  $("#enginePill").textContent = `${snapshot.provider || "crypt"} / ${snapshot.model || "auto"}`;
-  $("#sessionCount").textContent = String((snapshot.sessionsPreview || []).length);
-  $("#sessionList").innerHTML = (snapshot.sessionsPreview || [])
-    .slice(0, 6)
-    .map((session) => `
-      <article class="mini-item">
-        <b>${escapeHtml(session.title || "New conversation")}</b>
-        <span>${escapeHtml(session.message_count || 0)} msgs / ${escapeHtml(session.model || "auto")}</span>
-      </article>
-    `)
-    .join("") || `<article class="mini-item empty"><b>No sessions yet</b><span>Start a conversation.</span></article>`;
-  renderCoreFeatures(snapshot.coreFeatures || []);
+  const engineText = `${snapshot.provider || "crypt"} / ${snapshot.model || "auto"}`;
+  setText("#enginePill", engineText);
+  setText("#sessionCount", (snapshot.sessionsPreview || []).length);
+  syncEngineControls(snapshot);
+  syncAgentControl(snapshot);
+
+  const sessionKey = stableJson((snapshot.sessionsPreview || []).slice(0, 6));
+  if (sessionKey !== state.shellKeys.sessions) {
+    state.shellKeys.sessions = sessionKey;
+    $("#sessionList").innerHTML = (snapshot.sessionsPreview || [])
+      .slice(0, 6)
+      .map((session) => `
+        <article class="mini-item">
+          <b>${escapeHtml(session.title || "New conversation")}</b>
+          <span>${escapeHtml(session.message_count || 0)} msgs / ${escapeHtml(session.model || "auto")}</span>
+        </article>
+      `)
+      .join("") || `<article class="mini-item empty"><b>No sessions yet</b><span>Start talking.</span></article>`;
+  }
+
+  const coreKey = stableJson(snapshot.coreFeatures || []);
+  if (coreKey !== state.shellKeys.core) {
+    state.shellKeys.core = coreKey;
+    renderCoreFeatures(snapshot.coreFeatures || []);
+  }
 }
 
 function renderCoreFeatures(features) {
@@ -101,6 +144,69 @@ function renderCoreFeatures(features) {
       <p>${escapeHtml(feature.detail || "")}</p>
     `;
     container.appendChild(card);
+  }
+}
+
+function providerRows(snapshot = state.snapshot) {
+  return (snapshot?.providers || []).filter((provider) => provider && provider.id);
+}
+
+function modelsFor(providerId, snapshot = state.snapshot) {
+  const provider = providerRows(snapshot).find((item) => item.id === providerId);
+  return provider ? provider.models || [] : [];
+}
+
+function optionMarkup(options, selected) {
+  return options.map((option) => {
+    const value = typeof option === "string" ? option : option.value;
+    const label = typeof option === "string" ? option : option.label;
+    return `<option value="${escapeHtml(value)}"${value === selected ? " selected" : ""}>${escapeHtml(label)}</option>`;
+  }).join("");
+}
+
+function syncEngineControls(snapshot = state.snapshot) {
+  const providerSelect = $("#providerSelect");
+  const modelSelect = $("#modelSelect");
+  const routeSelect = $("#routeSelect");
+  if (!providerSelect || !modelSelect || !snapshot) return;
+
+  const provider = snapshot.provider || state.engine.provider || "crypt";
+  const model = snapshot.model || state.engine.model || "";
+  state.engine.provider = provider;
+  state.engine.model = model;
+
+  const providers = providerRows(snapshot).map((item) => ({ value: item.id, label: item.label || item.id }));
+  const providerKey = stableJson({ providers, provider });
+  if (providerKey !== state.shellKeys.providers) {
+    state.shellKeys.providers = providerKey;
+    providerSelect.innerHTML = optionMarkup(providers, provider);
+  }
+
+  const models = modelsFor(provider, snapshot);
+  const modelOptions = models.includes(model) || !model ? models : [model, ...models];
+  const modelKey = stableJson({ provider, models: modelOptions, model });
+  if (modelKey !== state.shellKeys.engine) {
+    state.shellKeys.engine = modelKey;
+    modelSelect.innerHTML = optionMarkup(modelOptions, model);
+  }
+
+  if (routeSelect) routeSelect.value = state.engine.route || "auto";
+}
+
+function syncAgentControl(snapshot = state.snapshot) {
+  const select = $("#agentSelect");
+  if (!select || !snapshot) return;
+  const agents = snapshot.agentProfiles || [];
+  const options = agents.length
+    ? [{ value: "", label: "Crypt decides" }, ...agents.map((agent) => ({ value: agent.id, label: agent.name }))]
+    : [{ value: "", label: "No saved agents" }];
+  if (state.engine.agentId && !agents.some((agent) => agent.id === state.engine.agentId)) {
+    state.engine.agentId = "";
+  }
+  const key = stableJson({ options, selected: state.engine.agentId });
+  if (key !== state.shellKeys.agents) {
+    state.shellKeys.agents = key;
+    select.innerHTML = optionMarkup(options, state.engine.agentId);
   }
 }
 
@@ -127,6 +233,7 @@ function renderCurrentView() {
   else if (state.currentView === "terminal") host.innerHTML = terminalView(snapshot);
   else if (state.currentView === "jobs") host.innerHTML = jobsView(snapshot);
   else if (state.currentView === "missions") host.innerHTML = missionsView(snapshot);
+  else if (state.currentView === "agents") host.innerHTML = agentsView(snapshot);
   else if (state.currentView === "memory") host.innerHTML = memoryView(snapshot);
   else if (state.currentView === "skills") host.innerHTML = skillsView(snapshot);
   else if (state.currentView === "persona") host.innerHTML = personaView(snapshot);
@@ -150,9 +257,9 @@ function panelView(snapshot) {
   return `
     <section class="command-center">
       <div class="hero-card">
-        <p>Crypt is listening</p>
-        <h3>What should Crypt handle?</h3>
-        <div class="hero-copy">Talk normally. Crypt can inspect files, use tools, remember what matters, and turn vague goals into concrete work.</div>
+        <p>Crypt is online</p>
+        <h3>Say it. Crypt handles the rest.</h3>
+        <div class="hero-copy">No prompt engineering. Talk normal. Crypt can inspect files, use tools, remember what matters, delegate to agents, and turn vague goals into real work.</div>
         <div class="hero-meta">
           <span>Autonomous runtime</span>
           <span>Memory online</span>
@@ -177,8 +284,8 @@ function chatView() {
         ${state.messages.map(messageMarkup).join("") || `
           <article class="empty-chat">
             <p>Crypt</p>
-            <h3>What are we working on?</h3>
-            <span>Say what you want done. Crypt routes the rest.</span>
+            <h3>Talk normal.</h3>
+            <span>I will figure out the route, tools, memory, and agents. Just say the thing.</span>
           </article>
         `}
       </div>
@@ -267,6 +374,51 @@ function missionsView(snapshot) {
       </div>
     </section>
     <section class="data-list">${goals.map((goal) => row(goal.status || "Goal", goal.title, goal.success_metric || goal.cadence || goal.goal_id)).join("") || emptyRow("No missions yet")}</section>
+  `;
+}
+
+function agentsView(snapshot) {
+  const agents = snapshot.agentProfiles || [];
+  const definitions = snapshot.agentDefinitions || [];
+  const provider = state.engine.provider || snapshot.provider || "crypt";
+  const model = state.engine.model || snapshot.model || "";
+  const providerOptions = providerRows(snapshot).map((item) => ({ value: item.id, label: item.label || item.id }));
+  const modelOptions = modelsFor(provider, snapshot);
+  const safeModels = modelOptions.includes(model) || !model ? modelOptions : [model, ...modelOptions];
+  return `
+    <section class="two-col">
+      <form id="agentForm" class="panel-card form-card wide agent-form">
+        <h3>Save A Specialist</h3>
+        <p>Create the agent once. Crypt can route matching work through that role instead of making you manage it every time.</p>
+        <div class="form-grid">
+          <input name="name" placeholder="Agent name: growth operator, UI killer, finance tracker...">
+          <select name="agentType">
+            ${definitions.map((definition) => `<option value="${escapeHtml(definition.name)}">${escapeHtml(definition.label || definition.name)}</option>`).join("")}
+          </select>
+          <select name="provider" id="agentProviderSelect">
+            ${optionMarkup(providerOptions, provider)}
+          </select>
+          <select name="model" id="agentModelSelect">
+            ${optionMarkup(safeModels, model)}
+          </select>
+        </div>
+        <textarea name="purpose" rows="3" placeholder="What should this agent own? Example: find customers, write launch copy, monitor income, ship site changes."></textarea>
+        <button type="submit">Save agent</button>
+      </form>
+      <div class="panel-card">
+        <h3>How Crypt Uses Them</h3>
+        <p>Saved agents also update the matching runtime route, so delegated work uses the provider and model you chose.</p>
+        <button class="ask-button" data-ask="Look at my saved agents and tell me which specialists you would create next.">Suggest agents</button>
+      </div>
+    </section>
+    <section class="feature-grid agent-grid">
+      ${agents.map((agent) => featureCard({
+        label: agent.name,
+        value: agent.model,
+        status: `${agent.agent_type} / ${agent.provider}`,
+        detail: `${agent.purpose} Route: ${agent.route_role}`,
+      })).join("") || emptyRow("No saved agents yet")}
+    </section>
   `;
 }
 
@@ -424,9 +576,25 @@ function attachViewHandlers() {
   if (forgeForm) {
     forgeForm.addEventListener("submit", submitForge);
   }
+  const agentForm = $("#agentForm");
+  if (agentForm) {
+    agentForm.addEventListener("submit", submitAgent);
+  }
+  const agentProvider = $("#agentProviderSelect");
+  if (agentProvider) {
+    agentProvider.addEventListener("change", syncAgentModelSelect);
+  }
   document.querySelectorAll("#runAutonomyButton").forEach((button) => {
     button.addEventListener("click", runAutonomy);
   });
+}
+
+function syncAgentModelSelect() {
+  const providerSelect = $("#agentProviderSelect");
+  const modelSelect = $("#agentModelSelect");
+  if (!providerSelect || !modelSelect) return;
+  const models = modelsFor(providerSelect.value, state.snapshot);
+  modelSelect.innerHTML = optionMarkup(models, models[0] || "");
 }
 
 function pushMessage(message) {
@@ -592,6 +760,45 @@ async function poll() {
   }
 }
 
+async function setEngine(provider, model) {
+  if (!provider || !model) return;
+  state.engine.provider = provider;
+  state.engine.model = model;
+  setText("#enginePill", `${provider} / ${model}`);
+  try {
+    await json("/api/engine", {
+      method: "POST",
+      body: JSON.stringify({ provider, model }),
+    });
+  } catch (error) {
+    addActivity("Engine", error.message);
+  }
+}
+
+function handleProviderChange() {
+  const provider = $("#providerSelect")?.value || "";
+  const models = modelsFor(provider, state.snapshot);
+  const model = models[0] || "";
+  const modelSelect = $("#modelSelect");
+  if (modelSelect) modelSelect.innerHTML = optionMarkup(models, model);
+  setEngine(provider, model);
+}
+
+function handleModelChange() {
+  setEngine($("#providerSelect")?.value || "", $("#modelSelect")?.value || "");
+}
+
+function selectedRoute() {
+  const value = $("#routeSelect")?.value || "auto";
+  return {
+    auto: "",
+    think: "planner",
+    build: "builder",
+    review: "reviewer",
+    fast: "fast",
+  }[value] || "";
+}
+
 async function sendPrompt(text) {
   const trimmed = text.trim();
   if (!trimmed || state.busy) return;
@@ -604,7 +811,11 @@ async function sendPrompt(text) {
   try {
     await json("/api/prompt", {
       method: "POST",
-      body: JSON.stringify({ text: trimmed, intents: Array.from(state.intents) }),
+      body: JSON.stringify({
+        text: trimmed,
+        route: selectedRoute(),
+        agentId: state.engine.agentId || "",
+      }),
     });
   } catch (error) {
     state.busy = false;
@@ -663,6 +874,27 @@ async function submitForge(event) {
   await refresh({ renderView: true });
 }
 
+async function submitAgent(event) {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  const name = String(form.get("name") || "").trim();
+  const purpose = String(form.get("purpose") || "").trim();
+  if (!name && !purpose) return;
+  await json("/api/agents", {
+    method: "POST",
+    body: JSON.stringify({
+      name,
+      purpose,
+      agentType: form.get("agentType"),
+      provider: form.get("provider"),
+      model: form.get("model"),
+    }),
+  });
+  event.currentTarget.reset();
+  state.shellKeys.agents = "";
+  await refresh({ renderView: true });
+}
+
 async function runAutonomy() {
   await json("/api/autonomy", { method: "POST", body: JSON.stringify({ limit: 5 }) });
   await refresh({ renderView: true });
@@ -702,25 +934,117 @@ function toggleActivity(force) {
   $("#activityButton").setAttribute("aria-expanded", String(state.activityOpen));
 }
 
-function updateIntentPill() {
-  const intents = Array.from(state.intents);
-  $("#intentPill").textContent = intents.length ? intents.join(" + ") : "autopilot";
-}
-
-function toggleIntent(intent) {
-  if (!intent) return;
-  if (state.intents.has(intent)) state.intents.delete(intent);
-  else state.intents.add(intent);
-  document.querySelectorAll(".intent-toggle").forEach((button) => {
-    button.classList.toggle("active", state.intents.has(button.dataset.intent));
-  });
-  updateIntentPill();
-  $("#prompt").focus();
-}
-
 function scrollFeed() {
   const feed = $("#feed");
   if (feed) feed.scrollTop = feed.scrollHeight;
+}
+
+function updateVoiceUi(text) {
+  const button = $("#voiceButton");
+  const status = $("#voiceStatus");
+  if (button) {
+    button.classList.toggle("active", state.voice.listening || state.voice.desired);
+    button.setAttribute("aria-pressed", String(state.voice.listening || state.voice.desired));
+    button.querySelector("span").textContent = state.voice.listening ? "live" : "mic";
+  }
+  if (status) status.textContent = text;
+}
+
+function ensureVoice() {
+  if (state.voice.supported === false) return null;
+  if (state.voice.recognition) return state.voice.recognition;
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    state.voice.supported = false;
+    updateVoiceUi("voice unsupported");
+    return null;
+  }
+  const recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = "en-US";
+  recognition.onstart = () => {
+    state.voice.listening = true;
+    state.voice.manuallyStopping = false;
+    updateVoiceUi("listening");
+  };
+  recognition.onresult = (event) => {
+    let finalText = "";
+    let interimText = "";
+    for (let index = event.resultIndex; index < event.results.length; index += 1) {
+      const result = event.results[index];
+      const text = result[0]?.transcript || "";
+      if (result.isFinal) finalText += text;
+      else interimText += text;
+    }
+    if (finalText.trim()) appendTranscript(finalText);
+    updateVoiceUi(interimText.trim() ? `hearing: ${oneLine(interimText, 32)}` : "listening");
+  };
+  recognition.onerror = (event) => {
+    const error = event.error || "voice error";
+    if (error === "not-allowed" || error === "service-not-allowed") {
+      state.voice.desired = false;
+      state.voice.listening = false;
+      updateVoiceUi("mic blocked");
+      return;
+    }
+    updateVoiceUi(error === "no-speech" ? "listening" : error);
+  };
+  recognition.onend = () => {
+    state.voice.listening = false;
+    if (state.voice.desired && !state.voice.manuallyStopping && state.voice.restartAttempts < 2) {
+      state.voice.restartAttempts += 1;
+      updateVoiceUi("reconnecting mic");
+      window.setTimeout(startVoice, 180);
+      return;
+    }
+    state.voice.desired = false;
+    state.voice.manuallyStopping = false;
+    state.voice.restartAttempts = 0;
+    updateVoiceUi("voice ready");
+  };
+  state.voice.recognition = recognition;
+  state.voice.supported = true;
+  return recognition;
+}
+
+function appendTranscript(text) {
+  const prompt = $("#prompt");
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (!prompt || !clean) return;
+  const prefix = prompt.value.trim() ? " " : "";
+  prompt.value = `${prompt.value}${prefix}${clean}`;
+  resizePrompt();
+  prompt.focus();
+}
+
+function startVoice() {
+  const recognition = ensureVoice();
+  if (!recognition) return;
+  state.voice.desired = true;
+  state.voice.manuallyStopping = false;
+  try {
+    recognition.start();
+  } catch (error) {
+    updateVoiceUi(state.voice.listening ? "listening" : "mic starting");
+  }
+}
+
+function stopVoice() {
+  const recognition = ensureVoice();
+  state.voice.desired = false;
+  state.voice.manuallyStopping = true;
+  updateVoiceUi("voice ready");
+  try {
+    recognition?.stop();
+  } catch (error) {
+    state.voice.listening = false;
+  }
+}
+
+function toggleVoice() {
+  if (state.voice.desired || state.voice.listening) stopVoice();
+  else startVoice();
 }
 
 function startAmbient() {
@@ -789,9 +1113,18 @@ $("#prompt").addEventListener("keydown", (event) => {
 document.querySelectorAll("[data-view]").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.view || "panel"));
 });
-document.querySelectorAll("[data-intent]").forEach((button) => {
-  button.addEventListener("click", () => toggleIntent(button.dataset.intent || ""));
+
+$("#providerSelect").addEventListener("change", handleProviderChange);
+$("#modelSelect").addEventListener("change", handleModelChange);
+$("#routeSelect").addEventListener("change", (event) => {
+  state.engine.route = event.currentTarget.value || "auto";
+  $("#prompt").focus();
 });
+$("#agentSelect").addEventListener("change", (event) => {
+  state.engine.agentId = event.currentTarget.value || "";
+  $("#prompt").focus();
+});
+$("#voiceButton").addEventListener("click", toggleVoice);
 
 $("#searchButton").addEventListener("click", () => {
   setView("chat");

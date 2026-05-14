@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Crypt</title>
+    <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
@@ -43,6 +44,7 @@
             <button class="nav-item" type="button" data-view="terminal">Terminal</button>
             <button class="nav-item" type="button" data-view="jobs">Jobs</button>
             <button class="nav-item" type="button" data-view="missions">Missions</button>
+            <button class="nav-item" type="button" data-view="agents">Agents</button>
           </section>
           <section>
             <h2>Knowledge</h2>
@@ -102,20 +104,43 @@
 
         <form id="promptForm" class="composer">
           <div class="composer-shell">
-            <div class="composer-tools" aria-label="Optional intent hints">
-              <button class="intent-toggle" type="button" data-intent="web">Web</button>
-              <button class="intent-toggle" type="button" data-intent="files">Files</button>
-              <button class="intent-toggle" type="button" data-intent="build">Build</button>
-              <button class="intent-toggle" type="button" data-intent="auto">Auto</button>
-            </div>
             <div class="composer-main">
+              <button id="voiceButton" class="voice-button" type="button" aria-pressed="false" aria-label="Speak to Crypt">
+                <span aria-hidden="true">mic</span>
+              </button>
               <span class="prompt-mark" aria-hidden="true">&gt;</span>
-              <textarea id="prompt" rows="1" placeholder="Ask Crypt to do anything"></textarea>
+              <textarea id="prompt" rows="1" placeholder="Say it. I got you."></textarea>
               <button id="sendButton" type="submit" aria-label="Send message">Send</button>
             </div>
             <div class="composer-meta">
+              <div class="engine-controls" aria-label="Engine controls">
+                <label>
+                  <span>Provider</span>
+                  <select id="providerSelect"></select>
+                </label>
+                <label>
+                  <span>Model</span>
+                  <select id="modelSelect"></select>
+                </label>
+                <label>
+                  <span>Route</span>
+                  <select id="routeSelect">
+                    <option value="auto">Crypt decides</option>
+                    <option value="think">Think</option>
+                    <option value="build">Build</option>
+                    <option value="review">Review</option>
+                    <option value="fast">Fast</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Agent</span>
+                  <select id="agentSelect">
+                    <option value="">No saved agents</option>
+                  </select>
+                </label>
+              </div>
               <span id="enginePill">crypt</span>
-              <span id="intentPill">autopilot</span>
+              <span id="voiceStatus">voice ready</span>
             </div>
           </div>
         </form>

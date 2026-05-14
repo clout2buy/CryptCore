@@ -21,6 +21,8 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         handler_obj.server = server
         web_snapshot = handler_obj._snapshot()
         assert web_snapshot["workspace"] == str(workspace.resolve())
+        assert "agentProfiles" in web_snapshot
+        assert "agentDefinitions" in web_snapshot
         json.dumps(web_snapshot)
     finally:
         server.server_close()
@@ -52,8 +54,10 @@ def test_webui_static_is_chat_first():
     assert "Crypt Workspace" in html
     assert "Core" in html
     assert "composer-shell" in html
-    assert "data-intent=\"web\"" in html
+    assert "voiceButton" in html
+    assert "providerSelect" in html
     assert "data-view=\"missions\"" in html
+    assert "data-view=\"agents\"" in html
     assert "surface-dock" not in html
     assert "Skill Forge" not in html
     assert "Start a business" not in html
@@ -62,9 +66,10 @@ def test_webui_static_is_chat_first():
     assert "approvalRequested" in script
     assert "coreFeatures" in script
     assert "renderCurrentView" in script
+    assert "syncEngineControls" in script
     assert "data-message-id" in script
     assert "renderView = false" in script
-    assert "Crypt UI intent hints" not in html
+    assert "Crypt runtime hints" not in html
 
 
 def test_webui_core_features_include_hermes_style_sections(monkeypatch, tmp_path: Path):
@@ -89,6 +94,7 @@ def test_webui_core_features_include_hermes_style_sections(monkeypatch, tmp_path
         "Chat",
         "Sessions",
         "Profiles",
+        "Agents",
         "Office",
         "Models",
         "Providers",
@@ -113,8 +119,8 @@ def test_webui_autonomy_interval(monkeypatch):
 
 def test_webui_prompt_intents_are_sanitized():
     assert webui._intent_hints(["web", "bad", "build", "web"]) == ["web", "build"]
-    text = webui._prompt_with_intents("Find leads", ["web", "auto"])
+    text = webui._prompt_with_context("Find leads", ["web", "auto"])
 
     assert text.startswith("Find leads")
-    assert "Crypt UI intent hints" in text
+    assert "Crypt runtime hints" in text
     assert "web research" in text
