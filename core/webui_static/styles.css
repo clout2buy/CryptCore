@@ -606,6 +606,78 @@ select option {
   background: rgba(136, 167, 255, .10);
 }
 
+.live-timeline {
+  display: grid;
+  gap: 6px;
+  width: min(680px, 100%);
+  margin-top: -8px;
+}
+
+.message.user .live-timeline {
+  display: none;
+}
+
+.live-line {
+  display: grid;
+  grid-template-columns: auto minmax(86px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 31px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .035);
+  padding: 6px 9px;
+  color: var(--muted);
+  animation: rise .18s ease both;
+}
+
+.live-line span {
+  min-width: 64px;
+  border-radius: 999px;
+  background: rgba(255, 155, 84, .10);
+  color: var(--orange-hot);
+  padding: 3px 7px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .11em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.live-line b,
+.live-line em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-line b {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.live-line em {
+  font-size: 12px;
+  font-style: normal;
+}
+
+.live-line.running {
+  border-color: rgba(255, 155, 84, .18);
+  box-shadow: 0 0 28px rgba(255, 107, 53, .08);
+}
+
+.live-line.done span {
+  background: rgba(77, 230, 196, .10);
+  color: var(--mint);
+}
+
+.live-line.failed span {
+  background: rgba(255, 99, 132, .10);
+  color: #ff9aae;
+}
+
 .typing .bubble::after {
   content: "";
   display: inline-block;
@@ -1563,6 +1635,20 @@ select option {
 
   .message {
     max-width: 100%;
+  }
+
+  .live-line {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .live-line span {
+    width: max-content;
+  }
+
+  .live-line b,
+  .live-line em {
+    white-space: normal;
   }
 
   .composer {

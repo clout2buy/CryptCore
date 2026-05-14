@@ -397,7 +397,7 @@ function syncVoiceOutputControls(snapshot = state.snapshot) {
     const options = voices.length
       ? voices.map((voice) => ({
           value: voice.id,
-          label: `${voice.label || voice.id} ${voice.accent || ""}`.trim(),
+          label: `${voice.label || voice.id} ${voice.accent || ""}${voice.style ? ` · ${voice.style}` : ""}`.trim(),
         }))
       : [{ value: state.voiceOut.voice, label: "Kokoro" }];
     const selected = voices.some((voice) => voice.id === state.voiceOut.voice)
@@ -830,7 +830,24 @@ function messageMarkup(message) {
     <article class="message ${escapeHtml(message.role)}${message.typing ? " typing" : ""}" data-message-id="${uiId}">
       <span class="message-label">${escapeHtml(message.label || (message.role === "user" ? "You" : "Crypt"))}</span>
       <div class="bubble">${escapeHtml(message.text || (message.typing ? "Working on it." : ""))}</div>
+      ${liveTimelineMarkup(message.live)}
     </article>
+  `;
+}
+
+function liveTimelineMarkup(items = []) {
+  const live = (items || []).slice(-10);
+  if (!live.length) return "";
+  return `
+    <div class="live-timeline">
+      ${live.map((item) => `
+        <div class="live-line ${escapeHtml(item.status || "")}">
+          <span>${escapeHtml(item.kind || "live")}</span>
+          <b>${escapeHtml(item.title || "")}</b>
+          <em>${escapeHtml(item.body || "")}</em>
+        </div>
+      `).join("")}
+    </div>
   `;
 }
 
@@ -938,8 +955,96 @@ function updateMessageNode(message) {
   }
   const bubble = node.querySelector(".bubble");
   if (bubble) bubble.textContent = message.text || (message.typing ? "Working on it." : "");
+  const existingLive = node.querySelector(".live-timeline");
+  const nextLive = liveTimelineMarkup(message.live);
+  if (existingLive) existingLive.remove();
+  if (nextLive) node.insertAdjacentHTML("beforeend", nextLive);
   node.className = `message ${message.role}${message.typing ? " typing" : ""}`;
   scrollFeed();
+}
+
+function appendLiveEvent(id, item) {
+  const targetSessionId = state.taskSessions[id];
+  const entry = {
+    kind: item.kind || "live",
+    title: oneLine(item.title || "", 64),
+    body: oneLine(item.body || "", 180),
+    status: item.status || "",
+    at: Date.now(),
+  };
+  if (targetSessionId && targetSessionId !== state.currentSessionId) {
+    const session = state.sessions.find((candidate) => candidate.id === targetSessionId);
+    if (session) {
+      const messages = session.messages || [];
+      let message = messages.find((candidate) => candidate.id === id && candidate.role === "assistant");
+      if (!message) {
+        message = { id, role: "assistant", label: "Crypt", text: "", uiId: `stored-${id}`, live: [] };
+        messages.push(message);
+      }
+      message.live = mergeLiveItems(message.live, entry);
+      session.messages = messages.slice(-MAX_SESSION_MESSAGES);
+      session.updatedAt = Date.now();
+      saveChatSessions();
+    }
+    return;
+  }
+  let message = state.messages.find((candidate) => candidate.id === id && candidate.role === "assistant");
+  if (!message) {
+    message = { id, role: "assistant", label: "Crypt", text: "", typing: true, live: [] };
+    ensureMessageId(message);
+    state.messages.push(message);
+  }
+  message.live = mergeLiveItems(message.live, entry);
+  persistCurrentSession(false);
+  if (state.currentView === "chat") updateMessageNode(message);
+}
+
+function mergeLiveItems(items = [], entry) {
+  const current = [...(items || [])];
+  const last = current[current.length - 1];
+  if (
+    last &&
+    last.kind === entry.kind &&
+    last.title === entry.title &&
+    last.body === entry.body &&
+    last.status === entry.status
+  ) {
+    current[current.length - 1] = { ...last, at: entry.at };
+    return current.slice(-10);
+  }
+  return [...current, entry].slice(-10);
+}
+
+function finishLiveEvents(id) {
+  const targetSessionId = state.taskSessions[id];
+  if (targetSessionId && targetSessionId !== state.currentSessionId) {
+    const session = state.sessions.find((candidate) => candidate.id === targetSessionId);
+    const message = (session?.messages || []).find((candidate) => candidate.id === id && candidate.role === "assistant");
+    if (!message?.live?.length) return;
+    message.live = message.live.map((item) => (
+      item.status === "running" ? { ...item, status: "done" } : item
+    ));
+    session.updatedAt = Date.now();
+    saveChatSessions();
+    return;
+  }
+  const message = state.messages.find((candidate) => candidate.id === id && candidate.role === "assistant");
+  if (!message?.live?.length) return;
+  message.live = message.live.map((item) => (
+    item.status === "running" ? { ...item, status: "done" } : item
+  ));
+  persistCurrentSession(false);
+  if (state.currentView === "chat") updateMessageNode(message);
+}
+
+function currentAssistantText(id) {
+  const targetSessionId = state.taskSessions[id];
+  if (targetSessionId && targetSessionId !== state.currentSessionId) {
+    const session = state.sessions.find((candidate) => candidate.id === targetSessionId);
+    const message = (session?.messages || []).find((candidate) => candidate.id === id && candidate.role === "assistant");
+    return message?.text || "";
+  }
+  return state.messages.find((candidate) => candidate.id === id && candidate.role === "assistant")?.text || "";
 }
 
 function addActivity(title, body = "") {
@@ -981,7 +1086,25 @@ function handleEvent(event) {
       state.busy = true;
       setStatus("Working");
       updateAssistantMessage(id, "", { typing: true });
+      appendLiveEvent(id, { kind: "thinking", title: "Thinking", body: "Figuring out the route.", status: "running" });
       addActivity("Started", event.prompt || "New request");
+      break;
+    case "taskProgress":
+      appendLiveEvent(id, {
+        kind: event.phase || "progress",
+        title: event.phase === "provider" ? "Engine" : "Working",
+        body: event.text || "",
+        status: "running",
+      });
+      addActivity(event.phase || "Progress", event.text || "");
+      break;
+    case "thinkingDelta":
+      appendLiveEvent(id, {
+        kind: "thinking",
+        title: "Thinking",
+        body: "Reasoning stream active.",
+        status: "running",
+      });
       break;
     case "assistantDelta":
       updateAssistantMessage(id, event.text || "", { append: true, typing: true });
@@ -989,7 +1112,8 @@ function handleEvent(event) {
     case "taskFinished":
       state.busy = false;
       setStatus("Ready");
-      updateAssistantMessage(id, event.text || "Done.", { typing: false });
+      finishLiveEvents(id);
+      updateAssistantMessage(id, event.text || currentAssistantText(id) || "Done.", { typing: false });
       maybeSpeak(event.text || "").catch((error) => addActivity("Voice", error.message));
       delete state.taskSessions[id];
       if (event.snapshot) state.snapshot = event.snapshot;
@@ -1000,22 +1124,57 @@ function handleEvent(event) {
     case "taskFailed":
       state.busy = false;
       setStatus("Needs attention");
+      appendLiveEvent(id, { kind: "error", title: "Stopped", body: event.error || "", status: "failed" });
       updateAssistantMessage(id, event.error || "Something failed.", { typing: false });
       delete state.taskSessions[id];
       addActivity("Stopped", event.error || "");
       break;
+    case "toolProgress":
+      appendLiveEvent(id, {
+        kind: "tool",
+        title: friendlyToolName(event.tool),
+        body: event.text || "Receiving tool input.",
+        status: "running",
+      });
+      addActivity(friendlyToolName(event.tool), event.text || "");
+      break;
     case "toolCall":
+    case "toolStarted":
+      appendLiveEvent(id, {
+        kind: "tool",
+        title: friendlyToolName(event.tool),
+        body: event.text || event.callId || "Tool started.",
+        status: "running",
+      });
       addActivity(friendlyToolName(event.tool), event.text || "");
       break;
     case "toolResult":
+      appendLiveEvent(id, {
+        kind: "tool",
+        title: event.ok === false ? "Tool failed" : "Tool finished",
+        body: textFrom(event),
+        status: event.ok === false ? "failed" : "done",
+      });
       addActivity(event.ok === false ? "Tool failed" : "Tool finished", textFrom(event));
       break;
     case "approvalRequested":
       showApproval(event);
+      appendLiveEvent(id, {
+        kind: "approval",
+        title: "Permission needed",
+        body: event.text || event.question || "",
+        status: "running",
+      });
       addActivity("Waiting for permission", event.text || event.question || "");
       break;
     case "approvalResolved":
       hideApproval();
+      appendLiveEvent(id, {
+        kind: "approval",
+        title: event.approved ? "Approved" : "Denied",
+        body: event.text || "",
+        status: event.approved ? "done" : "failed",
+      });
       addActivity(event.approved ? "Approved" : "Denied", event.text || "");
       break;
     case "commandResult":
@@ -1111,6 +1270,8 @@ async function sendPrompt(text) {
   if (!trimmed || state.busy) return;
   const requestId = `web-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const sessionId = currentSession().id;
+  if (state.voice.desired || state.voice.listening) stopVoice();
+  stopVoicePlayback();
   $("#prompt").value = "";
   resizePrompt();
   pushMessage({ role: "user", label: "You", text: trimmed });
@@ -1346,6 +1507,7 @@ function startVoice() {
 function stopVoice() {
   const recognition = ensureVoice();
   state.voice.desired = false;
+  state.voice.listening = false;
   state.voice.manuallyStopping = true;
   updateVoiceUi("voice ready");
   try {
@@ -1384,6 +1546,7 @@ async function testVoiceOutput() {
 
 async function maybeSpeak(text) {
   if (!state.voiceOut.enabled) return;
+  if (state.voice.desired || state.voice.listening) stopVoice();
   await speakText(text, { force: false });
 }
 
@@ -1417,13 +1580,16 @@ async function speakText(text, { force = false } = {}) {
 }
 
 async function playVoiceAudio(audioUrl) {
-  if (state.voiceOut.audio) {
-    state.voiceOut.audio.pause();
-    state.voiceOut.audio = null;
-  }
+  stopVoicePlayback();
   const audio = new Audio(`${audioUrl}${audioUrl.includes("?") ? "&" : "?"}t=${Date.now()}`);
   state.voiceOut.audio = audio;
   await audio.play();
+}
+
+function stopVoicePlayback() {
+  if (!state.voiceOut.audio) return;
+  state.voiceOut.audio.pause();
+  state.voiceOut.audio = null;
 }
 
 function setTtsStatus(text) {

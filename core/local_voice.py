@@ -19,14 +19,29 @@ MAX_TEXT_CHARS = 1_400
 
 
 VOICE_CHOICES = [
-    {"id": "af_heart", "label": "Heart", "accent": "US", "grade": "A"},
-    {"id": "af_bella", "label": "Bella", "accent": "US", "grade": "A-"},
-    {"id": "af_nicole", "label": "Nicole", "accent": "US", "grade": "B-"},
-    {"id": "af_sarah", "label": "Sarah", "accent": "US", "grade": "C+"},
-    {"id": "am_fenrir", "label": "Fenrir", "accent": "US", "grade": "C+"},
-    {"id": "am_michael", "label": "Michael", "accent": "US", "grade": "C+"},
-    {"id": "bf_emma", "label": "Emma", "accent": "UK", "grade": "B-"},
-    {"id": "bm_fable", "label": "Fable", "accent": "UK", "grade": "C"},
+    {"id": "af_heart", "label": "Heart", "accent": "US", "grade": "A", "style": "warm natural"},
+    {"id": "af_bella", "label": "Bella", "accent": "US", "grade": "A-", "style": "expressive"},
+    {"id": "af_nicole", "label": "Nicole", "accent": "US", "grade": "B-", "style": "soft whisper"},
+    {"id": "am_puck", "label": "Puck", "accent": "US", "grade": "C+", "style": "bright energetic"},
+    {"id": "am_fenrir", "label": "Fenrir", "accent": "US", "grade": "C+", "style": "deep"},
+    {"id": "bf_isabella", "label": "Isabella", "accent": "UK", "grade": "C", "style": "clean british"},
+    {"id": "bm_george", "label": "George", "accent": "UK", "grade": "C", "style": "grounded british"},
+    {"id": "af_alloy", "label": "Alloy", "accent": "US", "grade": "C", "style": "clear"},
+    {"id": "af_aoede", "label": "Aoede", "accent": "US", "grade": "C+", "style": "melodic"},
+    {"id": "af_kore", "label": "Kore", "accent": "US", "grade": "C+", "style": "crisp"},
+    {"id": "af_nova", "label": "Nova", "accent": "US", "grade": "C", "style": "modern"},
+    {"id": "af_river", "label": "River", "accent": "US", "grade": "D", "style": "smooth"},
+    {"id": "af_sarah", "label": "Sarah", "accent": "US", "grade": "C+", "style": "casual"},
+    {"id": "af_sky", "label": "Sky", "accent": "US", "grade": "C-", "style": "light"},
+    {"id": "am_echo", "label": "Echo", "accent": "US", "grade": "D", "style": "resonant"},
+    {"id": "am_eric", "label": "Eric", "accent": "US", "grade": "D", "style": "direct"},
+    {"id": "am_liam", "label": "Liam", "accent": "US", "grade": "D", "style": "friendly"},
+    {"id": "am_michael", "label": "Michael", "accent": "US", "grade": "C+", "style": "warm"},
+    {"id": "am_onyx", "label": "Onyx", "accent": "US", "grade": "D", "style": "rich"},
+    {"id": "bf_emma", "label": "Emma", "accent": "UK", "grade": "B-", "style": "polished"},
+    {"id": "bm_daniel", "label": "Daniel", "accent": "UK", "grade": "C", "style": "calm"},
+    {"id": "bm_fable", "label": "Fable", "accent": "UK", "grade": "C", "style": "storyteller"},
+    {"id": "bm_lewis", "label": "Lewis", "accent": "UK", "grade": "D+", "style": "steady"},
 ]
 
 

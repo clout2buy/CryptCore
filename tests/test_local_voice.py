@@ -16,6 +16,13 @@ def test_local_voice_status_reports_missing_setup(monkeypatch, tmp_path: Path):
     assert status.default_voice == "af_heart"
 
 
+def test_local_voice_exposes_distinct_voice_choices():
+    voice_ids = {voice["id"] for voice in local_voice.VOICE_CHOICES}
+
+    assert {"af_heart", "af_bella", "af_nicole", "am_puck", "am_fenrir", "bf_isabella", "bm_george"} <= voice_ids
+    assert all(voice.get("style") for voice in local_voice.VOICE_CHOICES)
+
+
 def test_local_voice_speak_uses_kokoro_runner(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
     local_voice.root().mkdir(parents=True)
