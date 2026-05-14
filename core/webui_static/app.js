@@ -44,6 +44,7 @@ const state = {
     eventsStarted: false,
     snapshotStarted: false,
   },
+  liveTimers: {},
 };
 
 const CHAT_STORE_KEY = "crypt.webui.chatSessions.v2";
@@ -961,12 +962,26 @@ function updateMessageNode(message) {
   }
   const bubble = node.querySelector(".bubble");
   if (bubble) bubble.textContent = message.text || (message.typing ? "Working on it." : "");
-  const existingLive = node.querySelector(".live-timeline");
-  const nextLive = liveTimelineMarkup(message.live);
-  if (existingLive) existingLive.remove();
-  if (nextLive) node.insertAdjacentHTML("beforeend", nextLive);
+  renderLiveTimeline(node, message.live);
   node.className = `message ${message.role}${message.typing ? " typing" : ""}`;
   scrollFeed();
+}
+
+function renderLiveTimeline(node, items = []) {
+  const existingLive = node.querySelector(".live-timeline");
+  const nextLive = liveTimelineMarkup(items);
+  if (!nextLive) {
+    if (existingLive) existingLive.remove();
+    return;
+  }
+  if (!existingLive) {
+    node.insertAdjacentHTML("beforeend", nextLive);
+    return;
+  }
+  const template = document.createElement("template");
+  template.innerHTML = nextLive.trim();
+  const next = template.content.firstElementChild;
+  if (next) existingLive.innerHTML = next.innerHTML;
 }
 
 function appendLiveEvent(id, item) {
@@ -976,6 +991,7 @@ function appendLiveEvent(id, item) {
     title: oneLine(item.title || "", 64),
     body: oneLine(item.body || "", 180),
     status: item.status || "",
+    key: item.key || "",
     at: Date.now(),
   };
   if (targetSessionId && targetSessionId !== state.currentSessionId) {
@@ -1007,6 +1023,13 @@ function appendLiveEvent(id, item) {
 
 function mergeLiveItems(items = [], entry) {
   const current = [...(items || [])];
+  if (entry.key) {
+    const index = current.findIndex((item) => item.key === entry.key);
+    if (index >= 0) {
+      current[index] = { ...current[index], ...entry };
+      return current.slice(-10);
+    }
+  }
   const last = current[current.length - 1];
   if (
     last &&
@@ -1053,6 +1076,37 @@ function currentAssistantText(id) {
   return state.messages.find((candidate) => candidate.id === id && candidate.role === "assistant")?.text || "";
 }
 
+function startLivePulse(id) {
+  stopLivePulse(id);
+  const started = Date.now();
+  const lines = [
+    "Thinking through the request.",
+    "Checking the route and context.",
+    "Waiting on the model stream.",
+    "Watching for tool calls.",
+  ];
+  let tick = 0;
+  const update = () => {
+    const elapsed = Math.max(1, Math.round((Date.now() - started) / 1000));
+    appendLiveEvent(id, {
+      key: "thinking-pulse",
+      kind: "thinking",
+      title: "Thinking",
+      body: `${lines[tick % lines.length]} ${elapsed}s`,
+      status: "running",
+    });
+    tick += 1;
+  };
+  update();
+  state.liveTimers[id] = window.setInterval(update, 1200);
+}
+
+function stopLivePulse(id) {
+  const timer = state.liveTimers[id];
+  if (timer) window.clearInterval(timer);
+  delete state.liveTimers[id];
+}
+
 function addActivity(title, body = "") {
   const item = document.createElement("article");
   item.className = "activity-item";
@@ -1092,11 +1146,12 @@ function handleEvent(event) {
       state.busy = true;
       setStatus("Working");
       updateAssistantMessage(id, "", { typing: true });
-      appendLiveEvent(id, { kind: "thinking", title: "Thinking", body: "Figuring out the route.", status: "running" });
+      startLivePulse(id);
       addActivity("Started", event.prompt || "New request");
       break;
     case "taskProgress":
       appendLiveEvent(id, {
+        key: `progress:${event.phase || "work"}`,
         kind: event.phase || "progress",
         title: event.phase === "provider" ? "Engine" : "Working",
         body: event.text || "",
@@ -1106,6 +1161,7 @@ function handleEvent(event) {
       break;
     case "thinkingDelta":
       appendLiveEvent(id, {
+        key: "thinking-stream",
         kind: "thinking",
         title: "Thinking",
         body: "Reasoning stream active.",
@@ -1118,6 +1174,7 @@ function handleEvent(event) {
     case "taskFinished":
       state.busy = false;
       setStatus("Ready");
+      stopLivePulse(id);
       finishLiveEvents(id);
       updateAssistantMessage(id, event.text || currentAssistantText(id) || "Done.", { typing: false });
       maybeSpeak(event.text || "").catch((error) => addActivity("Voice", error.message));
@@ -1130,6 +1187,7 @@ function handleEvent(event) {
     case "taskFailed":
       state.busy = false;
       setStatus("Needs attention");
+      stopLivePulse(id);
       appendLiveEvent(id, { kind: "error", title: "Stopped", body: event.error || "", status: "failed" });
       updateAssistantMessage(id, event.error || "Something failed.", { typing: false });
       delete state.taskSessions[id];
@@ -1137,6 +1195,7 @@ function handleEvent(event) {
       break;
     case "toolProgress":
       appendLiveEvent(id, {
+        key: `tool:${event.callId || event.tool || "progress"}`,
         kind: "tool",
         title: friendlyToolName(event.tool),
         body: event.text || "Receiving tool input.",
@@ -1147,6 +1206,7 @@ function handleEvent(event) {
     case "toolCall":
     case "toolStarted":
       appendLiveEvent(id, {
+        key: `tool:${event.callId || event.tool || "started"}`,
         kind: "tool",
         title: friendlyToolName(event.tool),
         body: event.text || event.callId || "Tool started.",
@@ -1156,6 +1216,7 @@ function handleEvent(event) {
       break;
     case "toolResult":
       appendLiveEvent(id, {
+        key: `tool:${event.callId || event.tool || "result"}`,
         kind: "tool",
         title: event.ok === false ? "Tool failed" : "Tool finished",
         body: textFrom(event),

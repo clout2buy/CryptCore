@@ -45,6 +45,7 @@ class CryptWebServer(ThreadingHTTPServer):
         super().__init__(server_address, CryptWebHandler)
         self.cwd = Path(cwd).expanduser().resolve()
         self.events: list[dict] = []
+        self._event_seq = 0
         self.event_lock = threading.Lock()
         self.daemon = app_daemon.AppDaemon(emit=self.emit_event, cwd=str(self.cwd))
         self._autonomy_interval = max(0, int(autonomy_interval))
@@ -61,7 +62,11 @@ class CryptWebServer(ThreadingHTTPServer):
     def emit_event(self, event: dict) -> None:
         with self.event_lock:
             event = dict(event)
-            event.setdefault("seq", len(self.events) + 1)
+            if "seq" in event:
+                self._event_seq = max(self._event_seq, _int(event.get("seq"), self._event_seq))
+            else:
+                self._event_seq += 1
+                event["seq"] = self._event_seq
             self.events.append(event)
             if len(self.events) > MAX_EVENTS:
                 self.events[:] = self.events[-MAX_EVENTS:]

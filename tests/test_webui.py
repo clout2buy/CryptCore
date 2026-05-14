@@ -48,6 +48,24 @@ def test_webui_event_buffer(monkeypatch, tmp_path: Path):
         server.server_close()
 
 
+def test_webui_event_sequence_stays_monotonic_after_buffer_wrap(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    server = webui.make_server("127.0.0.1", 0, cwd=workspace)
+    try:
+        for index in range(webui.MAX_EVENTS + 7):
+            server.emit_event({"event": "demo", "index": index})
+
+        assert len(server.events) == webui.MAX_EVENTS
+        assert server.events[-1]["seq"] == webui.MAX_EVENTS + 7
+        latest = server.events_since(webui.MAX_EVENTS + 6)
+        assert len(latest) == 1
+        assert latest[0]["index"] == webui.MAX_EVENTS + 6
+    finally:
+        server.server_close()
+
+
 def test_webui_static_is_chat_first():
     html = resources.files("core.webui_static").joinpath("index.html").read_text(encoding="utf-8")
     script = resources.files("core.webui_static").joinpath("app.js").read_text(encoding="utf-8")
@@ -77,6 +95,8 @@ def test_webui_static_is_chat_first():
     assert "stopVoicePlayback" in script
     assert "pollEventsOnce" in script
     assert "pollSnapshotOnce" in script
+    assert "startLivePulse" in script
+    assert "renderLiveTimeline" in script
     assert "New Mission" not in script
     assert "Something Crypt should remember permanently" not in script
     assert "surface-dock" not in html
