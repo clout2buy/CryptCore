@@ -33,6 +33,13 @@ const state = {
     restartAttempts: 0,
     supported: null,
   },
+  voiceOut: {
+    enabled: localStorage.getItem("crypt.voice.output.enabled") === "1",
+    voice: localStorage.getItem("crypt.voice.output.voice") || "af_heart",
+    speed: Number(localStorage.getItem("crypt.voice.output.speed") || "0.96"),
+    audio: null,
+    busy: false,
+  },
 };
 
 const CHAT_STORE_KEY = "crypt.webui.chatSessions.v2";
@@ -239,6 +246,7 @@ function renderShell(snapshot = state.snapshot) {
   renderSessionList();
   syncEngineControls(snapshot);
   syncAgentControl(snapshot);
+  syncVoiceOutputControls(snapshot);
 
   const coreKey = stableJson(snapshot.coreFeatures || []);
   if (coreKey !== state.shellKeys.core) {
@@ -373,6 +381,50 @@ function syncAgentControl(snapshot = state.snapshot) {
   if (key !== state.shellKeys.agents) {
     state.shellKeys.agents = key;
     select.innerHTML = optionMarkup(options, state.engine.agentId);
+  }
+}
+
+function syncVoiceOutputControls(snapshot = state.snapshot) {
+  const voiceStatus = snapshot?.voice || {};
+  const ready = Boolean(voiceStatus.ready);
+  const voices = voiceStatus.voices || [];
+  const select = $("#ttsVoiceSelect");
+  const toggle = $("#ttsToggle");
+  const test = $("#ttsTestButton");
+  const status = $("#ttsStatus");
+
+  if (select) {
+    const options = voices.length
+      ? voices.map((voice) => ({
+          value: voice.id,
+          label: `${voice.label || voice.id} ${voice.accent || ""}`.trim(),
+        }))
+      : [{ value: state.voiceOut.voice, label: "Kokoro" }];
+    const selected = voices.some((voice) => voice.id === state.voiceOut.voice)
+      ? state.voiceOut.voice
+      : (voiceStatus.default_voice || "af_heart");
+    state.voiceOut.voice = selected;
+    const key = stableJson({ options, selected });
+    if (select.dataset.key !== key) {
+      select.dataset.key = key;
+      select.innerHTML = optionMarkup(options, selected);
+    }
+    select.value = selected;
+    select.disabled = !ready;
+  }
+  if (toggle) {
+    toggle.disabled = !ready;
+    toggle.classList.toggle("active", ready && state.voiceOut.enabled);
+    toggle.setAttribute("aria-pressed", String(ready && state.voiceOut.enabled));
+    toggle.textContent = state.voiceOut.enabled ? "Speak on" : "Speak off";
+  }
+  if (test) {
+    test.disabled = !ready || state.voiceOut.busy;
+    test.textContent = state.voiceOut.busy ? "Voice..." : "Test";
+  }
+  if (status && !state.voiceOut.busy) {
+    const missing = voiceStatus.missing || [];
+    status.textContent = ready ? "kokoro ready" : `kokoro setup needed${missing.length ? `: ${missing[0]}` : ""}`;
   }
 }
 
@@ -938,6 +990,7 @@ function handleEvent(event) {
       state.busy = false;
       setStatus("Ready");
       updateAssistantMessage(id, event.text || "Done.", { typing: false });
+      maybeSpeak(event.text || "").catch((error) => addActivity("Voice", error.message));
       delete state.taskSessions[id];
       if (event.snapshot) state.snapshot = event.snapshot;
       renderShell();
@@ -1307,6 +1360,77 @@ function toggleVoice() {
   else startVoice();
 }
 
+function toggleVoiceOutput() {
+  const ready = Boolean(state.snapshot?.voice?.ready);
+  if (!ready) {
+    setTtsStatus("run setup first");
+    return;
+  }
+  state.voiceOut.enabled = !state.voiceOut.enabled;
+  localStorage.setItem("crypt.voice.output.enabled", state.voiceOut.enabled ? "1" : "0");
+  syncVoiceOutputControls(state.snapshot);
+  if (state.voiceOut.enabled) testVoiceOutput();
+}
+
+function handleTtsVoiceChange(event) {
+  state.voiceOut.voice = event.currentTarget.value || "af_heart";
+  localStorage.setItem("crypt.voice.output.voice", state.voiceOut.voice);
+  syncVoiceOutputControls(state.snapshot);
+}
+
+async function testVoiceOutput() {
+  await speakText("Crypt voice is online. Local Kokoro is ready.", { force: true });
+}
+
+async function maybeSpeak(text) {
+  if (!state.voiceOut.enabled) return;
+  await speakText(text, { force: false });
+}
+
+async function speakText(text, { force = false } = {}) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (!clean || state.voiceOut.busy) return;
+  if (!force && !state.snapshot?.voice?.ready) return;
+  state.voiceOut.busy = true;
+  setTtsStatus("kokoro speaking");
+  syncVoiceOutputControls(state.snapshot);
+  try {
+    const data = await json("/api/voice/speak", {
+      method: "POST",
+      body: JSON.stringify({
+        text: clean,
+        voice: state.voiceOut.voice,
+        speed: state.voiceOut.speed,
+      }),
+    });
+    const audioUrl = data.speech?.audio_url || data.speech?.audioUrl;
+    if (!audioUrl) throw new Error("voice audio missing");
+    await playVoiceAudio(audioUrl);
+    setTtsStatus("kokoro ready");
+  } catch (error) {
+    setTtsStatus(error.message.includes("Kokoro voice is not ready") ? "kokoro setup needed" : oneLine(error.message, 42));
+    addActivity("Voice", error.message);
+  } finally {
+    state.voiceOut.busy = false;
+    syncVoiceOutputControls(state.snapshot);
+  }
+}
+
+async function playVoiceAudio(audioUrl) {
+  if (state.voiceOut.audio) {
+    state.voiceOut.audio.pause();
+    state.voiceOut.audio = null;
+  }
+  const audio = new Audio(`${audioUrl}${audioUrl.includes("?") ? "&" : "?"}t=${Date.now()}`);
+  state.voiceOut.audio = audio;
+  await audio.play();
+}
+
+function setTtsStatus(text) {
+  const node = $("#ttsStatus");
+  if (node) node.textContent = text;
+}
+
 function startAmbient() {
   if (state.animationStarted) return;
   state.animationStarted = true;
@@ -1385,6 +1509,9 @@ $("#agentSelect").addEventListener("change", (event) => {
   $("#prompt").focus();
 });
 $("#voiceButton").addEventListener("click", toggleVoice);
+$("#ttsToggle").addEventListener("click", toggleVoiceOutput);
+$("#ttsVoiceSelect").addEventListener("change", handleTtsVoiceChange);
+$("#ttsTestButton").addEventListener("click", testVoiceOutput);
 $("#sessionList").addEventListener("click", (event) => {
   const button = event.target.closest("[data-session-id]");
   if (button) switchChatSession(button.dataset.sessionId || "");

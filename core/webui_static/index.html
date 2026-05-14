@@ -139,8 +139,14 @@
                   </select>
                 </label>
               </div>
+              <div class="voice-output-controls" aria-label="Local voice output">
+                <button id="ttsToggle" class="voice-output-toggle" type="button" aria-pressed="false">Speak off</button>
+                <select id="ttsVoiceSelect" aria-label="Kokoro voice"></select>
+                <button id="ttsTestButton" class="voice-test-button" type="button">Test</button>
+              </div>
               <span id="enginePill">crypt</span>
               <span id="voiceStatus">voice ready</span>
+              <span id="ttsStatus">kokoro local</span>
             </div>
           </div>
         </form>

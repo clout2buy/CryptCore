@@ -23,6 +23,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert web_snapshot["workspace"] == str(workspace.resolve())
         assert "agentProfiles" in web_snapshot
         assert "agentDefinitions" in web_snapshot
+        assert "voice" in web_snapshot
         json.dumps(web_snapshot)
     finally:
         server.server_close()
@@ -55,6 +56,7 @@ def test_webui_static_is_chat_first():
     assert "Core" in html
     assert "composer-shell" in html
     assert "voiceButton" in html
+    assert "ttsTestButton" in html
     assert "providerSelect" in html
     assert "data-view=\"missions\"" in html
     assert "data-view=\"agents\"" in html
@@ -63,6 +65,8 @@ def test_webui_static_is_chat_first():
     assert "Passive Memory" in script
     assert "Autonomous Mission Control" in script
     assert "missionCreated" in script
+    assert "kokoro ready" in script
+    assert "af_heart" in script
     assert "New Mission" not in script
     assert "Something Crypt should remember permanently" not in script
     assert "surface-dock" not in html

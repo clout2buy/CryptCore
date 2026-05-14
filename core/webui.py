@@ -21,6 +21,7 @@ from . import (
     autonomy,
     goals,
     learning,
+    local_voice,
     mission_router,
     passive_memory,
     project_index,
@@ -133,6 +134,23 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         if path == "/api/agents":
             self._json({"agents": [profile.to_dict() for profile in agent_profiles.list_profiles(self.server.cwd)]})
             return
+        if path == "/api/voice":
+            self._json({"voice": local_voice.status().to_dict()})
+            return
+        if path.startswith("/api/voice/audio/"):
+            try:
+                audio_path = local_voice.audio_path(path.rsplit("/", 1)[-1])
+            except FileNotFoundError:
+                self._error(HTTPStatus.NOT_FOUND, "voice audio not found")
+                return
+            data = audio_path.read_bytes()
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "audio/wav")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         self._error(HTTPStatus.NOT_FOUND, "not found")
 
     def do_POST(self) -> None:  # noqa: N802 - stdlib handler API
@@ -228,6 +246,18 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                 )
             self._json({"agent": profile.to_dict()})
             return
+        if path == "/api/voice/speak":
+            try:
+                result = local_voice.speak(
+                    str(body.get("text") or ""),
+                    voice=str(body.get("voice") or local_voice.DEFAULT_VOICE),
+                    speed=float(body.get("speed") or local_voice.DEFAULT_SPEED),
+                )
+            except Exception as exc:
+                self._error(HTTPStatus.CONFLICT, f"{type(exc).__name__}: {exc}")
+                return
+            self._json({"speech": result.to_dict()})
+            return
         if path == "/api/command":
             command = str(body.get("command") or "").strip()
             request_id = str(body.get("id") or f"cmd-{uuid.uuid4().hex[:10]}")
@@ -319,6 +349,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
             "path": str(soul_path),
             "preferenceCount": soul_update.preference_count,
         }
+        snapshot["voice"] = local_voice.status().to_dict()
         snapshot["sessionsPreview"] = [_session_preview(item) for item in sessions.list_sessions(self.server.cwd)[:12]]
         snapshot["agentProfiles"] = [profile.to_dict() for profile in agent_profiles.list_profiles(self.server.cwd)]
         snapshot["agentDefinitions"] = _agent_definition_previews()
