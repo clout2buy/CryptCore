@@ -61,6 +61,9 @@ def test_webui_static_is_chat_first():
     assert "CHAT_STORE_KEY" in script
     assert "currentView: \"chat\"" in script
     assert "Passive Memory" in script
+    assert "Autonomous Mission Control" in script
+    assert "missionCreated" in script
+    assert "New Mission" not in script
     assert "Something Crypt should remember permanently" not in script
     assert "surface-dock" not in html
     assert "Skill Forge" not in html
@@ -128,3 +131,15 @@ def test_webui_prompt_intents_are_sanitized():
     assert text.startswith("Find leads")
     assert "Crypt runtime hints" in text
     assert "web research" in text
+
+
+def test_webui_prompt_context_includes_auto_mission(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    decision = webui.mission_router.observe(workspace, "Build a client outreach business and track revenue weekly.")
+
+    text = webui._prompt_with_context("Build this business", [], mission=decision)
+
+    assert "autonomous mission" in text
+    assert "do not ask the user to manage missions manually" in text

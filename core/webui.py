@@ -21,6 +21,7 @@ from . import (
     autonomy,
     goals,
     learning,
+    mission_router,
     passive_memory,
     project_index,
     reflection,
@@ -157,9 +158,24 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                             "soulChanged": memory_result.soul_changed,
                         }
                     )
+            try:
+                mission_result = mission_router.observe(self.server.cwd, text)
+            except Exception as exc:
+                mission_result = mission_router.MissionDecision(False)
+                self.server.emit_event({"event": "missionError", "error": f"{type(exc).__name__}: {exc}"})
+            else:
+                if mission_result.created and mission_result.goal:
+                    self.server.emit_event(
+                        {
+                            "event": "missionCreated",
+                            "goal": asdict(mission_result.goal),
+                            "text": mission_result.goal.title,
+                            "reason": mission_result.reason,
+                        }
+                    )
             intents = _intent_hints(body.get("intents"))
             profile = agent_profiles.get_profile(self.server.cwd, str(body.get("agentId") or ""))
-            prompt_text = _prompt_with_context(text, intents, profile)
+            prompt_text = _prompt_with_context(text, intents, profile, mission_result)
             request_id = str(body.get("id") or f"web-{uuid.uuid4().hex[:10]}")
             self.server.daemon.handle_command(
                 {
@@ -292,7 +308,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
             "url": f"http://{self.server.server_address[0]}:{self.server.server_address[1]}/",
         }
         snapshot["project"] = asdict(project_index.get(self.server.cwd))
-        snapshot["goals"] = [asdict(goal) for goal in goals.list_goals(self.server.cwd, include_all=True)[:8]]
+        snapshot["goals"] = [asdict(goal) for goal in goals.list_goals(self.server.cwd, include_all=True)[:20]]
         snapshot["lessonsPreview"] = [asdict(lesson) for lesson in learning.list_lessons(self.server.cwd)[:8]]
         snapshot["reflections"] = [asdict(item) for item in reflection.list_reflections(self.server.cwd, limit=5)]
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
@@ -402,7 +418,10 @@ def core_features(cwd: str | Path, snapshot: dict) -> list[dict]:
             "label": "Plan",
             "value": len(active_goals),
             "status": "goals",
-            "detail": _first_nonempty([goal.title for goal in active_goals[:2]], "Ask Crypt to plan, monitor, or break down work."),
+            "detail": _first_nonempty(
+                [goal.title for goal in active_goals[:2]],
+                "Crypt auto-creates missions from chat when work needs follow-through.",
+            ),
         },
         {
             "id": "sessions",
@@ -621,7 +640,12 @@ def _intent_hints(value: object) -> list[str]:
     return out
 
 
-def _prompt_with_context(text: str, intents: list[str], profile: agent_profiles.AgentProfile | None = None) -> str:
+def _prompt_with_context(
+    text: str,
+    intents: list[str],
+    profile: agent_profiles.AgentProfile | None = None,
+    mission: mission_router.MissionDecision | None = None,
+) -> str:
     hints: list[str] = []
     hint_map = {
         "web": "use web research if it helps",
@@ -638,6 +662,8 @@ def _prompt_with_context(text: str, intents: list[str], profile: agent_profiles.
                 "delegate with the matching built-in agent type when that helps"
             )
         )
+    if mission and mission.prompt_hint:
+        hints.append(mission.prompt_hint)
     if not hints:
         return text
     return f"{text}\n\n[Crypt runtime hints: {'; '.join(hints)}]"

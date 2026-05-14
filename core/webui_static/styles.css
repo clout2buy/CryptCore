@@ -884,6 +884,97 @@ select option {
   line-height: .98;
 }
 
+.eyebrow {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  min-height: 28px;
+  align-items: center;
+  border: 1px solid rgba(255, 155, 84, .24);
+  border-radius: 999px;
+  background: rgba(255, 155, 84, .08);
+  color: var(--orange-hot);
+  padding: 5px 11px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.mission-hero {
+  min-height: 288px;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  background:
+    radial-gradient(circle at 88% 16%, rgba(255, 107, 53, .18), transparent 30%),
+    radial-gradient(circle at 9% 92%, rgba(77, 230, 196, .12), transparent 31%),
+    var(--panel-2);
+}
+
+.mission-hero h3 {
+  max-width: 680px;
+  font-size: clamp(36px, 5vw, 61px);
+  letter-spacing: -.05em;
+}
+
+.mission-hero p {
+  max-width: 640px;
+  font-size: 15px;
+}
+
+.mission-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.mission-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.mission-state {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(77, 230, 196, .22);
+  border-radius: 999px;
+  background: rgba(77, 230, 196, .08);
+  color: var(--mint);
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.mission-principles {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.pill-row.compact {
+  margin-top: 2px;
+}
+
+.mission-row {
+  grid-template-columns: 96px minmax(180px, .9fr) minmax(0, 1.8fr);
+}
+
+.mission-row span {
+  width: max-content;
+  max-width: 100%;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .045);
+  padding: 5px 9px;
+}
+
 .data-list {
   display: grid;
   gap: 8px;

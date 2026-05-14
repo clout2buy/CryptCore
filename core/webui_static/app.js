@@ -45,7 +45,7 @@ const viewMeta = {
   files: ["Files", "Workspace Files"],
   terminal: ["Terminal", "Command Surface"],
   jobs: ["Jobs", "Runtime Work"],
-  missions: ["Missions", "Goals And Schedules"],
+  missions: ["Missions", "Autonomous Follow-Through"],
   agents: ["Agents", "Specialists"],
   memory: ["Memory", "Durable Memory"],
   skills: ["Skills", "Skill Library"],
@@ -214,6 +214,22 @@ function relativeTime(ts) {
   const hours = Math.floor(min / 60);
   if (hours < 24) return `${hours}h ago`;
   return `${Math.floor(hours / 24)}d ago`;
+}
+
+function reviewTime(ts) {
+  const value = Number(ts || 0);
+  if (!value) return "";
+  const delta = value - Date.now();
+  const abs = Math.abs(delta);
+  const min = Math.floor(abs / 60000);
+  const label = min < 1
+    ? "now"
+    : min < 60
+      ? `${min}m`
+      : Math.floor(min / 60) < 24
+        ? `${Math.floor(min / 60)}h`
+        : `${Math.floor(min / 1440)}d`;
+  return delta > 0 ? `in ${label}` : `${label} late`;
 }
 
 function renderShell(snapshot = state.snapshot) {
@@ -512,22 +528,53 @@ function jobsView(snapshot) {
 
 function missionsView(snapshot) {
   const goals = snapshot.goals || [];
+  const active = goals.filter((goal) => (goal.status || "active") === "active");
+  const watched = goals.filter((goal) => goal.cadence);
+  const due = watched.filter((goal) => Number(goal.next_review_at || 0) * 1000 <= Date.now());
   return `
     <section class="two-col">
-      <form id="goalForm" class="panel-card form-card">
-        <h3>New Mission</h3>
-        <input name="title" placeholder="Launch something, monitor revenue, build a tool...">
-        <input name="successMetric" placeholder="What counts as success?">
-        <input name="cadence" placeholder="Cadence: daily, weekly, Friday...">
-        <button type="submit">Create mission</button>
-      </form>
-      <div class="panel-card">
-        <h3>Autonomous Review</h3>
-        <p>Goals with cadence get reviewed by the safe autonomy loop.</p>
-        <button class="small-action" id="runAutonomyButton" type="button">Review now</button>
+      <div class="panel-card mission-hero">
+        <span class="eyebrow">Autonomous Mission Control</span>
+        <h3>Say the outcome. Crypt makes the mission.</h3>
+        <p>No forms, no ritual. When a normal chat needs follow-through, Crypt saves the mission, tracks review cadence, and keeps the next move in context.</p>
+        <div class="mission-stats">
+          ${statCard("Active", active.length)}
+          ${statCard("Watched", watched.length)}
+          ${statCard("Due", due.length)}
+        </div>
+        <div class="mission-actions">
+          <span class="mission-state">Auto-routing enabled</span>
+          <button class="small-action" id="runAutonomyButton" type="button">Force review</button>
+        </div>
+      </div>
+      <div class="panel-card mission-principles">
+        <h3>How Crypt Decides</h3>
+        <p>Mission creation is passive. Chat stays simple; durable work gets tracked underneath it.</p>
+        <div class="pill-row compact">
+          <span>Build</span>
+          <span>Launch</span>
+          <span>Monitor</span>
+          <span>Track income</span>
+          <span>Learn skill</span>
+          <span>Delegate agents</span>
+        </div>
       </div>
     </section>
-    <section class="data-list">${goals.map((goal) => row(goal.status || "Goal", goal.title, goal.success_metric || goal.cadence || goal.goal_id)).join("") || emptyRow("No missions yet")}</section>
+    <section class="data-list mission-list">${goals.map(missionRow).join("") || emptyRow("No missions yet")}</section>
+  `;
+}
+
+function missionRow(goal) {
+  const cadence = goal.cadence ? `${goal.cadence} review` : "as needed";
+  const next = Number(goal.next_review_at || 0)
+    ? `next ${reviewTime(Number(goal.next_review_at) * 1000)}`
+    : goal.goal_id;
+  return `
+    <article class="data-row mission-row">
+      <span>${escapeHtml(goal.status || "active")}</span>
+      <b>${escapeHtml(goal.title || "Untitled mission")}</b>
+      <p>${escapeHtml(goal.success_metric || cadence)} · ${escapeHtml(next)}</p>
+    </article>
   `;
 }
 
@@ -739,10 +786,6 @@ function attachViewHandlers() {
   document.querySelectorAll(".ask-button").forEach((button) => {
     button.addEventListener("click", () => sendPrompt(button.dataset.ask || button.textContent || ""));
   });
-  const goalForm = $("#goalForm");
-  if (goalForm) {
-    goalForm.addEventListener("submit", submitGoal);
-  }
   const lessonForm = $("#lessonForm");
   if (lessonForm) {
     lessonForm.addEventListener("submit", submitLesson);
@@ -931,6 +974,13 @@ function handleEvent(event) {
       break;
     case "memoryLearned":
       addActivity("Memory updated", oneLine(event.text || "Saved a useful signal.", 160));
+      break;
+    case "missionCreated":
+      addActivity("Mission created", oneLine(event.text || event.goal?.title || "Autonomous mission saved.", 160));
+      refresh({ renderView: state.currentView === "missions" }).catch((error) => addActivity("Missions", error.message));
+      break;
+    case "missionError":
+      addActivity("Mission router", event.error || "Could not inspect mission need.");
       break;
     case "error":
       state.busy = false;
