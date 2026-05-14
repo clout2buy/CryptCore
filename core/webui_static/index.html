@@ -8,60 +8,75 @@
   </head>
   <body>
     <canvas id="ambient" aria-hidden="true"></canvas>
-    <div class="app-shell">
-      <nav class="surface-dock" aria-label="Crypt surfaces">
-        <button class="surface-button active" type="button" data-surface="chat" title="Chat">Chat</button>
-        <button class="surface-button" type="button" data-surface="studio" title="Studio">Studio</button>
-        <button class="surface-button" type="button" data-surface="preview" title="Preview">Preview</button>
-        <button class="surface-button" type="button" data-surface="plan" title="Plan">Plan</button>
-        <button class="surface-button" type="button" data-surface="tools" title="Tools">Tools</button>
-        <button class="surface-button" type="button" data-surface="github" title="GitHub">GitHub</button>
-      </nav>
-
-      <header class="topbar">
-        <div class="brand">
-          <span class="brand-mark" aria-hidden="true">C</span>
+    <div class="workspace-shell">
+      <aside class="sidebar" aria-label="Crypt workspace navigation">
+        <header class="side-brand">
+          <span class="brand-mark">C</span>
           <div>
-            <h1>Crypt</h1>
-            <p id="statusLine">Ready</p>
+            <h1>Crypt Workspace</h1>
+            <p id="sideStatus">Ready</p>
           </div>
-        </div>
-        <div class="top-actions">
-          <button id="newChatButton" class="quiet-button" type="button">New</button>
-          <button id="activityButton" class="quiet-button" type="button" aria-expanded="false">Core</button>
-        </div>
-      </header>
+        </header>
 
-      <main class="chat-stage" aria-label="Crypt chat">
-        <section class="conversation">
-          <div id="welcome" class="welcome">
-            <p>Crypt</p>
-            <h2>What are we building?</h2>
-            <div class="capability-grid" aria-label="Crypt capabilities">
-              <article>
-                <span>01</span>
-                <b>Build</b>
-                <em>apps, scripts, agents</em>
-              </article>
-              <article>
-                <span>02</span>
-                <b>Research</b>
-                <em>web, repos, markets</em>
-              </article>
-              <article>
-                <span>03</span>
-                <b>Operate</b>
-                <em>tasks, docs, business</em>
-              </article>
-              <article>
-                <span>04</span>
-                <b>Learn</b>
-                <em>skills, memory, soul</em>
-              </article>
-            </div>
+        <div class="side-actions">
+          <button id="searchButton" class="side-action" type="button">Search</button>
+          <button id="newChatButton" class="side-action" type="button">New Session</button>
+        </div>
+
+        <nav class="nav-groups">
+          <section>
+            <h2>Main</h2>
+            <button class="nav-item active" type="button" data-view="panel">Panel</button>
+            <button class="nav-item" type="button" data-view="chat">Chat</button>
+            <button class="nav-item" type="button" data-view="files">Files</button>
+            <button class="nav-item" type="button" data-view="terminal">Terminal</button>
+            <button class="nav-item" type="button" data-view="jobs">Jobs</button>
+            <button class="nav-item" type="button" data-view="missions">Missions</button>
+          </section>
+          <section>
+            <h2>Knowledge</h2>
+            <button class="nav-item" type="button" data-view="memory">Memory</button>
+            <button class="nav-item" type="button" data-view="skills">Skills</button>
+            <button class="nav-item" type="button" data-view="persona">Persona</button>
+          </section>
+          <section>
+            <h2>System</h2>
+            <button class="nav-item" type="button" data-view="models">Models</button>
+            <button class="nav-item" type="button" data-view="providers">Providers</button>
+            <button class="nav-item" type="button" data-view="tools">Tools</button>
+            <button class="nav-item" type="button" data-view="gateway">Gateway</button>
+            <button class="nav-item" type="button" data-view="settings">Settings</button>
+          </section>
+        </nav>
+
+        <section class="session-strip">
+          <div class="section-head">
+            <h2>Sessions</h2>
+            <span id="sessionCount">0</span>
           </div>
-          <div id="feed" class="feed" aria-live="polite"></div>
+          <div id="sessionList" class="mini-list"></div>
         </section>
+
+        <footer class="side-footer">
+          <span>User</span>
+          <button id="coreButton" class="icon-button" type="button">Core</button>
+        </footer>
+      </aside>
+
+      <main class="main-stage">
+        <header class="topbar">
+          <div>
+            <p id="viewEyebrow">Panel</p>
+            <h2 id="viewTitle">Mission Control</h2>
+          </div>
+          <div class="top-actions">
+            <button class="quiet-button" type="button" data-view="chat">Chat</button>
+            <button class="quiet-button" type="button" data-view="missions">Missions</button>
+            <button id="activityButton" class="quiet-button" type="button" aria-expanded="false">Core</button>
+          </div>
+        </header>
+
+        <section id="viewHost" class="view-host" aria-live="polite"></section>
 
         <section id="approvalTray" class="approval-tray" hidden>
           <div>
@@ -84,7 +99,7 @@
             </div>
             <div class="composer-main">
               <span class="prompt-mark" aria-hidden="true">&gt;</span>
-              <textarea id="prompt" rows="1" placeholder="Message Crypt"></textarea>
+              <textarea id="prompt" rows="1" placeholder="Ask Crypt to do anything"></textarea>
               <button id="sendButton" type="submit" aria-label="Send message">Send</button>
             </div>
             <div class="composer-meta">

@@ -17,6 +17,11 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert handler is not None
         snapshot = server.daemon.snapshot()
         assert snapshot["workspace"] == str(workspace.resolve())
+        handler_obj = object.__new__(handler)
+        handler_obj.server = server
+        web_snapshot = handler_obj._snapshot()
+        assert web_snapshot["workspace"] == str(workspace.resolve())
+        json.dumps(web_snapshot)
     finally:
         server.server_close()
 
@@ -44,17 +49,19 @@ def test_webui_static_is_chat_first():
     html = resources.files("core.webui_static").joinpath("index.html").read_text(encoding="utf-8")
     script = resources.files("core.webui_static").joinpath("app.js").read_text(encoding="utf-8")
 
-    assert "Message Crypt" in html
+    assert "Crypt Workspace" in html
     assert "Core" in html
     assert "composer-shell" in html
     assert "data-intent=\"web\"" in html
-    assert "surface-dock" in html
+    assert "data-view=\"missions\"" in html
+    assert "surface-dock" not in html
     assert "Skill Forge" not in html
     assert "Start a business" not in html
     assert "planner" not in html
     assert "data-prompt" not in html
     assert "approvalRequested" in script
     assert "coreFeatures" in script
+    assert "renderCurrentView" in script
     assert "Crypt UI intent hints" not in html
 
 

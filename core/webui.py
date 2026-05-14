@@ -15,7 +15,19 @@ from importlib import resources
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from . import app_daemon, autonomy, goals, learning, project_index, reflection, session as sessions, settings, skill_forge, skills, soul
+from . import (
+    app_daemon,
+    autonomy,
+    goals,
+    learning,
+    project_index,
+    reflection,
+    session as sessions,
+    settings,
+    skill_forge,
+    skills,
+    soul,
+)
 from tools import REGISTRY
 
 
@@ -224,6 +236,10 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
         soul_path = soul.ensure_soul()
         snapshot["soul"] = {"active": soul_path.exists(), "path": str(soul_path)}
+        snapshot["sessionsPreview"] = [_session_preview(item) for item in sessions.list_sessions(self.server.cwd)[:12]]
+        snapshot["skillsPreview"] = [skill.as_dict() for skill in skills.discover(self.server.cwd, include_disabled=True)[:40]]
+        snapshot["toolsPreview"] = _tool_previews()
+        snapshot["filesPreview"] = _workspace_files(self.server.cwd)
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         return snapshot
 
@@ -455,6 +471,50 @@ def _first_nonempty(values: list[str], empty: str) -> str:
 def _looks_office_tool(name: str) -> bool:
     lowered = name.lower()
     return any(token in lowered for token in ("doc", "sheet", "slide", "ppt", "pdf", "office"))
+
+
+def _tool_previews(limit: int = 60) -> list[dict]:
+    out = []
+    for schema in REGISTRY.schemas()[:limit]:
+        name = str(schema.get("name") or "")
+        desc = str(schema.get("description") or "")
+        out.append({"name": name, "description": desc})
+    return out
+
+
+def _session_preview(info) -> dict:
+    data = asdict(info)
+    data["path"] = str(data.get("path") or "")
+    data["cwd"] = str(data.get("cwd") or "")
+    return data
+
+
+def _workspace_files(cwd: str | Path, *, limit: int = 80) -> list[dict]:
+    root = Path(cwd).expanduser().resolve()
+    out: list[dict] = []
+    try:
+        entries = sorted(root.iterdir(), key=lambda item: (not item.is_dir(), item.name.lower()))
+    except OSError:
+        return out
+    for item in entries:
+        if item.name.startswith(".") and item.name not in {".github", ".crypt", ".agents"}:
+            continue
+        try:
+            stat = item.stat()
+        except OSError:
+            continue
+        out.append(
+            {
+                "name": item.name,
+                "path": str(item),
+                "kind": "dir" if item.is_dir() else "file",
+                "size": stat.st_size if item.is_file() else 0,
+                "updatedAt": int(stat.st_mtime),
+            }
+        )
+        if len(out) >= limit:
+            break
+    return out
 
 
 def _intent_hints(value: object) -> list[str]:
