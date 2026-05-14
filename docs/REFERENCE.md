@@ -216,10 +216,13 @@ python main.py webui --open
 
 The browser view is intentionally chat-first. There are no prompt recipes or
 route controls to manage. The small Core drawer exposes quiet state for the
-same kind of systems Hermes/OpenClaw-style agents surface as sections: soul,
-memory, skills, tools, autonomy, and session state. Goals, lessons, reflection,
-autonomy cycles, and skill forging stay in the background unless Crypt needs
-permission or the user opens that drawer.
+same kind of systems Hermes/OpenClaw-style agents surface as sections: chat,
+sessions, profiles, office, models, providers, skills, persona/soul, memory,
+tools, schedules, gateway, and settings. Goals, lessons, reflection, autonomy
+cycles, and skill forging stay in the background unless Crypt needs permission
+or the user opens that drawer. The surface dock and command bar provide quick
+orientation and optional intent hints while still sending natural language into
+the same autonomous runtime.
 
 Crypt also maintains a project profile cache with languages, package managers,
 frameworks/libraries, entry points, CI files, likely test/build commands,

@@ -4,6 +4,8 @@ const state = {
   activeApproval: null,
   messages: new Map(),
   activityOpen: false,
+  selectedSurface: "chat",
+  intents: new Set(),
   animationStarted: false,
 };
 
@@ -86,6 +88,53 @@ function addActivity(title, body = "") {
   const feed = $("#activityFeed");
   feed.prepend(item);
   while (feed.children.length > 80) feed.lastElementChild?.remove();
+}
+
+function renderCoreFeatures(features) {
+  const container = $("#quietStats");
+  container.innerHTML = "";
+  for (const feature of features || []) {
+    const card = document.createElement("article");
+    card.className = "core-card";
+    card.dataset.feature = feature.id || "";
+    card.classList.toggle("active", feature.id === state.selectedSurface);
+    card.title = feature.detail || "";
+
+    const top = document.createElement("div");
+    top.className = "core-card-top";
+
+    const label = document.createElement("span");
+    label.className = "core-label";
+    label.textContent = feature.label || feature.id || "Core";
+
+    const value = document.createElement("b");
+    value.textContent = feature.value ?? "";
+
+    const status = document.createElement("span");
+    status.className = "core-status";
+    status.textContent = feature.status || "";
+
+    const detail = document.createElement("p");
+    detail.textContent = feature.detail || "";
+
+    top.append(label, value);
+    card.append(top, status, detail);
+    container.appendChild(card);
+  }
+}
+
+function selectSurface(surface) {
+  state.selectedSurface = surface || "chat";
+  document.querySelectorAll(".surface-button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.surface === state.selectedSurface);
+  });
+  if (state.selectedSurface === "chat") {
+    toggleActivity(false);
+    return;
+  }
+  toggleActivity(true);
+  addActivity("Surface", `${state.selectedSurface} is ready behind chat.`);
+  refresh();
 }
 
 function friendlyToolName(name) {
@@ -200,25 +249,8 @@ async function json(url, options = {}) {
 
 function renderSnapshot(snapshot) {
   if (!state.busy) setStatus(snapshot.activeTask ? "Working" : "Ready");
-  const stats = [
-    ["Soul", snapshot.soul?.active ? "on" : "new"],
-    ["Memory", snapshot.lessons || 0],
-    ["Skills", snapshot.skills || 0],
-    ["Tools", snapshot.tools || 0],
-    ["Autonomy", snapshot.autonomyCycles || 0],
-    ["Session", snapshot.sessionId ? "open" : "fresh"],
-  ];
-  $("#quietStats").innerHTML = "";
-  for (const [label, value] of stats) {
-    const pill = document.createElement("div");
-    pill.className = "stat-pill";
-    const b = document.createElement("b");
-    b.textContent = value;
-    const span = document.createElement("span");
-    span.textContent = label;
-    pill.append(b, span);
-    $("#quietStats").appendChild(pill);
-  }
+  $("#enginePill").textContent = `${snapshot.provider || "crypt"} / ${snapshot.model || "auto"}`;
+  renderCoreFeatures(snapshot.coreFeatures || []);
 }
 
 async function refresh() {
@@ -249,13 +281,32 @@ async function sendPrompt(text) {
   try {
     await json("/api/prompt", {
       method: "POST",
-      body: JSON.stringify({ text: trimmed }),
+      body: JSON.stringify({ text: trimmed, intents: Array.from(state.intents) }),
     });
   } catch (error) {
     state.busy = false;
     setStatus("Needs attention");
     addSystemMessage(error.message);
   }
+}
+
+function updateIntentPill() {
+  const intents = Array.from(state.intents);
+  $("#intentPill").textContent = intents.length ? intents.join(" + ") : "autopilot";
+}
+
+function toggleIntent(intent) {
+  if (!intent) return;
+  if (state.intents.has(intent)) {
+    state.intents.delete(intent);
+  } else {
+    state.intents.add(intent);
+  }
+  document.querySelectorAll(".intent-toggle").forEach((button) => {
+    button.classList.toggle("active", state.intents.has(button.dataset.intent));
+  });
+  updateIntentPill();
+  $("#prompt").focus();
 }
 
 function resizePrompt() {
@@ -326,6 +377,13 @@ function startAmbient() {
       ctx.lineTo(x + height * .28, height);
       ctx.stroke();
     }
+    const pulse = .26 + Math.sin(time * .002) * .08;
+    const glow = ctx.createRadialGradient(width * .5, height * .42, 0, width * .5, height * .42, Math.min(width, height) * .25);
+    glow.addColorStop(0, `rgba(244, 163, 58, ${pulse})`);
+    glow.addColorStop(.46, "rgba(244, 163, 58, .05)");
+    glow.addColorStop(1, "rgba(244, 163, 58, 0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, width, height);
     ctx.globalAlpha = .9;
     for (const dot of dots) {
       dot.y = (dot.y + dot.speed) % 1;
@@ -359,6 +417,12 @@ $("#prompt").addEventListener("keydown", (event) => {
 
 $("#activityButton").addEventListener("click", () => toggleActivity());
 $("#closeActivityButton").addEventListener("click", () => toggleActivity(false));
+document.querySelectorAll("[data-surface]").forEach((button) => {
+  button.addEventListener("click", () => selectSurface(button.dataset.surface || "chat"));
+});
+document.querySelectorAll("[data-intent]").forEach((button) => {
+  button.addEventListener("click", () => toggleIntent(button.dataset.intent || ""));
+});
 
 $("#newChatButton").addEventListener("click", async () => {
   $("#feed").innerHTML = "";

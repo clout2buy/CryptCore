@@ -15,7 +15,8 @@ from importlib import resources
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from . import app_daemon, autonomy, goals, learning, project_index, reflection, skill_forge, soul
+from . import app_daemon, autonomy, goals, learning, project_index, reflection, session as sessions, settings, skill_forge, skills, soul
+from tools import REGISTRY
 
 
 MAX_EVENTS = 500
@@ -123,12 +124,14 @@ class CryptWebHandler(BaseHTTPRequestHandler):
             if not text:
                 self._error(HTTPStatus.BAD_REQUEST, "prompt is empty")
                 return
+            intents = _intent_hints(body.get("intents"))
+            prompt_text = _prompt_with_intents(text, intents)
             request_id = str(body.get("id") or f"web-{uuid.uuid4().hex[:10]}")
             self.server.daemon.handle_command(
                 {
                     "type": "sendPrompt",
                     "id": request_id,
-                    "text": text,
+                    "text": prompt_text,
                     "route": str(body.get("route") or ""),
                     "sessionKey": str(body.get("sessionKey") or "web"),
                 }
@@ -209,6 +212,11 @@ class CryptWebHandler(BaseHTTPRequestHandler):
 
     def _snapshot(self) -> dict:
         snapshot = self.server.daemon.snapshot()
+        snapshot["webui"] = {
+            "host": self.server.server_address[0],
+            "port": self.server.server_address[1],
+            "url": f"http://{self.server.server_address[0]}:{self.server.server_address[1]}/",
+        }
         snapshot["project"] = asdict(project_index.get(self.server.cwd))
         snapshot["goals"] = [asdict(goal) for goal in goals.list_goals(self.server.cwd, include_all=True)[:8]]
         snapshot["lessonsPreview"] = [asdict(lesson) for lesson in learning.list_lessons(self.server.cwd)[:8]]
@@ -216,6 +224,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
         soul_path = soul.ensure_soul()
         snapshot["soul"] = {"active": soul_path.exists(), "path": str(soul_path)}
+        snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         return snapshot
 
     def _send_static(self, name: str) -> None:
@@ -260,6 +269,149 @@ def make_server(host: str, port: int, *, cwd: str | Path, autonomy_interval: int
     return CryptWebServer((host, port), cwd=cwd, autonomy_interval=autonomy_interval)
 
 
+def core_features(cwd: str | Path, snapshot: dict) -> list[dict]:
+    root = Path(cwd).expanduser().resolve()
+    saved_sessions = sessions.list_sessions(root)[:5]
+    discovered_skills = skills.discover(root)
+    tool_schemas = REGISTRY.schemas()
+    saved = settings.load_config()
+    provider_rows = snapshot.get("providers", [])
+    ready_providers = [row for row in provider_rows if row.get("status") == "ready"]
+    goals_with_cadence = [goal for goal in goals.list_goals(root, include_all=True) if goal.cadence]
+    lessons = learning.list_lessons(root)
+    soul_path = soul.ensure_soul()
+    routes = snapshot.get("routes", [])
+    active_routes = [route for route in routes if route.get("status") == "active"]
+    office_tools = [schema for schema in tool_schemas if _looks_office_tool(str(schema.get("name") or ""))]
+    gateway_url = str((snapshot.get("webui") or {}).get("url") or "local")
+    project = snapshot.get("project") if isinstance(snapshot.get("project"), dict) else {}
+    languages = project.get("languages") if isinstance(project.get("languages"), list) else []
+    frameworks = project.get("frameworks") if isinstance(project.get("frameworks"), list) else []
+    git_branch = str(project.get("git_branch") or "not a git repo")
+    active_goals = goals.list_goals(root)
+    return [
+        {
+            "id": "chat",
+            "label": "Chat",
+            "value": "live",
+            "status": "primary",
+            "detail": "One natural conversation surface routes work automatically.",
+        },
+        {
+            "id": "studio",
+            "label": "Studio",
+            "value": root.name,
+            "status": _first_nonempty([str(item) for item in languages[:2]], "workspace"),
+            "detail": _first_nonempty([str(item) for item in frameworks[:3]], "Ask Crypt to inspect, build, or refactor here."),
+        },
+        {
+            "id": "preview",
+            "label": "Preview",
+            "value": "local",
+            "status": "browser",
+            "detail": "Ask Crypt to open or verify localhost apps, screenshots, and rendered UI.",
+        },
+        {
+            "id": "plan",
+            "label": "Plan",
+            "value": len(active_goals),
+            "status": "goals",
+            "detail": _first_nonempty([goal.title for goal in active_goals[:2]], "Ask Crypt to plan, monitor, or break down work."),
+        },
+        {
+            "id": "sessions",
+            "label": "Sessions",
+            "value": len(saved_sessions),
+            "status": "saved",
+            "detail": _first_nonempty([item.title for item in saved_sessions], "No saved sessions yet."),
+        },
+        {
+            "id": "profiles",
+            "label": "Profiles",
+            "value": "default",
+            "status": "active",
+            "detail": "Workspace-scoped memory, skills, config, and session state.",
+        },
+        {
+            "id": "office",
+            "label": "Office",
+            "value": "ready" if office_tools else "chat",
+            "status": "docs/sheets/slides",
+            "detail": "Ask in chat for docs, spreadsheets, decks, PDFs, or business ops artifacts.",
+        },
+        {
+            "id": "models",
+            "label": "Models",
+            "value": str(snapshot.get("model") or "default"),
+            "status": str(snapshot.get("provider") or "provider"),
+            "detail": f"{len(active_routes)} active route(s) available behind chat.",
+        },
+        {
+            "id": "providers",
+            "label": "Providers",
+            "value": len(ready_providers),
+            "status": "ready",
+            "detail": _first_nonempty([str(row.get("label") or row.get("id")) for row in ready_providers], "No ready providers."),
+        },
+        {
+            "id": "skills",
+            "label": "Skills",
+            "value": len(discovered_skills),
+            "status": "learnable",
+            "detail": _first_nonempty([skill.name for skill in discovered_skills[:3]], "No skills discovered yet."),
+        },
+        {
+            "id": "persona",
+            "label": "Persona",
+            "value": "soul",
+            "status": "evolving",
+            "detail": str(soul_path),
+        },
+        {
+            "id": "memory",
+            "label": "Memory",
+            "value": len(lessons),
+            "status": "lessons",
+            "detail": _first_nonempty([lesson.text for lesson in lessons[:2]], "No durable lessons yet."),
+        },
+        {
+            "id": "tools",
+            "label": "Tools",
+            "value": len(tool_schemas),
+            "status": "armed",
+            "detail": _first_nonempty([str(schema.get("name") or "") for schema in tool_schemas[:4]], "No tools loaded."),
+        },
+        {
+            "id": "github",
+            "label": "GitHub",
+            "value": git_branch,
+            "status": "repo",
+            "detail": "Ask Crypt to review diffs, push branches, open PRs, or fix CI.",
+        },
+        {
+            "id": "schedules",
+            "label": "Schedules",
+            "value": len(goals_with_cadence),
+            "status": "cadence",
+            "detail": _first_nonempty([goal.title for goal in goals_with_cadence[:2]], "Ask Crypt to watch, remind, monitor, or review."),
+        },
+        {
+            "id": "gateway",
+            "label": "Gateway",
+            "value": "local",
+            "status": "webui",
+            "detail": gateway_url,
+        },
+        {
+            "id": "settings",
+            "label": "Settings",
+            "value": str(snapshot.get("approval") or "approval"),
+            "status": str(snapshot.get("thinkingMode") or "thinking"),
+            "detail": f"Workspace: {saved.get('workspace') or root}",
+        },
+    ]
+
+
 def run(*, host: str, port: int, cwd: str | Path, open_browser: bool = False) -> int:
     server = make_server(host, port, cwd=cwd, autonomy_interval=_autonomy_interval())
     url = f"http://{server.server_address[0]}:{server.server_address[1]}"
@@ -293,3 +445,38 @@ def _autonomy_interval() -> int:
     if not raw:
         return DEFAULT_AUTONOMY_INTERVAL_SECONDS
     return max(0, _int(raw, DEFAULT_AUTONOMY_INTERVAL_SECONDS))
+
+
+def _first_nonempty(values: list[str], empty: str) -> str:
+    clean = [str(value).strip() for value in values if str(value).strip()]
+    return ", ".join(clean[:3]) if clean else empty
+
+
+def _looks_office_tool(name: str) -> bool:
+    lowered = name.lower()
+    return any(token in lowered for token in ("doc", "sheet", "slide", "ppt", "pdf", "office"))
+
+
+def _intent_hints(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    allowed = {"web", "files", "build", "auto"}
+    out: list[str] = []
+    for item in value:
+        clean = str(item or "").strip().lower()
+        if clean in allowed and clean not in out:
+            out.append(clean)
+    return out
+
+
+def _prompt_with_intents(text: str, intents: list[str]) -> str:
+    if not intents:
+        return text
+    hint_map = {
+        "web": "use web research if it helps",
+        "files": "inspect local files if needed",
+        "build": "prefer implementing the next concrete change",
+        "auto": "handle safe follow-up steps without extra orchestration",
+    }
+    hints = "; ".join(hint_map[item] for item in intents if item in hint_map)
+    return f"{text}\n\n[Crypt UI intent hints: {hints}]"

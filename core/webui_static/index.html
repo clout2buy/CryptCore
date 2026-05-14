@@ -9,6 +9,15 @@
   <body>
     <canvas id="ambient" aria-hidden="true"></canvas>
     <div class="app-shell">
+      <nav class="surface-dock" aria-label="Crypt surfaces">
+        <button class="surface-button active" type="button" data-surface="chat" title="Chat">Chat</button>
+        <button class="surface-button" type="button" data-surface="studio" title="Studio">Studio</button>
+        <button class="surface-button" type="button" data-surface="preview" title="Preview">Preview</button>
+        <button class="surface-button" type="button" data-surface="plan" title="Plan">Plan</button>
+        <button class="surface-button" type="button" data-surface="tools" title="Tools">Tools</button>
+        <button class="surface-button" type="button" data-surface="github" title="GitHub">GitHub</button>
+      </nav>
+
       <header class="topbar">
         <div class="brand">
           <span class="brand-mark" aria-hidden="true">C</span>
@@ -27,7 +36,29 @@
         <section class="conversation">
           <div id="welcome" class="welcome">
             <p>Crypt</p>
-            <h2>Say anything.</h2>
+            <h2>What are we building?</h2>
+            <div class="capability-grid" aria-label="Crypt capabilities">
+              <article>
+                <span>01</span>
+                <b>Build</b>
+                <em>apps, scripts, agents</em>
+              </article>
+              <article>
+                <span>02</span>
+                <b>Research</b>
+                <em>web, repos, markets</em>
+              </article>
+              <article>
+                <span>03</span>
+                <b>Operate</b>
+                <em>tasks, docs, business</em>
+              </article>
+              <article>
+                <span>04</span>
+                <b>Learn</b>
+                <em>skills, memory, soul</em>
+              </article>
+            </div>
           </div>
           <div id="feed" class="feed" aria-live="polite"></div>
         </section>
@@ -44,8 +75,23 @@
         </section>
 
         <form id="promptForm" class="composer">
-          <textarea id="prompt" rows="1" placeholder="Message Crypt"></textarea>
-          <button id="sendButton" type="submit">Send</button>
+          <div class="composer-shell">
+            <div class="composer-tools" aria-label="Optional intent hints">
+              <button class="intent-toggle" type="button" data-intent="web">Web</button>
+              <button class="intent-toggle" type="button" data-intent="files">Files</button>
+              <button class="intent-toggle" type="button" data-intent="build">Build</button>
+              <button class="intent-toggle" type="button" data-intent="auto">Auto</button>
+            </div>
+            <div class="composer-main">
+              <span class="prompt-mark" aria-hidden="true">&gt;</span>
+              <textarea id="prompt" rows="1" placeholder="Message Crypt"></textarea>
+              <button id="sendButton" type="submit" aria-label="Send message">Send</button>
+            </div>
+            <div class="composer-meta">
+              <span id="enginePill">crypt</span>
+              <span id="intentPill">autopilot</span>
+            </div>
+          </div>
         </form>
       </main>
 

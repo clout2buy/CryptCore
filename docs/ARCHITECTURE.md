@@ -142,11 +142,14 @@ avoiding false claims of literal sentience or consciousness.
 
 `core.webui` exposes a small local browser cockpit centered on chat. Runtime
 state, soul, goals, learning, reflections, autonomy cycles, approvals, and
-skill forging remain available through the API and Core drawer, but the main
-interaction keeps Crypt presented as one assistant with no visible prompt
-recipes or route controls. When launched through `python main.py webui`, it
-also starts a safe background autonomy heartbeat. It talks to the same
-`AppDaemon` runtime path as other clients.
+skill forging remain available through the API and Core drawer. The drawer maps
+Hermes-style sections to live Crypt runtime state: chat, sessions, profiles,
+office, models, providers, skills, persona, memory, tools, schedules, gateway,
+and settings. The main interaction still keeps Crypt presented as one assistant
+with no visible prompt recipes or route controls. The surface dock and command
+bar are UI hints over the same prompt path, not separate runtimes. When launched
+through `python main.py webui`, it also starts a safe background autonomy
+heartbeat. It talks to the same `AppDaemon` runtime path as other clients.
 
 ## Safety Model
 

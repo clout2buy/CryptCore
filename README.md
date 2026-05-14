@@ -65,7 +65,11 @@ The WebUI is chat-first: talk to Crypt normally and it handles planning,
 tools, learning, reflection, and skill promotion behind the scenes. There are
 no prompt recipes to manage. Crypt also maintains a private `SOUL.md` that
 shapes its voice and evolves from durable lessons, so it can feel consistent
-without pretending to be literally conscious.
+without pretending to be literally conscious. The Core drawer surfaces the
+Hermes-style systems quietly: sessions, profiles, office, models, providers,
+skills, persona, memory, tools, schedules, gateway, and settings. The dock and
+command bar make those surfaces easy to reach without turning them into required
+workflow steps.
 
 ## Verify
 

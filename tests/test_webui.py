@@ -46,12 +46,52 @@ def test_webui_static_is_chat_first():
 
     assert "Message Crypt" in html
     assert "Core" in html
+    assert "composer-shell" in html
+    assert "data-intent=\"web\"" in html
+    assert "surface-dock" in html
     assert "Skill Forge" not in html
     assert "Start a business" not in html
     assert "planner" not in html
     assert "data-prompt" not in html
     assert "approvalRequested" in script
-    assert '"Soul"' in script
+    assert "coreFeatures" in script
+    assert "Crypt UI intent hints" not in html
+
+
+def test_webui_core_features_include_hermes_style_sections(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    monkeypatch.setattr(settings, "CONFIG_PATH", tmp_path / "config.json")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+
+    snapshot = {
+        "provider": "crypt",
+        "model": "crypt-pro",
+        "approval": "auto-work",
+        "thinkingMode": "fast",
+        "providers": [{"label": "Crypt OAuth", "status": "ready"}],
+        "routes": [{"role": "builder", "status": "active"}],
+        "webui": {"url": "http://127.0.0.1:8765/"},
+    }
+    features = webui.core_features(workspace, snapshot)
+    labels = {feature["label"] for feature in features}
+
+    assert {
+        "Chat",
+        "Sessions",
+        "Profiles",
+        "Office",
+        "Models",
+        "Providers",
+        "Skills",
+        "Persona",
+        "Memory",
+        "Tools",
+        "Plan",
+        "Schedules",
+        "Gateway",
+        "Settings",
+    } <= labels
 
 
 def test_webui_autonomy_interval(monkeypatch):
@@ -60,3 +100,12 @@ def test_webui_autonomy_interval(monkeypatch):
 
     monkeypatch.setenv("CRYPT_WEBUI_AUTONOMY_INTERVAL_SECONDS", "0")
     assert webui._autonomy_interval() == 0
+
+
+def test_webui_prompt_intents_are_sanitized():
+    assert webui._intent_hints(["web", "bad", "build", "web"]) == ["web", "build"]
+    text = webui._prompt_with_intents("Find leads", ["web", "auto"])
+
+    assert text.startswith("Find leads")
+    assert "Crypt UI intent hints" in text
+    assert "web research" in text
