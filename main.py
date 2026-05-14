@@ -78,12 +78,30 @@ def main() -> int:
             "tasks",
             "project",
             "learn",
+            "reflect",
+            "goals",
+            "forge",
+            "autonomy",
+            "webui",
         ],
-        help="login | logout | setup | doctor | bench | eval-target | app-daemon | skills | tasks | project | learn",
+        help=(
+            "login | logout | setup | doctor | bench | eval-target | app-daemon | "
+            "skills | tasks | project | learn | reflect | goals | forge | autonomy | webui"
+        ),
     )
     args, command_args = p.parse_known_args()
     args.command_args = command_args
-    if command_args and args.command not in {"skills", "tasks", "project", "learn"}:
+    if command_args and args.command not in {
+        "skills",
+        "tasks",
+        "project",
+        "learn",
+        "reflect",
+        "goals",
+        "forge",
+        "autonomy",
+        "webui",
+    }:
         p.error(f"unrecognized arguments: {' '.join(command_args)}")
 
     if args.command == "login":
@@ -106,6 +124,16 @@ def main() -> int:
         return _do_project(saved, args)
     if args.command == "learn":
         return _do_learn(saved, args)
+    if args.command == "reflect":
+        return _do_reflect(saved, args)
+    if args.command == "goals":
+        return _do_goals(saved, args)
+    if args.command == "forge":
+        return _do_forge(saved, args)
+    if args.command == "autonomy":
+        return _do_autonomy(saved, args)
+    if args.command == "webui":
+        return _do_webui(saved, args)
     if args.command == "bench":
         return _do_bench(saved, args)
     if args.command == "eval-target":
@@ -719,6 +747,118 @@ def _do_learn(saved: dict, args: argparse.Namespace) -> int:
         return 0
     parser.print_help()
     return 1
+
+
+def _do_reflect(saved: dict, args: argparse.Namespace) -> int:
+    from core import reflection
+
+    parser = argparse.ArgumentParser(prog="crypt reflect", description="run or inspect Crypt self-reflection")
+    parser.add_argument("action", nargs="?", choices=["list", "run"], default="list")
+    parser.add_argument("--limit", type=int, default=5)
+    parsed = parser.parse_args(args.command_args or [])
+    cwd = settings.resolve_workspace(args.cwd, saved)
+    if parsed.action == "run":
+        created = reflection.reflect_recent(cwd, limit=parsed.limit)
+        print("\n".join(f"{item.reflection_id}: {item.summary}" for item in created) or "no new episodes to reflect on")
+        return 0
+    print(reflection.format_reflections(cwd, limit=parsed.limit))
+    return 0
+
+
+def _do_goals(saved: dict, args: argparse.Namespace) -> int:
+    from core import goals
+
+    parser = argparse.ArgumentParser(prog="crypt goals", description="manage durable Crypt objectives")
+    sub = parser.add_subparsers(dest="action")
+    list_p = sub.add_parser("list")
+    list_p.add_argument("--all", action="store_true")
+    add_p = sub.add_parser("add")
+    add_p.add_argument("title")
+    add_p.add_argument("--description", default="")
+    add_p.add_argument("--success", default="")
+    add_p.add_argument("--cadence", default="")
+    add_p.add_argument("--priority", type=int, default=3)
+    update_p = sub.add_parser("update")
+    update_p.add_argument("goal_id")
+    update_p.add_argument("--status", choices=sorted(goals.STATUSES))
+    update_p.add_argument("--last-result")
+    parsed = parser.parse_args(args.command_args or ["list"])
+    cwd = settings.resolve_workspace(args.cwd, saved)
+    if parsed.action in (None, "list"):
+        print(goals.format_goals(cwd, include_all=parsed.all))
+        return 0
+    if parsed.action == "add":
+        goal = goals.add_goal(
+            parsed.title,
+            description=parsed.description,
+            workspace=cwd,
+            success_metric=parsed.success,
+            cadence=parsed.cadence,
+            priority=parsed.priority,
+            tags=["cli"],
+        )
+        print(f"added {goal.goal_id}: {goal.title}")
+        return 0
+    if parsed.action == "update":
+        goal = goals.update_goal(parsed.goal_id, status=parsed.status, last_result=parsed.last_result)
+        print(f"updated {goal.goal_id}: {goal.status}")
+        return 0
+    parser.print_help()
+    return 1
+
+
+def _do_forge(saved: dict, args: argparse.Namespace) -> int:
+    from core import skill_forge
+
+    parser = argparse.ArgumentParser(prog="crypt forge", description="forge skills from learned lessons")
+    parser.add_argument("topic", nargs="?", default="")
+    parser.add_argument("--name", default="")
+    parser.add_argument("--min-lessons", type=int, default=2)
+    parsed = parser.parse_args(args.command_args or [])
+    cwd = settings.resolve_workspace(args.cwd, saved)
+    try:
+        result = skill_forge.forge_skill(
+            cwd,
+            topic=parsed.topic,
+            name=parsed.name,
+            min_lessons=parsed.min_lessons,
+        )
+    except Exception as e:
+        ui.error(f"forge failed: {type(e).__name__}: {e}")
+        return 1
+    print(skill_forge.format_result(result))
+    return 0
+
+
+def _do_autonomy(saved: dict, args: argparse.Namespace) -> int:
+    from core import autonomy
+
+    parser = argparse.ArgumentParser(prog="crypt autonomy", description="run or inspect safe autonomous learning")
+    parser.add_argument("action", nargs="?", choices=["status", "run"], default="status")
+    parser.add_argument("--limit", type=int, default=5)
+    parser.add_argument("--force-forge", action="store_true")
+    parsed = parser.parse_args(args.command_args or [])
+    cwd = settings.resolve_workspace(args.cwd, saved)
+    if parsed.action == "run":
+        cycle = autonomy.run_cycle(cwd, force_forge=parsed.force_forge, max_reflections=parsed.limit)
+        print(f"{cycle.cycle_id}: reflected={cycle.reflected}, goals={cycle.goal_reviews}, lessons={cycle.lessons_added}")
+        for note in cycle.notes:
+            print(f"- {note}")
+        return 0
+    print(autonomy.format_cycles(cwd, limit=parsed.limit))
+    return 0
+
+
+def _do_webui(saved: dict, args: argparse.Namespace) -> int:
+    from core import webui
+
+    parser = argparse.ArgumentParser(prog="crypt webui", description="start the local Crypt WebUI")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--open", action="store_true", help="open the browser after starting")
+    parsed = parser.parse_args(args.command_args or [])
+    cwd = settings.resolve_workspace(args.cwd, saved)
+    return webui.run(host=parsed.host, port=parsed.port, cwd=cwd, open_browser=parsed.open)
 
 
 def _do_bench(saved: dict, args: argparse.Namespace) -> int:

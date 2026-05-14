@@ -17,7 +17,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable
 
-from . import auth, doctor, learning, loop, redact, runtime, session as sessions, settings, skills
+from . import auth, autonomy, doctor, learning, loop, redact, runtime, session as sessions, settings, skills
 from tools import REGISTRY
 
 
@@ -166,6 +166,7 @@ class AppDaemon:
             "tools": len(REGISTRY.schemas()),
             "skills": len(skills.discover(self._cwd)),
             "lessons": len(learning.list_lessons(self._cwd)),
+            "autonomyCycles": len(autonomy.list_cycles(self._cwd, limit=100)),
             "sessionId": getattr(self._sessions.get(self._active_session_key), "id", None),
             "desktopSessionKey": self._active_session_key,
             "activeTask": self._active_task,
@@ -452,6 +453,15 @@ class AppDaemon:
             self.emit("commandResult", id=request_id, command=name, text=text)
             self.emit("snapshot", id=request_id, snapshot=self.snapshot())
             return
+        if name == "autonomy":
+            if args and args[0].lower() == "run":
+                cycle = autonomy.run_cycle(self._cwd)
+                text = "\n".join([f"{cycle.cycle_id}: {cycle.reflected} reflection(s)", *cycle.notes])
+            else:
+                text = autonomy.format_cycles(self._cwd)
+            self.emit("commandResult", id=request_id, command=name, text=text)
+            self.emit("snapshot", id=request_id, snapshot=self.snapshot())
+            return
         if name in {"clear", "new", "new-session"}:
             self._new_session(request_id=request_id, session_key=session_key)
             self.emit("commandResult", id=request_id, command=name, text="Session cleared")
@@ -734,6 +744,7 @@ def _status_text(snapshot: dict) -> str:
         f"tools: {snapshot['tools']} armed",
         f"skills: {snapshot.get('skills', 0)} available",
         f"lessons: {snapshot.get('lessons', 0)} learned",
+        f"autonomy: {snapshot.get('autonomyCycles', 0)} cycle(s)",
     ]
     if snapshot.get("activeTask"):
         lines.append(f"active task: {snapshot['activeTask']}")
@@ -750,6 +761,7 @@ def _help_text() -> str:
             "/doctor - run local harness checks",
             "/skills - list local skills",
             "/learn [query] - list or search learned lessons",
+            "/autonomy [run] - inspect or run safe autonomous learning",
             "/clear - start a fresh session",
             "/yolo - auto-approve all tool work",
             "/yolo edits - auto-approve edit tools only",

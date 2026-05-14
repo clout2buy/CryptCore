@@ -16,6 +16,7 @@ flowchart LR
     Runtime --> Skills["core.skills"]
     Runtime --> MCP["core.mcp"]
     Runtime --> Learning["core.learning"]
+    Runtime --> Autonomy["core.autonomy"]
     Loop --> Store["sessions, task logs, traces, evidence"]
     Loop --> Project["core.project_index"]
     Loop --> UI["core.ui + core.ui_kit"]
@@ -38,6 +39,11 @@ flowchart LR
 | `core/task_state.py` | durable task status/event logs | model/tool execution |
 | `core/project_index.py` | cached workspace profile and likely commands | deep semantic indexing |
 | `core/learning.py` | task episodes, reusable lessons, prompt retrieval | raw transcript replay or secret storage |
+| `core/reflection.py` | post-task reflection and lesson extraction | model/tool execution |
+| `core/goals.py` | durable objectives and review cadence | external side effects |
+| `core/autonomy.py` | safe self-review cycles | spending money, messaging, or unsandboxed actions |
+| `core/skill_forge.py` | promote repeated lessons into local skills | remote marketplace publishing |
+| `core/webui.py` | local browser cockpit over CryptCore | a separate agent runtime |
 | `core/agents/` | typed subagent registry, task state, worktree diffs | parent-loop provider setup |
 | `core/ui.py` | public terminal UI facade | raw styling primitives |
 | `core/ui_kit/` | reusable terminal components | model/runtime decisions |
@@ -121,6 +127,16 @@ hints from failed tools. The prompt retrieves relevant lessons and prior
 episodes for the next user request, so Crypt improves its local operating
 knowledge without replaying entire transcripts. Users can inspect and curate
 that store with `/learn`, `crypt learn`, or the `learn` tool.
+
+`core.autonomy` runs a safe self-review cycle. It reflects on recent task
+episodes, reviews due goals, updates lessons, and can forge project-local
+`SKILL.md` bundles from repeated patterns. This is intentionally bounded to
+Crypt's own memory/skill state; external actions still go through tools,
+permissions, and user approval.
+
+`core.webui` exposes a small local browser cockpit with chat, runtime state,
+goals, learning, reflections, autonomy cycles, approvals, and skill forging.
+It talks to the same `AppDaemon` runtime path as other clients.
 
 ## Safety Model
 

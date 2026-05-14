@@ -11,7 +11,7 @@ import subprocess
 import textwrap
 from pathlib import Path
 
-from . import learning, memory, project_index, runtime, skills
+from . import autonomy, goals, learning, memory, project_index, reflection, runtime, skills
 
 
 def build_system_prompt(
@@ -36,10 +36,13 @@ def build_system_prompt(
         _environment(provider_name, model, cwd),
         _project_intelligence(cwd),
         runtime.git_snapshot(cwd),
+        _goals(cwd),
+        _autonomy(cwd),
         _project_instructions(cwd),
         _available_skills(cwd),
         _skill_guidance(skill_guidance),
         _learned_context(cwd, learning_query),
+        _reflections(cwd),
         _memory(),
         _active_runtime(),
         _turn_guidance(turn_guidance),
@@ -215,6 +218,20 @@ def _project_instructions(cwd: str) -> str:
     return "# Project Instructions\n" + text
 
 
+def _goals(cwd: str) -> str:
+    try:
+        return goals.prompt_section(cwd)
+    except Exception:
+        return ""
+
+
+def _autonomy(cwd: str) -> str:
+    try:
+        return autonomy.prompt_section(cwd)
+    except Exception:
+        return ""
+
+
 def _available_skills(cwd: str) -> str:
     text = skills.available_summary(cwd)
     if not text:
@@ -235,6 +252,13 @@ def _skill_guidance(skill_guidance: str) -> str:
 def _learned_context(cwd: str, query: str) -> str:
     try:
         return learning.prompt_section(cwd, query)
+    except Exception:
+        return ""
+
+
+def _reflections(cwd: str) -> str:
+    try:
+        return reflection.prompt_section(cwd)
     except Exception:
         return ""
 

@@ -40,6 +40,7 @@ include = ["benchmarks*", "core*", "tools*", "crypt*"]
 
 [tool.setuptools.package-data]
 benchmarks = ["*.json"]
+"core.webui_static" = ["*.html", "*.css", "*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

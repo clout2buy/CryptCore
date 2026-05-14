@@ -71,6 +71,7 @@ as `System32`; `--cwd` and `CRYPT_ROOT` remain explicit overrides.
 | `/learn` | List learned project lessons |
 | `/learn search <text>` | Search learned lessons and prior task episodes |
 | `/learn add <text>` | Save an explicit structured lesson |
+| `/autonomy [run]` | Inspect or run safe autonomous learning |
 | `/skills` | List local `SKILL.md` bundles visible to the workspace |
 | `/tasks [id\|--all]` | List or inspect durable task event logs |
 | `/project [--refresh]` | Show the project intelligence cache |
@@ -88,7 +89,8 @@ as `System32`; `--cwd` and `CRYPT_ROOT` remain explicit overrides.
 | Shell | `bash`, `bash_start`, `bash_poll`, `bash_kill` |
 | Git | `git`, `git_branch`, `git_stage`, `git_commit` |
 | Web | `web_search`, `web_fetch` |
-| Planning | `present_plan`, `todos`, `ask_user`, `memory`, `learn` |
+| Planning | `present_plan`, `todos`, `ask_user`, `memory`, `learn`, `goals`, `reflect`, `autonomy` |
+| Learning | `skill_forge` |
 | Agents | `spawn_agent`, `list_agents`, `agent_output`, `send_agent_message`, `stop_agent`, `cleanup_agent` |
 | Connectors | `mcp` |
 | Workspace | `set_workspace`, `open_file` |
@@ -191,6 +193,25 @@ python main.py learn add "For release work, run scripts\verify_core.ps1 -Quick."
 python main.py learn episodes
 ```
 
+Reflection and autonomy build on that store:
+
+```powershell
+python main.py reflect run
+python main.py autonomy run
+python main.py goals add "Launch Crypt assistant" --success "first paying user" --cadence daily
+python main.py forge release --min-lessons 2
+```
+
+The autonomous cycle is deliberately safe. It teaches, reviews, remembers, and
+forges local skills. It does not spend money, send messages, or mutate external
+systems without going through normal tool permissions.
+
+Start the local browser cockpit with:
+
+```powershell
+python main.py webui --open
+```
+
 Crypt also maintains a project profile cache with languages, package managers,
 frameworks/libraries, entry points, CI files, likely test/build commands,
 instruction files, visible skills, git state, and attention flags. It is
@@ -234,6 +255,8 @@ default; put required server tokens in that server's explicit `env` block.
   target-evals/        target-eval snapshots, traces, reports
   projects/<slug>/     session JSONL transcripts
   learning/            structured task episodes and reusable lessons
+  autonomy/            self-review cycle logs
+  goals/               durable objectives
   runs/                shell output spill files
   tasks/<sid>/         background shell job logs
   worktrees/           isolated subagent worktrees

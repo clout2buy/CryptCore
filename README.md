@@ -52,6 +52,9 @@ python main.py project --refresh
 python main.py project --json
 python main.py learn list
 python main.py learn search "pytest"
+python main.py autonomy run
+python main.py goals add "Launch a productized Crypt assistant" --success "first paying user"
+python main.py webui --open
 python main.py skills list
 python main.py tasks list
 python main.py --provider ollama --model gpt-oss:120b-cloud

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Crypt</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="rail" aria-label="Crypt runtime status">
+        <div class="brand">
+          <span class="brand-mark">C</span>
+          <div>
+            <h1>Crypt</h1>
+            <p>local agent core</p>
+          </div>
+        </div>
+
+        <section class="panel status-panel">
+          <div class="panel-title">Runtime</div>
+          <dl id="runtimeStats" class="stats"></dl>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">Goals</div>
+          <form id="goalForm" class="stack">
+            <input name="title" placeholder="New objective">
+            <input name="successMetric" placeholder="Success metric">
+            <button type="submit">Add Goal</button>
+          </form>
+          <div id="goals" class="list compact-list"></div>
+        </section>
+      </aside>
+
+      <main class="workspace">
+        <header class="hero">
+          <div>
+            <p class="eyebrow">Self-learning runtime</p>
+            <h2>Build, remember, improve.</h2>
+          </div>
+          <div class="route-picker">
+            <label for="route">Route</label>
+            <select id="route">
+              <option value="">default</option>
+              <option value="planner">planner</option>
+              <option value="builder">builder</option>
+              <option value="reviewer">reviewer</option>
+              <option value="fast">fast</option>
+            </select>
+          </div>
+        </header>
+
+        <section class="chat-panel">
+          <div id="feed" class="feed" aria-live="polite"></div>
+          <form id="promptForm" class="composer">
+            <textarea id="prompt" rows="3" placeholder="Tell Crypt what to do. Ask, build, research, plan, monitor."></textarea>
+            <button type="submit">Send</button>
+          </form>
+        </section>
+      </main>
+
+      <aside class="intel">
+        <section class="panel">
+          <div class="panel-title row">
+            <span>Learning</span>
+            <button id="autonomyButton" class="ghost" type="button">Auto</button>
+          </div>
+          <form id="lessonForm" class="stack">
+            <input name="text" placeholder="Teach Crypt a durable lesson">
+            <button type="submit">Remember</button>
+          </form>
+          <div id="lessons" class="list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title row">
+            <span>Skill Forge</span>
+            <button id="reflectButton" class="ghost" type="button">Reflect</button>
+          </div>
+          <div class="panel-title row lower-title">
+            <span>Promote Patterns</span>
+            <button id="forgeButton" class="ghost" type="button">Forge</button>
+          </div>
+          <input id="forgeTopic" placeholder="Topic, e.g. release">
+          <div id="reflections" class="list compact-list"></div>
+        </section>
+      </aside>
+    </div>
+
+    <template id="eventTemplate">
+      <article class="event">
+        <span class="event-kind"></span>
+        <p class="event-text"></p>
+      </article>
+    </template>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

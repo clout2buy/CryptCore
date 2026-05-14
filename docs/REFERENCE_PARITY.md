@@ -54,6 +54,10 @@ CryptCore already covers the core coding-agent harness:
 - Structured learning loop: completed and failed turns are stored as episodes,
   completed turns derive reusable lessons from runtime evidence, and relevant
   learned context is retrieved into later prompts.
+- Safe autonomy: reflections, durable goals, autonomy cycles, and skill forging
+  let Crypt continuously teach itself without bypassing tool permissions.
+- Local WebUI: `crypt webui` exposes a browser cockpit for chat, learning,
+  goals, reflections, autonomy, and skill forging over the same runtime.
 
 ## Remaining Product-Scale Gaps
 

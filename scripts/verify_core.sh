@@ -34,6 +34,8 @@ if [ "${1:-}" = "--quick" ]; then
   tests/test_task_state.py \
   tests/test_project_index.py \
   tests/test_learning.py \
+  tests/test_autonomy.py \
+  tests/test_webui.py \
   tests/test_bash_safety.py \
     tests/test_read_tools.py \
     tests/test_edit_file.py \

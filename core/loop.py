@@ -11,16 +11,20 @@ from typing import Callable
 
 from . import (
     artifacts,
+    autonomy,
     background,
     compact,
     doctor,
     evidence,
     file_state,
     final_claims,
+    goals,
     learning,
     memory,
     prompt as prompt_builder,
+    reflection,
     runtime,
+    skill_forge,
     skills,
     task_state,
     tool_recovery,
@@ -307,6 +311,18 @@ def run(
             continue
         if user_text.startswith("/learn"):
             _handle_learn(user_text)
+            continue
+        if user_text.startswith("/autonomy"):
+            _handle_autonomy(user_text)
+            continue
+        if user_text.startswith("/goals"):
+            _handle_goals(user_text)
+            continue
+        if user_text.startswith("/reflect"):
+            _handle_reflect(user_text)
+            continue
+        if user_text.startswith("/forge"):
+            _handle_forge(user_text)
             continue
         if user_text.startswith("/skills"):
             _show_skills(runtime.cwd())
@@ -1794,6 +1810,15 @@ def _record_learning_outcome(
                 f"recorded {result['lesson_count']} learned lesson(s)",
                 data=result,
             )
+        cycle = autonomy.run_cycle(cwd, max_reflections=1)
+        if cycle.notes:
+            task_state.record_event(
+                cwd,
+                task_id,
+                "autonomy",
+                "; ".join(cycle.notes[:3]),
+                data={"cycle_id": cycle.cycle_id},
+            )
     except Exception as exc:
         tracing.emit("learning_error", task_id=task_id, error=f"{type(exc).__name__}: {exc}")
 
@@ -1856,6 +1881,11 @@ def _show_help() -> None:
     ui.info("/learn             show learned project lessons")
     ui.info("/learn search <txt> search lessons and task episodes")
     ui.info("/learn add <txt>   save an explicit learned lesson")
+    ui.info("/autonomy [run]    inspect or run safe autonomous learning")
+    ui.info("/goals             list durable objectives")
+    ui.info("/goals add <txt>   add a durable objective")
+    ui.info("/reflect [run]     inspect or run post-task reflection")
+    ui.info("/forge <topic>     forge a local skill from learned lessons")
     ui.info("/skills            list local SKILL.md bundles")
     ui.info("/tasks [id|--all]  list or inspect durable task logs")
     ui.info("/project [--refresh] show project intelligence cache")
@@ -1963,6 +1993,57 @@ def _handle_learn(command: str) -> None:
         ui.info("usage: /learn, /learn search <text>, /learn add <text>, /learn episodes [text]")
     except Exception as e:
         ui.error(f"learn failed: {type(e).__name__}: {e}")
+
+
+def _handle_autonomy(command: str) -> None:
+    arg = command[len("/autonomy"):].strip()
+    try:
+        if arg.startswith("run"):
+            cycle = autonomy.run_cycle(runtime.cwd(), force_forge="--force-forge" in arg)
+            lines = [f"{cycle.cycle_id}: reflected={cycle.reflected}, goals={cycle.goal_reviews}, lessons={cycle.lessons_added}"]
+            lines.extend(f"- {note}" for note in cycle.notes)
+            ui.info("\n".join(lines))
+            return
+        ui.info(autonomy.format_cycles(runtime.cwd()))
+    except Exception as e:
+        ui.error(f"autonomy failed: {type(e).__name__}: {e}")
+
+
+def _handle_goals(command: str) -> None:
+    arg = command[len("/goals"):].strip()
+    try:
+        if arg.startswith("add "):
+            goal = goals.add_goal(arg[len("add "):].strip(), workspace=runtime.cwd())
+            ui.info(f"added {goal.goal_id}: {goal.title}")
+            return
+        if arg.startswith("complete "):
+            goal = goals.update_goal(arg[len("complete "):].strip(), status="completed")
+            ui.info(f"completed {goal.goal_id}: {goal.title}")
+            return
+        ui.info(goals.format_goals(runtime.cwd(), include_all="--all" in arg))
+    except Exception as e:
+        ui.error(f"goals failed: {type(e).__name__}: {e}")
+
+
+def _handle_reflect(command: str) -> None:
+    arg = command[len("/reflect"):].strip()
+    try:
+        if arg.startswith("run"):
+            created = reflection.reflect_recent(runtime.cwd(), limit=5)
+            ui.info("\n".join(f"{item.reflection_id}: {item.summary}" for item in created) or "no new episodes to reflect on")
+            return
+        ui.info(reflection.format_reflections(runtime.cwd()))
+    except Exception as e:
+        ui.error(f"reflect failed: {type(e).__name__}: {e}")
+
+
+def _handle_forge(command: str) -> None:
+    arg = command[len("/forge"):].strip()
+    try:
+        result = skill_forge.forge_skill(runtime.cwd(), topic=arg, min_lessons=2)
+        ui.info(skill_forge.format_result(result))
+    except Exception as e:
+        ui.error(f"forge failed: {type(e).__name__}: {e}")
 
 
 def _show_skills(cwd: str) -> None:
