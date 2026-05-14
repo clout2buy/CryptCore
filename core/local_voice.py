@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import time
 import uuid
@@ -16,6 +17,22 @@ VOICES_URL = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/mode
 DEFAULT_VOICE = "af_heart"
 DEFAULT_SPEED = 0.96
 MAX_TEXT_CHARS = 1_400
+EMOJI_RE = re.compile(
+    "["
+    "\U0001F1E6-\U0001F1FF"
+    "\U0001F300-\U0001F5FF"
+    "\U0001F600-\U0001F64F"
+    "\U0001F680-\U0001F6FF"
+    "\U0001F700-\U0001F77F"
+    "\U0001F780-\U0001F7FF"
+    "\U0001F800-\U0001F8FF"
+    "\U0001F900-\U0001F9FF"
+    "\U0001FA00-\U0001FAFF"
+    "\u2600-\u27BF"
+    "\uFE0E-\uFE0F"
+    "\u200D"
+    "]+"
+)
 
 
 VOICE_CHOICES = [
@@ -198,7 +215,9 @@ def audio_path(name: str) -> Path:
 
 
 def _clean_text(text: str) -> str:
-    clean = " ".join(redact.text(str(text or "")).split())
+    no_emoji = EMOJI_RE.sub(" ", str(text or ""))
+    clean = " ".join(redact.text(no_emoji).split())
+    clean = re.sub(r"\s+([.,!?;:])", r"\1", clean)
     if len(clean) > MAX_TEXT_CHARS:
         clean = clean[:MAX_TEXT_CHARS].rsplit(" ", 1)[0].strip()
     return clean

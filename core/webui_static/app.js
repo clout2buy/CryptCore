@@ -40,6 +40,10 @@ const state = {
     audio: null,
     busy: false,
   },
+  poll: {
+    eventsStarted: false,
+    snapshotStarted: false,
+  },
 };
 
 const CHAT_STORE_KEY = "crypt.webui.chatSessions.v2";
@@ -296,17 +300,19 @@ function optionMarkup(options, selected) {
 function modelLabel(model) {
   const raw = String(model || "");
   const labels = {
-    "crypt-pro": "Crypt Pro",
-    "crypt-max": "Crypt Max",
-    "crypt-balanced": "Crypt Balanced",
-    "crypt-fast": "Crypt Fast",
-    "crypt-legacy": "Crypt Legacy",
-    "crypt-spark": "Crypt Spark",
-    "crypt-mini": "Crypt Mini",
-    "gpt-5.3-codex-spark": "Crypt Spark",
-    "gpt-5.4-mini": "GPT-5.4 Mini",
-    "gpt-5.4": "GPT-5.4",
-    "gpt-5.5": "GPT-5.5",
+    "crypt-pro": "ChatGPT 5 Codex",
+    "crypt-max": "ChatGPT 5.5",
+    "crypt-balanced": "ChatGPT 5.4",
+    "crypt-fast": "ChatGPT 5.4 Mini",
+    "crypt-legacy": "ChatGPT 5.3 Codex",
+    "crypt-spark": "ChatGPT 5.3 Spark",
+    "crypt-mini": "Codex Mini",
+    "gpt-5-codex": "ChatGPT 5 Codex",
+    "gpt-5.3-codex": "ChatGPT 5.3 Codex",
+    "gpt-5.3-codex-spark": "ChatGPT 5.3 Spark",
+    "gpt-5.4-mini": "ChatGPT 5.4 Mini",
+    "gpt-5.4": "ChatGPT 5.4",
+    "gpt-5.5": "ChatGPT 5.5",
   };
   if (labels[raw]) return labels[raw];
   return raw
@@ -397,7 +403,7 @@ function syncVoiceOutputControls(snapshot = state.snapshot) {
     const options = voices.length
       ? voices.map((voice) => ({
           value: voice.id,
-          label: `${voice.label || voice.id} ${voice.accent || ""}${voice.style ? ` · ${voice.style}` : ""}`.trim(),
+          label: `${voice.label || voice.id} ${voice.accent || ""}${voice.style ? ` - ${voice.style}` : ""}`.trim(),
         }))
       : [{ value: state.voiceOut.voice, label: "Kokoro" }];
     const selected = voices.some((voice) => voice.id === state.voiceOut.voice)
@@ -625,7 +631,7 @@ function missionRow(goal) {
     <article class="data-row mission-row">
       <span>${escapeHtml(goal.status || "active")}</span>
       <b>${escapeHtml(goal.title || "Untitled mission")}</b>
-      <p>${escapeHtml(goal.success_metric || cadence)} · ${escapeHtml(next)}</p>
+      <p>${escapeHtml(goal.success_metric || cadence)} - ${escapeHtml(next)}</p>
     </article>
   `;
 }
@@ -1214,15 +1220,38 @@ async function refresh({ renderView = false } = {}) {
   if (firstSnapshot || renderView) renderCurrentView();
 }
 
-async function poll() {
+async function pollEvents() {
+  if (state.poll.eventsStarted) return;
+  state.poll.eventsStarted = true;
+  await pollEventsOnce();
+}
+
+async function pollEventsOnce() {
   try {
     const data = await json(`/api/events?since=${state.seq}`);
     (data.events || []).forEach(handleEvent);
-    await refresh({ renderView: false });
   } catch (error) {
     addActivity("WebUI", error.message);
   } finally {
-    setTimeout(poll, 1200);
+    setTimeout(pollEventsOnce, state.busy ? 280 : 900);
+  }
+}
+
+async function pollSnapshot() {
+  if (state.poll.snapshotStarted) return;
+  state.poll.snapshotStarted = true;
+  await pollSnapshotOnce();
+}
+
+async function pollSnapshotOnce() {
+  try {
+    if (!state.busy) {
+      await refresh({ renderView: false });
+    }
+  } catch (error) {
+    addActivity("WebUI", error.message);
+  } finally {
+    setTimeout(pollSnapshotOnce, state.busy ? 2400 : 5000);
   }
 }
 
@@ -1701,4 +1730,7 @@ $("#denyButton").addEventListener("click", () => answerApproval(false));
 
 loadChatSessions();
 startAmbient();
-refresh().then(poll);
+refresh().then(() => {
+  pollEvents();
+  pollSnapshot();
+});

@@ -67,10 +67,16 @@ def test_webui_static_is_chat_first():
     assert "missionCreated" in script
     assert "kokoro ready" in script
     assert "af_heart" in script
+    assert "ChatGPT 5.5" in script
+    assert "ChatGPT 5.3 Spark" in script
+    assert "Crypt Max" not in script
+    assert "Crypt Spark" not in script
     assert "live-timeline" in script
     assert "toolProgress" in script
     assert "thinkingDelta" in script
     assert "stopVoicePlayback" in script
+    assert "pollEventsOnce" in script
+    assert "pollSnapshotOnce" in script
     assert "New Mission" not in script
     assert "Something Crypt should remember permanently" not in script
     assert "surface-dock" not in html

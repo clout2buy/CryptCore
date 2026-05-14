@@ -23,6 +23,14 @@ def test_local_voice_exposes_distinct_voice_choices():
     assert all(voice.get("style") for voice in local_voice.VOICE_CHOICES)
 
 
+def test_local_voice_removes_emoji_before_synthesis():
+    clean = local_voice._clean_text("Got it 😄🔥. Shipped ✅")
+
+    assert clean == "Got it. Shipped"
+    assert "😄" not in clean
+    assert "✅" not in clean
+
+
 def test_local_voice_speak_uses_kokoro_runner(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
     local_voice.root().mkdir(parents=True)
@@ -41,7 +49,7 @@ def test_local_voice_speak_uses_kokoro_runner(monkeypatch, tmp_path: Path):
 
     monkeypatch.setattr(local_voice.subprocess, "run", fake_run)
 
-    result = local_voice.speak("hello from crypt", voice="af_heart", speed=0.94)
+    result = local_voice.speak("hello from crypt 😄🔥", voice="af_heart", speed=0.94)
 
     assert result.voice == "af_heart"
     assert result.audio_url.startswith("/api/voice/audio/kokoro-")
@@ -49,3 +57,5 @@ def test_local_voice_speak_uses_kokoro_runner(monkeypatch, tmp_path: Path):
     assert calls
     assert "--voice" in calls[0]
     assert "af_heart" in calls[0]
+    spoken_text = calls[0][calls[0].index("--text") + 1]
+    assert spoken_text == "hello from crypt"
