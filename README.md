@@ -61,6 +61,10 @@ python main.py --provider ollama --model gpt-oss:120b-cloud
 python -m crypt
 ```
 
+The WebUI is chat-first: talk to Crypt normally and it handles planning,
+tools, learning, reflection, and skill promotion behind the scenes. There are
+no prompt recipes to manage.
+
 ## Verify
 
 ```powershell

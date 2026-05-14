@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from importlib import resources
 from pathlib import Path
 
 from core import settings, webui
@@ -37,3 +38,24 @@ def test_webui_event_buffer(monkeypatch, tmp_path: Path):
         assert json.dumps(events)
     finally:
         server.server_close()
+
+
+def test_webui_static_is_chat_first():
+    html = resources.files("core.webui_static").joinpath("index.html").read_text(encoding="utf-8")
+    script = resources.files("core.webui_static").joinpath("app.js").read_text(encoding="utf-8")
+
+    assert "Message Crypt" in html
+    assert "Activity" in html
+    assert "Skill Forge" not in html
+    assert "Start a business" not in html
+    assert "planner" not in html
+    assert "data-prompt" not in html
+    assert "approvalRequested" in script
+
+
+def test_webui_autonomy_interval(monkeypatch):
+    monkeypatch.delenv("CRYPT_WEBUI_AUTONOMY_INTERVAL_SECONDS", raising=False)
+    assert webui._autonomy_interval() == webui.DEFAULT_AUTONOMY_INTERVAL_SECONDS
+
+    monkeypatch.setenv("CRYPT_WEBUI_AUTONOMY_INTERVAL_SECONDS", "0")
+    assert webui._autonomy_interval() == 0

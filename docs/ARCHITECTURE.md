@@ -134,9 +134,13 @@ episodes, reviews due goals, updates lessons, and can forge project-local
 Crypt's own memory/skill state; external actions still go through tools,
 permissions, and user approval.
 
-`core.webui` exposes a small local browser cockpit with chat, runtime state,
-goals, learning, reflections, autonomy cycles, approvals, and skill forging.
-It talks to the same `AppDaemon` runtime path as other clients.
+`core.webui` exposes a small local browser cockpit centered on chat. Runtime
+state, goals, learning, reflections, autonomy cycles, approvals, and skill
+forging remain available through the API and activity drawer, but the main
+interaction keeps Crypt presented as one assistant with no visible prompt
+recipes or route controls. When launched through `python main.py webui`, it
+also starts a safe background autonomy heartbeat. It talks to the same
+`AppDaemon` runtime path as other clients.
 
 ## Safety Model
 

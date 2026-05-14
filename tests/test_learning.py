@@ -84,6 +84,9 @@ def test_prompt_includes_learned_context(monkeypatch, tmp_path: Path):
 
     assert "# Learned Context" in text
     assert "local smoke suite" in text
+    assert "# Autopilot Behavior" in text
+    assert "The user should not need to know tool names" in text
+    assert "prompt recipes" in text
 
 
 def test_learn_tool_search_and_add(monkeypatch, tmp_path: Path):

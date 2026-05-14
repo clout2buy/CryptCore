@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import os
 import threading
 import time
 import uuid
@@ -18,15 +19,26 @@ from . import app_daemon, autonomy, goals, learning, project_index, reflection, 
 
 
 MAX_EVENTS = 500
+DEFAULT_AUTONOMY_INTERVAL_SECONDS = 10 * 60
 
 
 class CryptWebServer(ThreadingHTTPServer):
-    def __init__(self, server_address, *, cwd: str | Path):
+    def __init__(self, server_address, *, cwd: str | Path, autonomy_interval: int = 0):
         super().__init__(server_address, CryptWebHandler)
         self.cwd = Path(cwd).expanduser().resolve()
         self.events: list[dict] = []
         self.event_lock = threading.Lock()
         self.daemon = app_daemon.AppDaemon(emit=self.emit_event, cwd=str(self.cwd))
+        self._autonomy_interval = max(0, int(autonomy_interval))
+        self._autonomy_stop = threading.Event()
+        self._autonomy_thread: threading.Thread | None = None
+        if self._autonomy_interval:
+            self._autonomy_thread = threading.Thread(
+                target=self._autonomy_loop,
+                name="crypt-webui-autonomy",
+                daemon=True,
+            )
+            self._autonomy_thread.start()
 
     def emit_event(self, event: dict) -> None:
         with self.event_lock:
@@ -39,6 +51,23 @@ class CryptWebServer(ThreadingHTTPServer):
     def events_since(self, seq: int) -> list[dict]:
         with self.event_lock:
             return [event for event in self.events if int(event.get("seq") or 0) > seq]
+
+    def server_close(self) -> None:
+        self._autonomy_stop.set()
+        super().server_close()
+
+    def _autonomy_loop(self) -> None:
+        if self._autonomy_stop.wait(5):
+            return
+        while not self._autonomy_stop.is_set():
+            try:
+                if not self.daemon.snapshot().get("activeTask"):
+                    cycle = autonomy.run_cycle(self.cwd, max_reflections=3)
+                    note = "; ".join(cycle.notes) or f"{cycle.reflected} reflection(s)"
+                    self.emit_event({"event": "autonomyQuiet", "cycleId": cycle.cycle_id, "text": note})
+            except Exception as exc:
+                self.emit_event({"event": "autonomyError", "error": f"{type(exc).__name__}: {exc}"})
+            self._autonomy_stop.wait(self._autonomy_interval)
 
 
 class CryptWebHandler(BaseHTTPRequestHandler):
@@ -225,12 +254,12 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         self._json({"error": message}, status=status)
 
 
-def make_server(host: str, port: int, *, cwd: str | Path) -> CryptWebServer:
-    return CryptWebServer((host, port), cwd=cwd)
+def make_server(host: str, port: int, *, cwd: str | Path, autonomy_interval: int = 0) -> CryptWebServer:
+    return CryptWebServer((host, port), cwd=cwd, autonomy_interval=autonomy_interval)
 
 
 def run(*, host: str, port: int, cwd: str | Path, open_browser: bool = False) -> int:
-    server = make_server(host, port, cwd=cwd)
+    server = make_server(host, port, cwd=cwd, autonomy_interval=_autonomy_interval())
     url = f"http://{server.server_address[0]}:{server.server_address[1]}"
     print(f"Crypt WebUI: {url}")
     print(f"Workspace: {Path(cwd).expanduser().resolve()}")
@@ -255,3 +284,10 @@ def _int(value, default: int) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _autonomy_interval() -> int:
+    raw = os.getenv("CRYPT_WEBUI_AUTONOMY_INTERVAL_SECONDS", "").strip()
+    if not raw:
+        return DEFAULT_AUTONOMY_INTERVAL_SECONDS
+    return max(0, _int(raw, DEFAULT_AUTONOMY_INTERVAL_SECONDS))

@@ -7,93 +7,60 @@
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
-    <div class="shell">
-      <aside class="rail" aria-label="Crypt runtime status">
+    <canvas id="ambient" aria-hidden="true"></canvas>
+    <div class="app-shell">
+      <header class="topbar">
         <div class="brand">
-          <span class="brand-mark">C</span>
+          <span class="brand-mark" aria-hidden="true">C</span>
           <div>
             <h1>Crypt</h1>
-            <p>local agent core</p>
+            <p id="statusLine">Ready</p>
           </div>
         </div>
+        <div class="top-actions">
+          <button id="newChatButton" class="quiet-button" type="button">New</button>
+          <button id="activityButton" class="quiet-button" type="button" aria-expanded="false">Activity</button>
+        </div>
+      </header>
 
-        <section class="panel status-panel">
-          <div class="panel-title">Runtime</div>
-          <dl id="runtimeStats" class="stats"></dl>
-        </section>
-
-        <section class="panel">
-          <div class="panel-title">Goals</div>
-          <form id="goalForm" class="stack">
-            <input name="title" placeholder="New objective">
-            <input name="successMetric" placeholder="Success metric">
-            <button type="submit">Add Goal</button>
-          </form>
-          <div id="goals" class="list compact-list"></div>
-        </section>
-      </aside>
-
-      <main class="workspace">
-        <header class="hero">
-          <div>
-            <p class="eyebrow">Self-learning runtime</p>
-            <h2>Build, remember, improve.</h2>
+      <main class="chat-stage" aria-label="Crypt chat">
+        <section class="conversation">
+          <div id="welcome" class="welcome">
+            <p>Crypt</p>
+            <h2>Say anything.</h2>
           </div>
-          <div class="route-picker">
-            <label for="route">Route</label>
-            <select id="route">
-              <option value="">default</option>
-              <option value="planner">planner</option>
-              <option value="builder">builder</option>
-              <option value="reviewer">reviewer</option>
-              <option value="fast">fast</option>
-            </select>
-          </div>
-        </header>
-
-        <section class="chat-panel">
           <div id="feed" class="feed" aria-live="polite"></div>
-          <form id="promptForm" class="composer">
-            <textarea id="prompt" rows="3" placeholder="Tell Crypt what to do. Ask, build, research, plan, monitor."></textarea>
-            <button type="submit">Send</button>
-          </form>
         </section>
+
+        <section id="approvalTray" class="approval-tray" hidden>
+          <div>
+            <strong>Permission needed</strong>
+            <p id="approvalText"></p>
+          </div>
+          <div class="approval-actions">
+            <button id="denyButton" class="quiet-button" type="button">Deny</button>
+            <button id="approveButton" type="button">Approve</button>
+          </div>
+        </section>
+
+        <form id="promptForm" class="composer">
+          <textarea id="prompt" rows="1" placeholder="Message Crypt"></textarea>
+          <button id="sendButton" type="submit">Send</button>
+        </form>
       </main>
 
-      <aside class="intel">
-        <section class="panel">
-          <div class="panel-title row">
-            <span>Learning</span>
-            <button id="autonomyButton" class="ghost" type="button">Auto</button>
+      <aside id="activityPanel" class="activity-panel" aria-label="Crypt activity" aria-hidden="true">
+        <header>
+          <div>
+            <p>Behind the scenes</p>
+            <h2>Activity</h2>
           </div>
-          <form id="lessonForm" class="stack">
-            <input name="text" placeholder="Teach Crypt a durable lesson">
-            <button type="submit">Remember</button>
-          </form>
-          <div id="lessons" class="list"></div>
-        </section>
-
-        <section class="panel">
-          <div class="panel-title row">
-            <span>Skill Forge</span>
-            <button id="reflectButton" class="ghost" type="button">Reflect</button>
-          </div>
-          <div class="panel-title row lower-title">
-            <span>Promote Patterns</span>
-            <button id="forgeButton" class="ghost" type="button">Forge</button>
-          </div>
-          <input id="forgeTopic" placeholder="Topic, e.g. release">
-          <div id="reflections" class="list compact-list"></div>
-        </section>
+          <button id="closeActivityButton" class="quiet-button" type="button">Hide</button>
+        </header>
+        <div id="quietStats" class="quiet-stats"></div>
+        <div id="activityFeed" class="activity-feed"></div>
       </aside>
     </div>
-
-    <template id="eventTemplate">
-      <article class="event">
-        <span class="event-kind"></span>
-        <p class="event-text"></p>
-      </article>
-    </template>
 
     <script src="/app.js"></script>
   </body>

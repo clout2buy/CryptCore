@@ -212,6 +212,11 @@ Start the local browser cockpit with:
 python main.py webui --open
 ```
 
+The browser view is intentionally chat-first. There are no prompt recipes or
+route controls to manage. Goals, lessons, reflection, autonomy cycles, and
+skill forging stay in the background unless Crypt needs permission or the user
+opens the activity drawer.
+
 Crypt also maintains a project profile cache with languages, package managers,
 frameworks/libraries, entry points, CI files, likely test/build commands,
 instruction files, visible skills, git state, and attention flags. It is
