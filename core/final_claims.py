@@ -7,7 +7,7 @@ from . import evidence
 
 
 _COMPLETION_RE = re.compile(
-    r"\b(done|completed|fixed|implemented|all tests passed|tests passed|verified|working|ready)\b",
+    r"\b(done|completed|fixed|implemented|all tests passed|tests passed|verified)\b",
     re.I,
 )
 _VERIFICATION_WORD_RE = re.compile(r"\b(test|pytest|check|verified|verification|doctor|lint|typecheck)\b", re.I)

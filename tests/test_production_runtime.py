@@ -749,6 +749,13 @@ def test_final_claim_guard_appends_unverified_note():
     assert "unverified" in guarded
 
 
+def test_final_claim_guard_ignores_casual_chat():
+    guarded, note = final_claims.guard_text("Hey! What are we working on today?")
+
+    assert guarded == "Hey! What are we working on today?"
+    assert note == ""
+
+
 def test_final_claim_guard_allows_verified_claim():
     evidence.record_verification(evidence.VerificationResult(status="PASS", commands=["python -m pytest -q"]))
 
