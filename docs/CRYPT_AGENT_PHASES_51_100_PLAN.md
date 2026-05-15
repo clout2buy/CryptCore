@@ -98,6 +98,11 @@ context for team selection.
 Score memory candidates by recurrence, user preference, project value, risk,
 and future usefulness.
 
+Progress: added `core.memory_importance`, integrated scoring into passive
+Markdown memory promotion, saves importance breakdowns per signal, and keeps
+confidence/promotion tied to recurrence, preference, project value, risk, and
+future usefulness.
+
 ## Phase 62 - Memory Garbage Collection
 
 Expire weak short-term memory, merge duplicates, and preserve durable facts in a

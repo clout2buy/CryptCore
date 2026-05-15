@@ -13,7 +13,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import redact, settings
+from . import memory_importance, redact, settings
 
 
 SCHEMA_VERSION = 2
@@ -67,6 +67,7 @@ class MemorySignal:
     updated_at: int = 0
     tags: list[str] = field(default_factory=list)
     corrections: list[dict[str, Any]] = field(default_factory=list)
+    importance: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -123,7 +124,8 @@ def observe(cwd: str | Path, text: str, *, source: str = "webui") -> MemoryJourn
     state = _read_state() or _empty_state(root)
     now = _now()
     category = _category(clean)
-    promoted = _should_promote(clean)
+    importance = memory_importance.score_text(clean, category=category, previous_hits=_previous_hits(state, clean))
+    promoted = _should_promote(clean) or importance.promote
     signal = MemorySignal(
         signal_id=_signal_id(clean),
         text=clean,
@@ -131,12 +133,13 @@ def observe(cwd: str | Path, text: str, *, source: str = "webui") -> MemoryJourn
         memory_type=_memory_type(category, clean),
         source=source,
         workspace=str(root),
-        confidence=0.82 if promoted else 0.48,
+        confidence=max(0.82 if promoted else 0.48, importance.confidence),
         sensitivity=_sensitivity(clean),
         decay=_decay(clean, promoted),
         created_at=now,
         updated_at=now,
         tags=_tags(clean, category),
+        importance=importance.to_dict(),
     )
 
     changed = False
@@ -371,6 +374,7 @@ def _merge_signal(items: list[dict[str, Any]], signal: MemorySignal) -> tuple[di
             item["hits"] = int(item.get("hits") or 1) + 1
             item["updated_at"] = signal.updated_at
             item["confidence"] = max(float(item.get("confidence") or 0.0), signal.confidence)
+            item["importance"] = signal.importance or item.get("importance", {})
             item["sensitivity"] = _max_sensitivity(str(item.get("sensitivity") or "normal"), signal.sensitivity)
             item["decay"] = signal.decay if signal.decay == "stable" else str(item.get("decay") or signal.decay)
             item["tags"] = _dedupe([*(item.get("tags") or []), *signal.tags])
@@ -392,6 +396,18 @@ def _trim(items: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
 def _should_promote(text: str) -> bool:
     words = text.split()
     return bool(PROMOTE_RE.search(text)) or len(words) >= 18
+
+
+def _previous_hits(state: dict[str, Any], text: str) -> int:
+    key = _fingerprint(text)
+    hits = 0
+    for bucket in ("long_term", "working", "open_loops"):
+        for item in state.get(bucket, []):
+            if not isinstance(item, dict):
+                continue
+            if _fingerprint(str(item.get("text") or "")) == key:
+                hits = max(hits, int(item.get("hits") or 1))
+    return hits
 
 
 def _memory_type(category: str, text: str) -> str:
