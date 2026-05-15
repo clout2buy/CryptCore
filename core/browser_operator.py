@@ -26,6 +26,23 @@ class BrowserSmokeResult:
     checks: list[str] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class BrowserStep:
+    action: str
+    target: str = ""
+    requires_approval: bool = False
+    evidence: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class BrowserJob:
+    job_type: str
+    target: str = ""
+    steps: tuple[BrowserStep, ...] = ()
+    approval_required: bool = False
+    evidence_required: tuple[str, ...] = ()
+
+
 def plan(text: str, *, target: str = "") -> BrowserPlan:
     lower = " ".join(str(text or "").lower().split())
     actions: list[str] = []
@@ -50,6 +67,48 @@ def plan(text: str, *, target: str = "") -> BrowserPlan:
         needs_visual_browser=needs_visual,
         reason="browser lane selected from prompt terms",
     )
+
+
+def build_job(text: str, *, target: str = "") -> BrowserJob:
+    browser_plan = plan(text, target=target)
+    lower = " ".join(str(text or "").lower().split())
+    steps: list[BrowserStep] = []
+    evidence: list[str] = []
+
+    if "search" in browser_plan.actions:
+        steps.append(BrowserStep("search", target=target, evidence=("sources",)))
+        evidence.append("sources")
+    if "read-page" in browser_plan.actions:
+        steps.append(BrowserStep("read-page", target=target, evidence=("page-summary",)))
+        evidence.append("page-summary")
+    if "local-qa" in browser_plan.actions:
+        steps.append(BrowserStep("open-local-app", target=target, evidence=("screenshot-before",)))
+        evidence.append("screenshot-before")
+    if "screenshot" in browser_plan.actions:
+        steps.append(BrowserStep("capture-screenshot", target=target, evidence=("screenshot",)))
+        evidence.append("screenshot")
+    if any(term in lower for term in ("form", "fill", "login", "account", "signup", "sign up")):
+        steps.append(BrowserStep("fill-form-draft", target=target, requires_approval=True, evidence=("form-draft",)))
+        evidence.append("form-draft")
+    if any(term in lower for term in ("post", "publish", "submit", "send", "reddit", "email", "dm")):
+        steps.append(BrowserStep("prepare-external-draft", target=target, requires_approval=True, evidence=("approval", "draft")))
+        evidence.extend(["approval", "draft"])
+    if not steps:
+        steps.append(BrowserStep("read-page", target=target, evidence=("page-summary",)))
+        evidence.append("page-summary")
+
+    approval_required = any(step.requires_approval for step in steps)
+    return BrowserJob(
+        job_type="approval-gated-browser-job" if approval_required else browser_plan.mode,
+        target=target,
+        steps=tuple(steps),
+        approval_required=approval_required,
+        evidence_required=tuple(dict.fromkeys(evidence)),
+    )
+
+
+def step_allowed(step: BrowserStep, *, approved: bool = False) -> bool:
+    return approved or not step.requires_approval
 
 
 def local_smoke(url: str, *, timeout: float = 3.0) -> BrowserSmokeResult:

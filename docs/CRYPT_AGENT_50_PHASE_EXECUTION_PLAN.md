@@ -330,12 +330,19 @@ Progress:
   extraction, and local-app QA browser lanes.
 - Added a local WebUI HTTP smoke check for browser-operator verification.
 
-## Phase 23 - Browser Operator V2
+## Phase 23 - Browser Operator V2 [started]
 
 Add approval-gated form filling, account workflows, posting drafts, dashboard
 checks, and evidence screenshots.
 
 Verification: mocked form workflows and approval boundary tests.
+
+Progress:
+
+- Browser operator can now build structured jobs with steps, required evidence,
+  and approval gates for forms, account workflows, posting, publishing, sending,
+  and dashboard checks.
+- Added approval-boundary tests for mocked form/post workflows.
 
 ## Phase 24 - Desktop Operator V1
 

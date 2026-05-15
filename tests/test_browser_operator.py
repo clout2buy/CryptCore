@@ -34,3 +34,16 @@ def test_browser_operator_local_smoke_checks_webui(monkeypatch, tmp_path: Path):
     assert result.status == 200
     assert result.title == "Crypt"
     assert {"http", "html", "title"} <= set(result.checks)
+
+
+def test_browser_operator_builds_approval_gated_form_job():
+    job = browser_operator.build_job("Fill the signup form and post the draft to Reddit", target="https://example.com")
+
+    assert job.approval_required is True
+    assert job.job_type == "approval-gated-browser-job"
+    assert "form-draft" in job.evidence_required
+    assert "approval" in job.evidence_required
+    gated = [step for step in job.steps if step.requires_approval]
+    assert gated
+    assert browser_operator.step_allowed(gated[0], approved=False) is False
+    assert browser_operator.step_allowed(gated[0], approved=True) is True
