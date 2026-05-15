@@ -34,3 +34,22 @@ def test_memory_condenser_discards_stale_low_confidence_working_memory(monkeypat
 
     assert result.discarded == 1
     assert memory_journal.snapshot(workspace)["workingCount"] == 0
+
+
+def test_memory_condenser_merges_duplicate_working_memory(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    memory_journal.observe(workspace, "The landing page header flickers after first render.")
+    state = memory_journal._read_state()  # noqa: SLF001 - migration fixture
+    duplicate = dict(state["working"][0])
+    duplicate["updated_at"] += 1
+    state["working"].append(duplicate)
+    memory_journal._write_state(state)  # noqa: SLF001
+
+    result = memory_condenser.condense(workspace)
+    signals = memory_journal.filter_signals(workspace)
+
+    assert result.merged == 1
+    assert len(signals) == 1
+    assert signals[0]["hits"] >= 2

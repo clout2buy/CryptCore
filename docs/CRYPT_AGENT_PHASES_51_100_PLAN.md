@@ -108,6 +108,10 @@ future usefulness.
 Expire weak short-term memory, merge duplicates, and preserve durable facts in a
 clean Markdown ledger.
 
+Progress: upgraded `core.memory_condenser` to merge duplicate working/long-term
+signals, preserve hits/tags/confidence/importance, dedupe long-term promotion,
+and report merged/discarded/promoted counts.
+
 ## Phase 63 - Persona Governance
 
 Let Crypt evolve voice/persona while keeping safety constraints and user
