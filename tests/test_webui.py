@@ -220,3 +220,20 @@ def test_webui_prompt_context_includes_auto_mission(monkeypatch, tmp_path: Path)
     assert "action_policy=execute" in text
     assert "do not ask the user to manage missions manually" in text
     assert "Mission Brain" in text
+
+
+def test_webui_prompt_context_includes_code_builder(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    (workspace / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8")
+    (workspace / "tests").mkdir()
+
+    text = webui._prompt_with_context(
+        "Fix the bug in core/app.py and run tests",
+        [],
+        workspace=workspace,
+    )
+
+    assert "Code Builder Loop" in text
+    assert "inspect -> plan -> patch -> test -> review -> summarize -> commit-ready" in text

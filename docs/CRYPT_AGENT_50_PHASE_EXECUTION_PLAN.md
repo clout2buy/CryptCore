@@ -387,12 +387,21 @@ Progress:
 - The WebUI Files view now shows mission-grouped artifact cards, summary
   counts, and workspace file fallback rows.
 
-## Phase 27 - Code Builder Loop
+## Phase 27 - Code Builder Loop [started]
 
 Standardize code work into inspect, plan, patch, test, review, summarize, and
 commit-ready stages.
 
 Verification: fixture repo task with tests and diff summary.
+
+Progress:
+
+- Added `core/code_builder.py` with deterministic inspect, plan, patch, test,
+  review, summarize, and commit-ready stages.
+- WebUI runtime hints now inject the builder loop automatically for coding
+  requests, including likely files and checks.
+- Added fixture tests for stage ordering, prompt context, and commit-ready
+  reports.
 
 ## Phase 28 - Reviewer Lane
 

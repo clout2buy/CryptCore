@@ -21,6 +21,7 @@ from . import (
     autonomy,
     artifact_studio,
     clarification_policy,
+    code_builder,
     goals,
     intent_router,
     learning,
@@ -840,6 +841,9 @@ def _prompt_with_context(
         section = mission_brain.prompt_section(workspace)
         if section:
             hints.append(section.replace("\n", " | "))
+        builder_section = code_builder.prompt_section(workspace, text)
+        if builder_section:
+            hints.append(builder_section.replace("\n", " | "))
     if not hints:
         return text
     return f"{text}\n\n[Crypt runtime hints: {'; '.join(hints)}]"
