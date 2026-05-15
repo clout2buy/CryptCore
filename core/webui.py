@@ -57,6 +57,7 @@ from . import (
     runtime_rebuild,
     scheduler,
     session as sessions,
+    self_upgrade_sandbox,
     settings,
     skill_lifecycle,
     skill_forge,
@@ -585,6 +586,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["knowledgeGraph"] = knowledge_graph.snapshot(self.server.cwd)
         snapshot["contextPackPreview"] = context_packs.preview(self.server.cwd)
         snapshot["selfUpgradeQueue"] = upgrade_queue.snapshot(self.server.cwd)
+        snapshot["selfUpgradeSandbox"] = self_upgrade_sandbox.snapshot(self.server.cwd)
         snapshot["runtimeRebuild"] = runtime_rebuild.snapshot(self.server.cwd)
         snapshot["mcpGateway"] = mcp_gateway.snapshot(self.server.cwd)
         snapshot["lessonsPreview"] = [asdict(lesson) for lesson in learning.list_lessons(self.server.cwd)[:8]]
@@ -1108,6 +1110,9 @@ def _prompt_with_context(
         upgrade_section = upgrade_queue.prompt_section(workspace)
         if upgrade_section:
             hints.append(upgrade_section.replace("\n", " | "))
+        sandbox_section = self_upgrade_sandbox.prompt_section(workspace)
+        if sandbox_section:
+            hints.append(sandbox_section.replace("\n", " | "))
         rebuild_section = runtime_rebuild.prompt_section(workspace)
         if rebuild_section:
             hints.append(rebuild_section.replace("\n", " | "))

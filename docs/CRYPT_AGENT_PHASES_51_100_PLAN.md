@@ -197,6 +197,11 @@ graph counts and recent dependency links.
 Plan self-upgrades in an isolated branch/worktree, run checks, then propose the
 merge.
 
+Progress: added `core.self_upgrade_sandbox`, which turns upgrade ideas into
+isolated branch/worktree plans with default verification commands, records
+changed paths and check results, tracks merge readiness, and exposes sandbox
+state in the WebUI settings panel and runtime prompt context.
+
 ## Phase 72 - Patch Risk Classifier
 
 Classify code changes by blast radius, security, UI, data, and test coverage

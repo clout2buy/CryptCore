@@ -1092,6 +1092,7 @@ function settingsView(snapshot) {
   const contracts = snapshot.autonomyContracts?.profiles || [];
   const providerHealth = snapshot.providerHealth || {};
   const healthCards = providerHealth.cards || [];
+  const sandbox = snapshot.selfUpgradeSandbox || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Engine", value: modelLabel(snapshot.model), status: providerLabel(snapshot.provider, snapshot), detail: "Current model used by chat." })}
@@ -1099,6 +1100,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Thinking", value: snapshot.thinkingMode, status: snapshot.reasoningEffort, detail: "Provider reasoning mode." })}
       ${featureCard({ label: "Auth", value: snapshot.authOk ? "ready" : "missing", status: snapshot.auth, detail: snapshot.authMessage || "Provider is usable." })}
       ${featureCard({ label: "Provider Health", value: `${providerHealth.ready || 0}/${providerHealth.total || 0}`, status: providerHealth.recommendedFallback ? `fallback ${providerHealth.recommendedFallback}` : "fallback none", detail: `${providerHealth.warnings || 0} warning(s), ${providerHealth.missing || 0} missing.` })}
+      ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
       ${featureCard({ label: "Gateway", value: "local", status: "webui", detail: snapshot.webui?.url || "local" })}
       ${featureCard({ label: "Workspace", value: "open", status: "local", detail: snapshot.workspace })}
     </section>
@@ -1114,6 +1116,10 @@ function settingsView(snapshot) {
       <div class="panel-card wide">
         <h3>Provider Health</h3>
         <div class="compact-list">${healthCards.map((card) => compactItem(card.status || "provider", card.label || card.provider, `${card.authState} / ${card.modelLabel} / failures ${card.failures || 0}`)).join("")}</div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Self-Upgrade Sandbox</h3>
+        <div class="compact-list">${(sandbox.records || []).slice(0, 6).map((record) => compactItem(record.status || "planned", record.title, `${record.branch || "branch pending"} / ${(record.checks || []).slice(0, 2).join(", ")}`)).join("") || compactItem("empty", "No sandboxed upgrades yet", "Self-upgrade ideas will get isolated branch and check plans here.")}</div>
       </div>
       <div class="panel-card wide">
         <h3>Tool Surface</h3>
