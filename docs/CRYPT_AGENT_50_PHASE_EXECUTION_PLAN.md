@@ -248,12 +248,19 @@ Progress:
 - Tool dispatch now truncates huge raw failures and falls back to recovery
   advice instead of dumping noisy logs into chat.
 
-## Phase 17 - Permission Boundary System
+## Phase 17 - Permission Boundary System [started]
 
 Classify actions as safe, approval-needed, sensitive, destructive, external, or
 irreversible, and enforce the right boundary before execution.
 
 Verification: policy tests and UI approval-state test.
+
+Progress:
+
+- Added action-boundary classification for safe, approval-needed, sensitive,
+  destructive, external, and irreversible tool calls.
+- Runtime policy now warns on sensitive external reads while destructive command
+  labels remain visible for the existing danger approval layer.
 
 ## Phase 18 - Audit Log V2
 
