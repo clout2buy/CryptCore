@@ -33,6 +33,7 @@ from . import (
     code_builder,
     content_ops,
     context_packs,
+    credential_vault,
     desktop_recorder,
     entities,
     external_drafts,
@@ -340,6 +341,21 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                         }
                     )
             try:
+                credential_ref = credential_vault.observe_need(self.server.cwd, text)
+            except Exception as exc:
+                self.server.emit_event({"event": "credentialVaultError", "error": f"{type(exc).__name__}: {exc}"})
+            else:
+                if credential_ref:
+                    self.server.emit_event(
+                        {
+                            "event": "credentialVaultUpdated",
+                            "id": request_id,
+                            "sessionKey": session_key,
+                            "text": credential_ref.service,
+                            "reference": credential_ref.to_dict(),
+                        }
+                    )
+            try:
                 content_decision = content_ops.ensure_for_prompt(self.server.cwd, text)
             except Exception as exc:
                 self.server.emit_event({"event": "contentOpsError", "error": f"{type(exc).__name__}: {exc}"})
@@ -621,6 +637,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["businessEntities"] = business_entities.snapshot(self.server.cwd)
         snapshot["businessLaunch"] = business_launch.snapshot(self.server.cwd)
         snapshot["contentOps"] = content_ops.snapshot(self.server.cwd)
+        snapshot["credentialVault"] = credential_vault.snapshot(self.server.cwd)
         snapshot["externalDrafts"] = external_drafts.snapshot(self.server.cwd)
         snapshot["knowledgeGraph"] = knowledge_graph.snapshot(self.server.cwd)
         snapshot["contextPackPreview"] = context_packs.preview(self.server.cwd)
@@ -1149,6 +1166,9 @@ def _prompt_with_context(
         external_section = external_drafts.prompt_section(workspace)
         if external_section:
             hints.append(external_section.replace("\n", " | "))
+        credential_section = credential_vault.prompt_section(workspace)
+        if credential_section:
+            hints.append(credential_section.replace("\n", " | "))
         graph_section = knowledge_graph.prompt_section(workspace, text=text)
         if graph_section:
             hints.append(graph_section.replace("\n", " | "))

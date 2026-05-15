@@ -265,6 +265,11 @@ metrics, and exposes content ops in Missions plus runtime prompt context.
 Track credential needs without exposing secrets; store references, not raw
 passwords or tokens.
 
+Progress: added `core.credential_vault`, a reference-only credential tracker
+that records service/account needs, rejects raw secret-looking values, observes
+credential requirements from chat, injects safe references into prompt context,
+and surfaces vault status in WebUI settings.
+
 ## Phase 79 - Approval Policy Builder
 
 Let users configure what Crypt can do automatically versus what needs approval.

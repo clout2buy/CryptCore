@@ -1123,6 +1123,7 @@ function settingsView(snapshot) {
   const sandbox = snapshot.selfUpgradeSandbox || {};
   const patchRisk = snapshot.patchRisk || {};
   const localSearch = snapshot.localSearch || {};
+  const credentialVault = snapshot.credentialVault || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Engine", value: modelLabel(snapshot.model), status: providerLabel(snapshot.provider, snapshot), detail: "Current model used by chat." })}
@@ -1133,6 +1134,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
       ${featureCard({ label: "Patch Risk", value: patchRisk.risk || "low", status: patchRisk.blast_radius || "blast", detail: (patchRisk.reasons || []).join(" / ") || "No patch risk detected." })}
       ${featureCard({ label: "Local Search", value: localSearch.documents || 0, status: `${localSearch.tokenCount || 0} tokens`, detail: Object.entries(localSearch.sources || {}).map(([key, value]) => `${key}: ${value}`).join(" / ") || "Index is ready to build." })}
+      ${featureCard({ label: "Credential Vault", value: credentialVault.total || 0, status: `${credentialVault.needed || 0} needed`, detail: "Reference-only account and secret requirements. Raw secrets stay out of chat and files." })}
       ${featureCard({ label: "Gateway", value: "local", status: "webui", detail: snapshot.webui?.url || "local" })}
       ${featureCard({ label: "Workspace", value: "open", status: "local", detail: snapshot.workspace })}
     </section>
@@ -1754,6 +1756,13 @@ function handleEvent(event) {
       break;
     case "contentOpsError":
       addActivity("Content ops", event.error || "Could not update content plan.");
+      break;
+    case "credentialVaultUpdated":
+      addActivity("Credential vault", oneLine(`Need reference for ${event.text || "service"}`, 160), "approval");
+      refresh({ renderView: state.currentView === "core" }).catch((error) => addActivity("Credential vault", error.message));
+      break;
+    case "credentialVaultError":
+      addActivity("Credential vault", event.error || "Could not update credential references.");
       break;
     case "websitePipelineUpdated":
       addActivity(
