@@ -70,6 +70,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "toolCapabilityCards" in web_snapshot
         assert "smartModelRouter" in web_snapshot
         assert "providerHealth" in web_snapshot
+        assert "modelUsageLedger" in web_snapshot
         assert "notifications" in web_snapshot
         assert "selfUpgradeSandbox" in web_snapshot
         assert "patchRisk" in web_snapshot
@@ -244,6 +245,7 @@ def test_webui_static_is_chat_first():
     assert "Smart Model Router" in script
     assert "modelRouted" in script
     assert "Provider Health" in script
+    assert "Usage Ledger" in script
     assert "Notification Center" in script
     assert "Live Replay" in script
     assert "Self-Upgrade Sandbox" in script

@@ -17,7 +17,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable
 
-from . import auth, autonomy, doctor, learning, live_events, loop, model_registry, notification_center, provider_health, redact, runtime, session as sessions, settings, skills, smart_model_router
+from . import auth, autonomy, doctor, learning, live_events, loop, model_registry, model_usage_ledger, notification_center, provider_health, redact, runtime, session as sessions, settings, skills, smart_model_router
 from tools import REGISTRY
 
 
@@ -172,6 +172,7 @@ class AppDaemon:
             "activeTask": self._active_task,
             "providers": _provider_inventory(saved),
             "providerHealth": provider_health.snapshot(saved),
+            "modelUsageLedger": model_usage_ledger.snapshot(self._cwd),
             "notifications": notification_center.snapshot(self._cwd),
             "routes": _routes(saved),
             "smartModelRouter": smart_model_router.snapshot(saved),
@@ -300,10 +301,21 @@ class AppDaemon:
                     subagent_provider_factory=lambda agent_type: _provider_for_route(saved, agent_type, fallback=provider),
                     event_sink=emit_live,
                 )
+            latency_ms = int((time.perf_counter() - provider_started_at) * 1000)
             provider_health.record_result(
                 provider_name_for_learning,
                 ok=True,
-                latency_ms=int((time.perf_counter() - provider_started_at) * 1000),
+                latency_ms=latency_ms,
+            )
+            model_usage_ledger.record_run(
+                self._cwd,
+                provider=provider_name_for_learning,
+                model=model_for_learning,
+                task_id=task_id,
+                task_type=route_role or "",
+                ok=True,
+                latency_ms=latency_ms,
+                total_tokens=result.current_tokens,
             )
             outcome = _record_outcome_learning(
                 self._cwd,
@@ -347,10 +359,21 @@ class AppDaemon:
         except Exception as exc:
             error_text = f"{type(exc).__name__}: {exc}"
             if provider_name_for_learning:
+                latency_ms = int((time.perf_counter() - provider_started_at) * 1000)
                 provider_health.record_result(
                     provider_name_for_learning,
                     ok=False,
-                    latency_ms=int((time.perf_counter() - provider_started_at) * 1000),
+                    latency_ms=latency_ms,
+                    error=error_text,
+                )
+                model_usage_ledger.record_run(
+                    self._cwd,
+                    provider=provider_name_for_learning,
+                    model=model_for_learning,
+                    task_id=task_id,
+                    task_type=route_role or "",
+                    ok=False,
+                    latency_ms=latency_ms,
                     error=error_text,
                 )
             outcome = _record_outcome_learning(

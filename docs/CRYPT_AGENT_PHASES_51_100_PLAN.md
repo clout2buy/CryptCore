@@ -301,6 +301,11 @@ the Jobs panel shows persistent queue state.
 
 Track model/provider usage, latency, success, and rough cost where available.
 
+Progress: added `core.model_usage_ledger`, which records provider/model runs,
+success/failure, latency, estimated token split, and rough estimated cost. The
+AppDaemon now writes usage entries after model turns, and the WebUI surfaces
+usage totals, cost estimates, and latency in Home/Settings plus prompt context.
+
 ## Phase 83 - Research Source Manager
 
 Save web sources, summaries, quotes, dates, and trust notes as reusable

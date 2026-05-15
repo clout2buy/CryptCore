@@ -81,6 +81,7 @@ from . import (
     work_threads,
     live_events,
     live_replay,
+    model_usage_ledger,
 )
 from .agents import registry as agent_registry
 from tools import REGISTRY
@@ -1232,6 +1233,9 @@ def _prompt_with_context(
         provider_health_section = provider_health.prompt_section(settings.load_config())
         if provider_health_section:
             hints.append(provider_health_section.replace("\n", " | "))
+        usage_section = model_usage_ledger.prompt_section(workspace)
+        if usage_section:
+            hints.append(usage_section.replace("\n", " | "))
         notification_section = notification_center.prompt_section(workspace)
         if notification_section:
             hints.append(notification_section.replace("\n", " | "))
