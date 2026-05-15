@@ -35,6 +35,10 @@ records draft lifecycle events.
 Track businesses, offers, products, customers, channels, assets, domains,
 expenses, and revenue streams as first-class entities.
 
+Progress: added `core.business_entities`, passively extracts business objects
+from chat, writes JSON plus Markdown registry artifacts, injects registry
+context into prompts, and surfaces business entities in WebUI memory.
+
 ## Phase 55 - Website Generator Pipeline
 
 Package frontend-design workflows into a repeatable site/app generator with

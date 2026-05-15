@@ -22,6 +22,7 @@ from . import (
     autonomy,
     autonomy_contracts,
     artifact_studio,
+    business_entities,
     business_mission,
     capability_matrix,
     clarification_policy,
@@ -290,6 +291,19 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                             "path": str(entity_result.path),
                         }
                     )
+            try:
+                business_entity_result = business_entities.observe_text(self.server.cwd, text)
+            except Exception as exc:
+                self.server.emit_event({"event": "businessEntitiesError", "error": f"{type(exc).__name__}: {exc}"})
+            else:
+                if business_entity_result.changed:
+                    self.server.emit_event(
+                        {
+                            "event": "businessEntitiesUpdated",
+                            "text": f"{len(business_entity_result.records)} business entity signal(s) captured.",
+                            "count": business_entity_result.count,
+                        }
+                    )
             queued_draft = None
             if intent_decision.intent == "external_action":
                 try:
@@ -537,6 +551,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["workThreads"] = [asdict(thread) for thread in work_threads.list_threads(self.server.cwd, include_all=True)[:20]]
         snapshot["memoryJournal"] = memory_journal.snapshot(self.server.cwd)
         snapshot["entitiesPreview"] = entities.snapshot(self.server.cwd)
+        snapshot["businessEntities"] = business_entities.snapshot(self.server.cwd)
         snapshot["externalDrafts"] = external_drafts.snapshot(self.server.cwd)
         snapshot["knowledgeGraph"] = knowledge_graph.snapshot(self.server.cwd)
         snapshot["contextPackPreview"] = context_packs.preview(self.server.cwd)
@@ -1034,6 +1049,9 @@ def _prompt_with_context(
         revenue_section = revenue.prompt_section(workspace)
         if revenue_section:
             hints.append(revenue_section.replace("\n", " | "))
+        business_entity_section = business_entities.prompt_section(workspace)
+        if business_entity_section:
+            hints.append(business_entity_section.replace("\n", " | "))
         entity_section = entities.prompt_section(workspace)
         if entity_section:
             hints.append(entity_section.replace("\n", " | "))

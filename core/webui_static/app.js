@@ -821,8 +821,10 @@ function memoryView(snapshot) {
   const lessons = snapshot.lessonsPreview || [];
   const journal = snapshot.memoryJournal || {};
   const entities = snapshot.entitiesPreview || {};
+  const businessEntities = snapshot.businessEntities || {};
   const graph = snapshot.knowledgeGraph || {};
   const entityRows = entities.preview || [];
+  const businessRows = businessEntities.preview || [];
   const longTerm = journal.longTermPreview || [];
   const working = journal.workingPreview || [];
   const loops = journal.openLoopPreview || [];
@@ -838,16 +840,24 @@ function memoryView(snapshot) {
         ${statCard("Long-term", journal.longTermCount || 0)}
         ${statCard("Open loops", journal.openLoopCount || 0)}
         ${statCard("Entities", entities.count || 0)}
+        ${statCard("Business", businessEntities.count || 0)}
         ${statCard("Graph", `${graph.nodeCount || 0}/${graph.edgeCount || 0}`)}
         ${statCard("Lessons", snapshot.lessons || 0)}
       </div>
     </section>
+    <section class="data-list">${businessRows.map(businessEntityRow).join("") || ""}</section>
     <section class="data-list">${entityRows.map(entityRow).join("") || ""}</section>
     <section class="data-list">${longTerm.map(memorySignalRow).join("") || emptyRow("No long-term journal memory yet")}</section>
     <section class="data-list">${loops.map(memorySignalRow).join("") || ""}</section>
     <section class="data-list">${working.map(memorySignalRow).join("") || ""}</section>
     <section class="data-list">${lessons.map((lesson) => row("Lesson", lesson.text, `${lesson.scope} / ${lesson.confidence}`)).join("") || emptyRow("No durable memory yet")}</section>
   `;
+}
+
+function businessEntityRow(item) {
+  const value = Number(item.value || 0) ? `${item.currency || "USD"} ${Number(item.value || 0).toFixed(2)}` : "";
+  const detail = [item.status || "active", value, (item.tags || []).slice(0, 3).join(" / ")].filter(Boolean).join(" / ");
+  return row(item.kind || "business", item.name || "", detail);
 }
 
 function memorySignalRow(item) {
@@ -1542,6 +1552,13 @@ function handleEvent(event) {
       break;
     case "entitiesError":
       addActivity("Entity memory", event.error || "Could not update entity memory.");
+      break;
+    case "businessEntitiesUpdated":
+      addActivity("Business registry", oneLine(event.text || "Business entities updated.", 160), "mission");
+      refresh({ renderView: state.currentView === "memory" || state.currentView === "missions" }).catch((error) => addActivity("Business registry", error.message));
+      break;
+    case "businessEntitiesError":
+      addActivity("Business registry", event.error || "Could not update business registry.");
       break;
     case "externalDraftCreated":
       appendLiveEvent(id, {

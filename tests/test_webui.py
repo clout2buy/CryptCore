@@ -48,6 +48,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "capabilityMatrix" in web_snapshot
         assert "autonomyContracts" in web_snapshot
         assert "externalDrafts" in web_snapshot
+        assert "businessEntities" in web_snapshot
         assert web_snapshot["capabilityMatrix"]["total"] >= 10
         json.dumps(web_snapshot)
     finally:
@@ -206,6 +207,8 @@ def test_webui_static_is_chat_first():
     assert "Autonomy Contracts" in script
     assert "External Draft Queue" in script
     assert "externalDraftCreated" in script
+    assert "businessEntitiesUpdated" in script
+    assert "Business registry" in script
     assert "renderCurrentView" in script
     assert "syncEngineControls" in script
     assert "toggleComposerAdvanced" in script
