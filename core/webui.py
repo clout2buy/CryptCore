@@ -46,6 +46,7 @@ from . import (
     project_index,
     reflection,
     revenue,
+    revenue_ops,
     runtime_rebuild,
     scheduler,
     session as sessions,
@@ -582,6 +583,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["schedulesPreview"] = [asdict(item) for item in scheduler.list_jobs(self.server.cwd, include_all=True)[:20]]
         snapshot["monitorsPreview"] = [asdict(item) for item in monitors.list_monitors(self.server.cwd, include_all=True)[:20]]
         snapshot["revenue"] = revenue.dashboard_snapshot(self.server.cwd)
+        snapshot["revenueOps"] = revenue_ops.dashboard(self.server.cwd)
         snapshot["integrationsPreview"] = integrations.snapshot()
         soul_path = soul.ensure_soul()
         soul_update = soul.evolve(self.server.cwd)
@@ -1067,6 +1069,9 @@ def _prompt_with_context(
         revenue_section = revenue.prompt_section(workspace)
         if revenue_section:
             hints.append(revenue_section.replace("\n", " | "))
+        revenue_ops_section = revenue_ops.prompt_section(workspace)
+        if revenue_ops_section:
+            hints.append(revenue_ops_section.replace("\n", " | "))
         business_entity_section = business_entities.prompt_section(workspace)
         if business_entity_section:
             hints.append(business_entity_section.replace("\n", " | "))

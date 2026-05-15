@@ -53,6 +53,10 @@ context into prompts, and surfaces site pipelines in WebUI files.
 Upgrade revenue tracking into goals, forecasts, expenses, channel performance,
 and next-action recommendations.
 
+Progress: added `core.revenue_ops` with revenue targets, 30-day forecasts,
+channel performance, recommendation logic, WebUI snapshot/home panel, and
+runtime prompt context.
+
 ## Phase 57 - Visual Browser Recorder
 
 Record browser navigation, screenshots, console errors, and visual QA notes into

@@ -521,6 +521,8 @@ function panelView(snapshot) {
   const features = snapshot.coreFeatures || [];
   const matrix = snapshot.capabilityMatrix || {};
   const capabilities = matrix.capabilities || [];
+  const revenueOps = snapshot.revenueOps || {};
+  const revenueActions = revenueOps.nextActions || [];
   const lookup = Object.fromEntries(features.map((feature) => [feature.id, feature]));
   const journal = snapshot.memoryJournal || {};
   const threads = snapshot.workThreads || [];
@@ -569,6 +571,12 @@ function panelView(snapshot) {
         <h3>Capability Matrix</h3>
         <div class="compact-list">
           ${capabilities.slice(0, 6).map((capability) => compactItem(capability.status || "watch", capability.label, capability.evidence || capability.summary)).join("") || compactItem("empty", "No capability snapshot yet", "Refresh once the runtime is ready.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Revenue Ops</h3>
+        <div class="compact-list">
+          ${revenueActions.slice(0, 4).map((action) => compactItem("next", action, `30d forecast: $${Number(revenueOps.forecast?.revenue30d || 0).toFixed(2)}`)).join("") || compactItem("idle", "No revenue signals yet", "Log visits, leads, expenses, conversions, and revenue to activate ops.")}
         </div>
       </div>
     </section>
