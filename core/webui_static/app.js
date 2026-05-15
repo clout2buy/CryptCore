@@ -1124,6 +1124,7 @@ function settingsView(snapshot) {
   const patchRisk = snapshot.patchRisk || {};
   const localSearch = snapshot.localSearch || {};
   const credentialVault = snapshot.credentialVault || {};
+  const approvalPolicy = snapshot.approvalPolicy || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Engine", value: modelLabel(snapshot.model), status: providerLabel(snapshot.provider, snapshot), detail: "Current model used by chat." })}
@@ -1135,6 +1136,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Patch Risk", value: patchRisk.risk || "low", status: patchRisk.blast_radius || "blast", detail: (patchRisk.reasons || []).join(" / ") || "No patch risk detected." })}
       ${featureCard({ label: "Local Search", value: localSearch.documents || 0, status: `${localSearch.tokenCount || 0} tokens`, detail: Object.entries(localSearch.sources || {}).map(([key, value]) => `${key}: ${value}`).join(" / ") || "Index is ready to build." })}
       ${featureCard({ label: "Credential Vault", value: credentialVault.total || 0, status: `${credentialVault.needed || 0} needed`, detail: "Reference-only account and secret requirements. Raw secrets stay out of chat and files." })}
+      ${featureCard({ label: "Approval Policy", value: approvalPolicy.enabled || 0, status: `${approvalPolicy.ask || 0} ask / ${approvalPolicy.block || 0} block`, detail: "Configurable rules for what Crypt can do automatically, draft, ask for, or block." })}
       ${featureCard({ label: "Gateway", value: "local", status: "webui", detail: snapshot.webui?.url || "local" })}
       ${featureCard({ label: "Workspace", value: "open", status: "local", detail: snapshot.workspace })}
     </section>

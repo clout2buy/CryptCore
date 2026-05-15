@@ -55,6 +55,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "capabilityMatrix" in web_snapshot
         assert "personaGovernance" in web_snapshot
         assert "autonomyContracts" in web_snapshot
+        assert "approvalPolicy" in web_snapshot
         assert "externalDrafts" in web_snapshot
         assert "businessEntities" in web_snapshot
         assert "businessLaunch" in web_snapshot
@@ -245,6 +246,7 @@ def test_webui_static_is_chat_first():
     assert "Self-Upgrade Sandbox" in script
     assert "Patch Risk" in script
     assert "Autonomy Contracts" in script
+    assert "Approval Policy" in script
     assert "External Draft Queue" in script
     assert "externalDraftCreated" in script
     assert "businessEntitiesUpdated" in script

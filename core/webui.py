@@ -19,6 +19,7 @@ from . import (
     agent_profiles,
     agent_delegation,
     agent_team_templates,
+    approval_policy,
     artifact_graph,
     app_daemon,
     autonomy,
@@ -651,6 +652,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["reflections"] = [asdict(item) for item in reflection.list_reflections(self.server.cwd, limit=5)]
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
         snapshot["autonomyContracts"] = autonomy_contracts.snapshot()
+        snapshot["approvalPolicy"] = approval_policy.snapshot(self.server.cwd)
         snapshot["schedulesPreview"] = [asdict(item) for item in scheduler.list_jobs(self.server.cwd, include_all=True)[:20]]
         snapshot["missionScheduler"] = scheduler.snapshot(self.server.cwd)
         snapshot["monitorsPreview"] = [asdict(item) for item in monitors.list_monitors(self.server.cwd, include_all=True)[:20]]
@@ -1131,10 +1133,14 @@ def _prompt_with_context(
         hints.append(clarification_policy.prompt_hint(action))
     if contract is None and intent:
         contract = autonomy_contracts.select(text, intent)
-    if contract:
-        hints.append(autonomy_contracts.prompt_hint(contract))
-        if business_mission.is_business_text(text):
-            hints.append(business_mission.prompt_section().replace("\n", " | "))
+        if contract:
+            hints.append(autonomy_contracts.prompt_hint(contract))
+    if workspace:
+        policy_section = approval_policy.prompt_section(workspace, text)
+        if policy_section:
+            hints.append(policy_section.replace("\n", " | "))
+    if business_mission.is_business_text(text):
+        hints.append(business_mission.prompt_section().replace("\n", " | "))
     if workspace:
         section = mission_brain.prompt_section(workspace)
         if section:

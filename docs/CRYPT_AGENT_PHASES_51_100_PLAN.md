@@ -274,6 +274,11 @@ and surfaces vault status in WebUI settings.
 
 Let users configure what Crypt can do automatically versus what needs approval.
 
+Progress: added `core.approval_policy`, which persists allow/draft/ask/block
+rules, seeds safe defaults for external sends, payments, credential use, local
+build work, and destructive operations, exposes decisions in prompt context, and
+surfaces the policy summary in WebUI settings.
+
 ## Phase 80 - Live Tool Replay
 
 Replay tool calls, command output, browser events, and desktop events in WebUI.
