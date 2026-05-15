@@ -20,6 +20,7 @@ from . import (
     app_daemon,
     autonomy,
     artifact_studio,
+    business_mission,
     clarification_policy,
     code_builder,
     goals,
@@ -841,6 +842,8 @@ def _prompt_with_context(
             hints.append(hint)
     if action:
         hints.append(clarification_policy.prompt_hint(action))
+    if business_mission.is_business_text(text):
+        hints.append(business_mission.prompt_section().replace("\n", " | "))
     if workspace:
         section = mission_brain.prompt_section(workspace)
         if section:

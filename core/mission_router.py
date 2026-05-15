@@ -241,7 +241,7 @@ def _success_metric(text: str) -> str:
     if any(term in lower for term in {"monitor", "track", "watch", "keep an eye"}):
         return "Latest status is checked and summarized without manual prompting."
     if "business" in lower:
-        return "Offer, launch assets, operations, and measurable revenue path are kept moving."
+        return "Idea, market, offer, brand, landing page, payment path, content, operations, analytics, and launch stay staged."
     if any(term in lower for term in {"website", "app", "tool"}):
         return "A working version is shipped, verified, and improved through follow-up."
     return "The requested outcome is planned, tracked, executed, and reviewed."

@@ -193,6 +193,8 @@ def update_thread(
     next_action: str | None = None,
     blockers: list[str] | None = None,
     artifacts: list[str] | None = None,
+    tasks: list[dict[str, Any]] | None = None,
+    success_metrics: list[str] | None = None,
     last_note: str = "",
     bump_due: bool = False,
     source: str = "runtime",
@@ -219,6 +221,10 @@ def update_thread(
                 data["state"] = "blocked"
         if artifacts is not None:
             data["artifacts"] = _dedupe([*thread.artifacts, *artifacts])
+        if tasks is not None:
+            data["tasks"] = tasks
+        if success_metrics is not None:
+            data["success_metrics"] = _dedupe(success_metrics)
         if bump_due:
             data["due_at"] = _next_due(thread.cadence, now)
         if last_note:
@@ -340,11 +346,9 @@ def _next_action(goal: goals.Goal, prompt_text: str) -> str:
 def _default_tasks(goal: goals.Goal, prompt_text: str) -> list[dict[str, Any]]:
     lower = " ".join([goal.title, goal.description, prompt_text, " ".join(goal.tags)]).lower()
     if any(term in lower for term in ("business", "income", "revenue", "sales", "customer")):
-        titles = [
-            "Define the offer and target customer",
-            "Create launch artifact or landing page",
-            "Set up revenue and blocker tracking",
-        ]
+        from . import business_mission
+
+        return business_mission.stage_tasks()
     elif any(term in lower for term in ("monitor", "track", "watch", "keep an eye")):
         titles = [
             "Check the latest state",
@@ -367,11 +371,14 @@ def _default_tasks(goal: goals.Goal, prompt_text: str) -> list[dict[str, Any]]:
 
 
 def _success_metrics(goal: goals.Goal) -> list[str]:
-    if goal.success_metric:
-        return [goal.success_metric]
     lower = " ".join([goal.title, goal.description, " ".join(goal.tags)]).lower()
     if any(term in lower for term in ("business", "income", "revenue", "sales")):
-        return ["Revenue path, blockers, and next actions stay tracked."]
+        from . import business_mission
+
+        metrics = business_mission.success_metrics()
+        return _dedupe([goal.success_metric, *metrics]) if goal.success_metric else metrics
+    if goal.success_metric:
+        return [goal.success_metric]
     if any(term in lower for term in ("monitor", "track", "watch")):
         return ["Latest status is checked and summarized on schedule."]
     return ["Outcome is advanced, verified, and summarized with a next step."]
@@ -380,6 +387,10 @@ def _success_metrics(goal: goals.Goal) -> list[str]:
 def _blockers(text: str) -> list[str]:
     lower = text.lower()
     blockers: list[str] = []
+    if "business" in lower or any(term in lower for term in ("income", "revenue", "sales", "customer")):
+        from . import business_mission
+
+        blockers.extend(business_mission.blockers())
     if any(term in lower for term in APPROVAL_TERMS):
         blockers.append("Needs approval before posting, messaging, spending, account changes, or credential use.")
     if any(term in lower for term in ("reverse engineer", "game", "server")):

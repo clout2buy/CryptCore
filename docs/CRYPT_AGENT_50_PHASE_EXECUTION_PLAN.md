@@ -468,12 +468,23 @@ Progress:
   results, and add thread history when changes are detected.
 - WebUI snapshots and prompt context include monitor state for follow-up work.
 
-## Phase 32 - Business Mission Template
+## Phase 32 - Business Mission Template [started]
 
 Turn "start a business" into a mission tree: idea, market, offer, brand, landing
 page, payment path, content, operations, analytics, and launch.
 
 Verification: generated business mission with staged blockers and approvals.
+
+Progress:
+
+- Added `core/business_mission.py` with a ten-stage launch template covering
+  idea, market, offer, brand, landing page, payment, content, operations,
+  analytics, and launch.
+- Business work threads now receive full staged tasks, success metrics, and
+  approval blockers for live payment, account, outreach, spending, and posting
+  actions.
+- WebUI prompt context includes the business template automatically when the
+  user asks to start or operate a business.
 
 ## Phase 33 - Revenue And Metrics Layer
 

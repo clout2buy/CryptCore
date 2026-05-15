@@ -23,7 +23,8 @@ def test_work_thread_created_for_business_goal(monkeypatch, tmp_path: Path):
     assert thread.goal_id == goal.goal_id
     assert thread.cadence == "weekly"
     assert "revenue tracker" in thread.next_action
-    assert thread.tasks[0]["title"] == "Define the offer and target customer"
+    assert thread.tasks[0]["title"] == "Clarify the business idea"
+    assert any(task["title"] == "Prepare payment path" for task in thread.tasks)
     assert thread.success_metrics
     assert work_threads.list_threads(workspace)[0].thread_id == thread.thread_id
 
@@ -94,5 +95,5 @@ def test_work_thread_prompt_section_includes_tasks_and_metrics(monkeypatch, tmp_
     work_threads.ensure_for_goal(goal, prompt_text="track income")
     section = work_threads.prompt_section(workspace)
 
-    assert "task: Define the offer and target customer" in section
+    assert "task: Clarify the business idea" in section
     assert "metric: Revenue, blockers, and next launch action are current." in section
