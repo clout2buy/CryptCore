@@ -226,6 +226,11 @@ into `core.release_train` plus `python main.py release --release-ui-url`.
 Index project docs, memories, missions, artifacts, and skills for fast context
 retrieval.
 
+Progress: added `core.local_search_index`, a cached lexical index over
+workspace docs, memory/lessons, missions, work threads, artifacts, and skills.
+Runtime prompt context now includes top local hits for the current user request,
+and the WebUI surfaces document/token/source counts.
+
 ## Phase 75 - Document/Spreadsheet/Presentation Office Layer
 
 Turn office-style output into durable artifacts with verification and previews.

@@ -881,6 +881,7 @@ function memoryView(snapshot) {
   const entities = snapshot.entitiesPreview || {};
   const businessEntities = snapshot.businessEntities || {};
   const graph = snapshot.knowledgeGraph || {};
+  const localSearch = snapshot.localSearch || {};
   const entityRows = entities.preview || [];
   const businessRows = businessEntities.preview || [];
   const longTerm = journal.longTermPreview || [];
@@ -900,6 +901,7 @@ function memoryView(snapshot) {
         ${statCard("Entities", entities.count || 0)}
         ${statCard("Business", businessEntities.count || 0)}
         ${statCard("Graph", `${graph.nodeCount || 0}/${graph.edgeCount || 0}`)}
+        ${statCard("Local search", localSearch.documents || 0)}
         ${statCard("Lessons", snapshot.lessons || 0)}
       </div>
     </section>
@@ -1094,6 +1096,7 @@ function settingsView(snapshot) {
   const healthCards = providerHealth.cards || [];
   const sandbox = snapshot.selfUpgradeSandbox || {};
   const patchRisk = snapshot.patchRisk || {};
+  const localSearch = snapshot.localSearch || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Engine", value: modelLabel(snapshot.model), status: providerLabel(snapshot.provider, snapshot), detail: "Current model used by chat." })}
@@ -1103,6 +1106,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Provider Health", value: `${providerHealth.ready || 0}/${providerHealth.total || 0}`, status: providerHealth.recommendedFallback ? `fallback ${providerHealth.recommendedFallback}` : "fallback none", detail: `${providerHealth.warnings || 0} warning(s), ${providerHealth.missing || 0} missing.` })}
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
       ${featureCard({ label: "Patch Risk", value: patchRisk.risk || "low", status: patchRisk.blast_radius || "blast", detail: (patchRisk.reasons || []).join(" / ") || "No patch risk detected." })}
+      ${featureCard({ label: "Local Search", value: localSearch.documents || 0, status: `${localSearch.tokenCount || 0} tokens`, detail: Object.entries(localSearch.sources || {}).map(([key, value]) => `${key}: ${value}`).join(" / ") || "Index is ready to build." })}
       ${featureCard({ label: "Gateway", value: "local", status: "webui", detail: snapshot.webui?.url || "local" })}
       ${featureCard({ label: "Workspace", value: "open", status: "local", detail: snapshot.workspace })}
     </section>

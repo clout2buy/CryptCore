@@ -49,6 +49,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "missionScheduler" in web_snapshot
         assert "monitorsPreview" in web_snapshot
         assert "memoryJournal" in web_snapshot
+        assert "localSearch" in web_snapshot
         assert "remoteAccess" in web_snapshot
         assert "capabilityMatrix" in web_snapshot
         assert "personaGovernance" in web_snapshot
@@ -229,6 +230,7 @@ def test_webui_static_is_chat_first():
     assert "coreFeatures" in script
     assert "capabilityMatrix" in script
     assert "Capability Matrix" in script
+    assert "Local Search" in script
     assert "toolCapabilityCards" in script
     assert "Tool Arsenal" in script
     assert "Smart Model Router" in script
