@@ -191,12 +191,18 @@ Progress:
 - Added typed memory filtering so runtime code can retrieve memories by type,
   minimum confidence, and privacy sensitivity.
 
-## Phase 13 - Memory Condenser
+## Phase 13 - Memory Condenser [started]
 
 Periodically condense chat and mission history into compact long-term memory,
 short-term context, and discarded noise.
 
 Verification: condenser tests that preserve important facts and drop junk.
+
+Progress:
+
+- Added `core/memory_condenser.py` to promote high-confidence typed working
+  memory into long-term memory and discard stale low-confidence noise.
+- Autonomy cycles now run the condenser and record memory promotion counts.
 
 ## Phase 14 - Persona Evolution
 
