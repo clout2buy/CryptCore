@@ -994,7 +994,41 @@ function providersView(snapshot) {
 }
 
 function toolsView(snapshot) {
-  return `<section class="data-list">${(snapshot.toolsPreview || []).map((tool) => row("Tool", tool.name, tool.description)).join("")}</section>`;
+  const cards = snapshot.toolCapabilityCards?.cards || snapshot.toolsPreview || [];
+  const summary = snapshot.toolCapabilityCards || {};
+  return `
+    <section class="two-col">
+      <div class="panel-card wide">
+        <h3>Tool Arsenal</h3>
+        <p>Every tool is mapped by scope, risk, permission rules, recovery hints, and live usage. Crypt uses this to pick the right action without making you orchestrate it.</p>
+      </div>
+      <div class="panel-card">
+        ${statCard("Loaded", summary.total || cards.length)}
+        ${statCard("Used", summary.used || 0)}
+        ${statCard("High risk", summary.risk?.high || 0)}
+      </div>
+    </section>
+    <section class="feature-grid tool-card-grid">
+      ${cards.map(toolCapabilityCard).join("") || emptyRow("No tools loaded")}
+    </section>
+  `;
+}
+
+function toolCapabilityCard(tool) {
+  const usage = tool.usage || {};
+  const examples = tool.examples || [];
+  const example = examples[0]?.args ? Object.keys(examples[0].args).slice(0, 3).join(" / ") : "";
+  const detail = [
+    tool.description || "",
+    (tool.permissionNeeds || []).slice(0, 1).join(""),
+    (tool.recoveryHints || []).slice(0, 1).join(""),
+  ].filter(Boolean).join(" · ");
+  return featureCard({
+    label: tool.name,
+    value: tool.risk || "low",
+    status: `${tool.scope || tool.capability || "tool"}${usage.total ? ` / used ${usage.total}x` : ""}`,
+    detail: `${detail}${example ? ` · inputs: ${example}` : ""}`,
+  });
 }
 
 function gatewayView(snapshot) {

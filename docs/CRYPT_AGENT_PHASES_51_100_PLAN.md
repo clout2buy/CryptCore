@@ -136,6 +136,11 @@ surfaces outcome candidates in the WebUI skills panel and runtime hints.
 Expose every tool with scope, risk, permission needs, examples, and live usage
 state in WebUI.
 
+Progress: added `core.tool_capability_cards`, builds first-class cards from the
+tool registry, enriches them with runtime policy risk, examples, recovery hints,
+and audit/evidence usage counts, injects tool-card context into prompts, and
+rebuilds the WebUI tools view around the live arsenal instead of a flat list.
+
 ## Phase 66 - Smart Model Router V2
 
 Route by task category, cost, latency, context length, tool use, and required

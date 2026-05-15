@@ -60,6 +60,7 @@ from . import (
     skill_outcome_autoforge,
     skills,
     soul,
+    tool_capability_cards,
     upgrade_queue,
     webui_access,
     webui_backup,
@@ -610,6 +611,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["skillsPreview"] = [skill.as_dict() for skill in skills.discover(self.server.cwd, include_disabled=True)[:40]]
         snapshot["skillLifecycle"] = skill_lifecycle.snapshot(self.server.cwd)
         snapshot["skillOutcomeAutoforge"] = skill_outcome_autoforge.snapshot(self.server.cwd)
+        snapshot["toolCapabilityCards"] = tool_capability_cards.snapshot()
         snapshot["toolsPreview"] = _tool_previews()
         snapshot["filesPreview"] = _workspace_files(self.server.cwd)
         studio = artifact_studio.snapshot(self.server.cwd)
@@ -925,18 +927,16 @@ def _agent_definition_previews() -> list[dict]:
 
 def _tool_previews(limit: int = 60) -> list[dict]:
     out = []
-    for schema in REGISTRY.schemas()[:limit]:
-        name = str(schema.get("name") or "")
-        desc = str(schema.get("description") or "")
-        meta = schema.get("x_crypt") if isinstance(schema.get("x_crypt"), dict) else {}
+    for card in tool_capability_cards.build(limit=limit):
         out.append(
             {
-                "name": name,
-                "description": desc,
-                "capability": str(meta.get("capability") or ""),
-                "risk": str(meta.get("risk") or ""),
-                "permissionNeeds": list(meta.get("permissionNeeds") or []),
-                "recoveryHints": list(meta.get("recoveryHints") or []),
+                "name": card.name,
+                "description": card.description,
+                "capability": card.scope,
+                "risk": card.risk,
+                "permissionNeeds": card.permission_needs,
+                "recoveryHints": card.recovery_hints,
+                "usage": card.usage.to_dict(),
             }
         )
     return out
@@ -1123,6 +1123,9 @@ def _prompt_with_context(
         skill_outcome_section = skill_outcome_autoforge.prompt_section(workspace)
         if skill_outcome_section:
             hints.append(skill_outcome_section.replace("\n", " | "))
+        tool_cards_section = tool_capability_cards.prompt_section()
+        if tool_cards_section:
+            hints.append(tool_cards_section.replace("\n", " | "))
         persona_governance_section = persona_governance.prompt_section(workspace)
         if persona_governance_section:
             hints.append(persona_governance_section.replace("\n", " | "))
