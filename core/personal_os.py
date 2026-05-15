@@ -64,6 +64,7 @@ def build(cwd: str | Path, snapshot: dict[str, Any] | None = None) -> PersonalOS
     memory = dict(data.get("memoryJournal") or {})
     artifacts = dict(data.get("artifactSummary") or {})
     voice = dict(data.get("voice") or {})
+    voice_convo = dict(data.get("voiceConversation") or {})
     scheduler_data = dict(data.get("missionScheduler") or {})
     revenue_ops = dict(data.get("revenueOps") or {})
     approvals = int(drafts.get("pending") or 0)
@@ -78,14 +79,14 @@ def build(cwd: str | Path, snapshot: dict[str, Any] | None = None) -> PersonalOS
         OSSignal("Memory", str(memory.get("longTermCount") or 0), f"{memory.get('openLoopCount') or 0} open loop(s)", "ready"),
         OSSignal("Approvals", str(approvals), "External effects wait here.", "attention" if approvals else "ready"),
         OSSignal("Files", str(artifacts.get("total") or 0), f"{artifacts.get('verified') or 0} verified", "ready"),
-        OSSignal("Voice", "ready" if voice.get("ready") else "setup", ", ".join(voice.get("missing") or [])[:120], "ready" if voice.get("ready") else "setup"),
+        OSSignal("Voice", "ready" if voice.get("ready") else "setup", f"{voice_convo.get('status') or 'idle'} / {voice_convo.get('turnCount') or 0} turn(s)", "ready" if voice.get("ready") else "setup"),
     ]
     lanes = [
         OSLane("chat", "Chat", "ready", "Take the user's plain language and decide the route.", 1, "No starter prompts needed."),
         OSLane("missions", "Missions", "attention" if blocked_threads or due else "ready", "Create or resume durable work threads when the ask has follow-through.", len(active_threads), _first_action(active_threads)),
         OSLane("memory", "Memory", "ready", "Passively save durable preferences, projects, and open loops.", int(memory.get("longTermCount") or 0), f"{memory.get('workingCount') or 0} working signal(s)."),
         OSLane("files", "Files", "ready", "Register outputs, imports, docs, screenshots, and generated assets.", int(artifacts.get("total") or 0), f"{artifacts.get('missionLinked') or 0} mission-linked."),
-        OSLane("voice", "Voice", "setup" if not voice.get("ready") else "ready", "Use speech for quick commands and replies when available.", 1 if voice.get("ready") else 0, "Local voice loop."),
+        OSLane("voice", "Voice", "setup" if not voice.get("ready") else "ready", "Use speech for quick commands and replies when available.", int(voice_convo.get("turnCount") or 0), voice_convo.get("status") or "Local voice loop."),
         OSLane("business", "Business", "ready", "Track offers, content, revenue, customers, and next actions.", int(revenue_ops.get("targets") or 0), _business_detail(revenue_ops)),
         OSLane("approvals", "Approvals", "attention" if approvals else "ready", "Keep public posts, email, purchases, and account actions gated.", approvals, "Draft first, publish after approval."),
         OSLane("jobs", "Jobs", "working" if running_jobs else "ready", "Recover and display long-running background work.", running_jobs, f"{jobs.get('queued') or 0} queued."),

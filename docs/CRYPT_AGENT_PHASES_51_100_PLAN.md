@@ -364,6 +364,13 @@ route plain-language asks without requiring orchestration from the user.
 Full duplex-feeling local voice loop with interruption, short responses, and
 transcript memory.
 
+Progress: added `core.voice_conversation`, a durable local voice session ledger
+that records listening, transcript, reply, interruption, stop, and error events,
+promotes useful voice transcripts into memory, and injects short-reply voice
+guidance into prompt context. The WebUI now logs voice lifecycle events, stops
+audio when the user starts speaking, and exposes voice conversation state in the
+snapshot.
+
 ## Phase 89 - Mobile Companion UI
 
 Polish mobile layout for chat, approvals, notifications, and mission status.

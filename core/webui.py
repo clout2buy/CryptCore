@@ -82,6 +82,7 @@ from . import (
     webui_access,
     webui_backup,
     website_pipeline,
+    voice_conversation,
     workspace_map,
     work_threads,
     live_events,
@@ -569,6 +570,23 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                 return
             self._json({"speech": result.to_dict()})
             return
+        if path == "/api/voice/conversation":
+            convo = voice_conversation.record_event(
+                self.server.cwd,
+                str(body.get("event") or ""),
+                text=str(body.get("text") or ""),
+                conversation_id=str(body.get("conversationId") or ""),
+            )
+            self.server.emit_event(
+                {
+                    "event": "voiceConversation",
+                    "status": convo.status,
+                    "turnCount": convo.turn_count,
+                    "interruptionCount": convo.interruption_count,
+                }
+            )
+            self._json({"voiceConversation": convo.to_dict()})
+            return
         if path == "/api/backup/restore":
             try:
                 result = webui_backup.restore_backup(self.server.cwd, body.get("backup") if "backup" in body else body)
@@ -702,6 +720,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         }
         snapshot["personaGovernance"] = persona_governance.audit(self.server.cwd)
         snapshot["voice"] = local_voice.status().to_dict()
+        snapshot["voiceConversation"] = voice_conversation.snapshot(self.server.cwd)
         snapshot["remoteAccess"] = self.server.access.to_dict()
         snapshot["sessionsPreview"] = [_session_preview(item) for item in sessions.list_sessions(self.server.cwd)[:12]]
         snapshot["agentProfiles"] = [profile.to_dict() for profile in agent_profiles.list_profiles(self.server.cwd)]
@@ -1234,6 +1253,9 @@ def _prompt_with_context(
         personal_os_section = personal_os.prompt_section(workspace)
         if personal_os_section:
             hints.append(personal_os_section.replace("\n", " | "))
+        voice_conversation_section = voice_conversation.prompt_section(workspace)
+        if voice_conversation_section:
+            hints.append(voice_conversation_section.replace("\n", " | "))
         upgrade_section = upgrade_queue.prompt_section(workspace)
         if upgrade_section:
             hints.append(upgrade_section.replace("\n", " | "))

@@ -38,6 +38,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "agentDefinitions" in web_snapshot
         assert "agentTeamTemplates" in web_snapshot
         assert "voice" in web_snapshot
+        assert "voiceConversation" in web_snapshot
         assert "workThreads" in web_snapshot
         assert "skillLifecycle" in web_snapshot
         assert "skillOutcomeAutoforge" in web_snapshot
@@ -225,6 +226,8 @@ def test_webui_static_is_chat_first():
     assert "stopVoicePlayback" in script
     assert "flushVoiceInterim" in script
     assert "voiceTextForSpeech" in script
+    assert "recordVoiceConversation" in script
+    assert "voiceConversation" in script
     assert "shouldSpeakResponse" in script
     assert "pollEventsOnce" in script
     assert "pollSnapshotOnce" in script

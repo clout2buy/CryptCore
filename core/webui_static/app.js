@@ -2277,6 +2277,7 @@ function appendTranscript(text) {
   if (!prompt || !clean) return;
   const prefix = prompt.value.trim() ? " " : "";
   prompt.value = `${prompt.value}${prefix}${clean}`;
+  recordVoiceConversation("transcript", clean);
   resizePrompt();
   prompt.focus();
 }
@@ -2292,6 +2293,10 @@ function flushVoiceInterim() {
 function startVoice() {
   const recognition = ensureVoice();
   if (!recognition) return;
+  if (state.voiceOut.audio) {
+    stopVoicePlayback();
+    recordVoiceConversation("interrupted", "User started speaking while Crypt audio was playing.");
+  }
   if (state.voice.listening) {
     updateVoiceUi("listening");
     return;
@@ -2299,6 +2304,7 @@ function startVoice() {
   state.voice.desired = true;
   state.voice.manuallyStopping = false;
   clearVoiceRestart();
+  recordVoiceConversation("started", "");
   try {
     recognition.start();
   } catch (error) {
@@ -2315,6 +2321,7 @@ function stopVoice() {
   state.voice.manuallyStopping = true;
   state.voice.interim = "";
   updateVoiceUi("voice ready");
+  recordVoiceConversation("stopped", "");
   try {
     recognition?.stop();
   } catch (error) {
@@ -2356,7 +2363,16 @@ async function maybeSpeak(text) {
     return;
   }
   if (state.voice.desired || state.voice.listening) stopVoice();
+  recordVoiceConversation("reply", text);
   await speakText(text, { force: false });
+}
+
+function recordVoiceConversation(event, text = "") {
+  const conversationId = state.snapshot?.voiceConversation?.conversationId || "";
+  json("/api/voice/conversation", {
+    method: "POST",
+    body: JSON.stringify({ event, text, conversationId }),
+  }).catch((error) => addActivity("Voice", `conversation log failed: ${error.message}`));
 }
 
 function shouldSpeakResponse(text) {
