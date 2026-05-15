@@ -566,12 +566,22 @@ Progress:
 - WebUI snapshots now include graph counts and previews, and runtime prompts get
   a compact graph context pack for each user message.
 
-## Phase 38 - Context Pack Builder
+## Phase 38 - Context Pack Builder [started]
 
 Build compact context packs for each request from memory, mission state, files,
 skills, and active tools.
 
 Verification: prompt snapshot tests with token budget checks.
+
+Progress:
+
+- Added a budgeted context-pack builder that ranks mission state, graph hits,
+  memory, typed entities, matching files, relevant skills, and available tools
+  for each request.
+- Context packs estimate token use, omit lower-value items when the budget is
+  full, and exclude private entity memory from prompt injection.
+- WebUI snapshots expose a compact pack preview, and chat prompts now receive a
+  request-scoped context pack automatically.
 
 ## Phase 39 - Learning From Outcomes
 
