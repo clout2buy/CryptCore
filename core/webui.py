@@ -32,6 +32,7 @@ from . import (
     learning,
     local_voice,
     memory_journal,
+    mcp_gateway,
     mission_brain,
     mission_router,
     monitors,
@@ -467,6 +468,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["contextPackPreview"] = context_packs.preview(self.server.cwd)
         snapshot["selfUpgradeQueue"] = upgrade_queue.snapshot(self.server.cwd)
         snapshot["runtimeRebuild"] = runtime_rebuild.snapshot(self.server.cwd)
+        snapshot["mcpGateway"] = mcp_gateway.snapshot(self.server.cwd)
         snapshot["lessonsPreview"] = [asdict(lesson) for lesson in learning.list_lessons(self.server.cwd)[:8]]
         snapshot["reflections"] = [asdict(item) for item in reflection.list_reflections(self.server.cwd, limit=5)]
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
@@ -914,6 +916,9 @@ def _prompt_with_context(
         rebuild_section = runtime_rebuild.prompt_section(workspace)
         if rebuild_section:
             hints.append(rebuild_section.replace("\n", " | "))
+        gateway_section = mcp_gateway.prompt_section(workspace)
+        if gateway_section:
+            hints.append(gateway_section.replace("\n", " | "))
         builder_section = code_builder.prompt_section(workspace, text)
         if builder_section:
             hints.append(builder_section.replace("\n", " | "))

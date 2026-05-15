@@ -632,12 +632,21 @@ Progress:
 - WebUI/runtime context now exposes rebuild status so Crypt can recommend safe
   verification and restart without losing durable sessions or local UI state.
 
-## Phase 42 - Plugin And MCP Gateway
+## Phase 42 - Plugin And MCP Gateway [started]
 
 Add a gateway for MCP servers/plugins with capability registry entries,
 permission labels, health checks, and UI visibility.
 
 Verification: mock MCP server registration and tool call.
+
+Progress:
+
+- Added an MCP/plugin gateway layer that lists configured servers plus
+  workspace mock servers with capability, risk, and permission labels.
+- Gateway health checks can probe real configured MCP servers or validate mock
+  servers safely, and mock tool calls provide deterministic local verification.
+- WebUI snapshots and runtime prompt context now expose gateway server/tool
+  visibility without requiring the user to know MCP internals.
 
 ## Phase 43 - Agent Profile System V2
 
