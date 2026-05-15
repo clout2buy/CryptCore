@@ -533,12 +533,22 @@ Progress:
 - Scanner excerpts are redacted before reporting, and prompts now explicitly
   require secret-safe summaries, logs, screenshots, and artifacts.
 
-## Phase 36 - Contact And Account Memory
+## Phase 36 - Contact And Account Memory [started]
 
 Track people, brands, accounts, businesses, channels, and relationships as typed
 entities.
 
 Verification: entity extraction and retrieval tests.
+
+Progress:
+
+- Added a workspace-scoped typed entity store for people, brands, businesses,
+  accounts, channels, and relationships learned from normal chat.
+- Entity memory dedupes mentions, redacts secret-looking details, writes a
+  Markdown companion file, and feeds compact non-private context back into the
+  runtime prompt.
+- WebUI snapshots and the Memory view now surface entity counts and previews
+  without making the user manually maintain contacts.
 
 ## Phase 37 - Knowledge Graph
 

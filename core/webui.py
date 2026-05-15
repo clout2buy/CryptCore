@@ -23,6 +23,7 @@ from . import (
     business_mission,
     clarification_policy,
     code_builder,
+    entities,
     goals,
     integrations,
     intent_router,
@@ -232,6 +233,20 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                         }
                     )
             try:
+                entity_result = entities.observe_text(self.server.cwd, text)
+            except Exception as exc:
+                self.server.emit_event({"event": "entitiesError", "error": f"{type(exc).__name__}: {exc}"})
+            else:
+                if entity_result.changed:
+                    self.server.emit_event(
+                        {
+                            "event": "entitiesUpdated",
+                            "text": f"{len(entity_result.records)} typed entity signal(s) captured.",
+                            "count": entity_result.count,
+                            "path": str(entity_result.path),
+                        }
+                    )
+            try:
                 mission_result = mission_router.observe(self.server.cwd, text, route=intent_decision)
             except Exception as exc:
                 mission_result = mission_router.MissionDecision(False)
@@ -429,6 +444,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["goals"] = [asdict(goal) for goal in goals.list_goals(self.server.cwd, include_all=True)[:20]]
         snapshot["workThreads"] = [asdict(thread) for thread in work_threads.list_threads(self.server.cwd, include_all=True)[:20]]
         snapshot["memoryJournal"] = memory_journal.snapshot(self.server.cwd)
+        snapshot["entitiesPreview"] = entities.snapshot(self.server.cwd)
         snapshot["lessonsPreview"] = [asdict(lesson) for lesson in learning.list_lessons(self.server.cwd)[:8]]
         snapshot["reflections"] = [asdict(item) for item in reflection.list_reflections(self.server.cwd, limit=5)]
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
@@ -861,6 +877,9 @@ def _prompt_with_context(
         revenue_section = revenue.prompt_section(workspace)
         if revenue_section:
             hints.append(revenue_section.replace("\n", " | "))
+        entity_section = entities.prompt_section(workspace)
+        if entity_section:
+            hints.append(entity_section.replace("\n", " | "))
         builder_section = code_builder.prompt_section(workspace, text)
         if builder_section:
             hints.append(builder_section.replace("\n", " | "))

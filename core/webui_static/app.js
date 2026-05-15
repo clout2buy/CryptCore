@@ -803,6 +803,8 @@ function agentsView(snapshot) {
 function memoryView(snapshot) {
   const lessons = snapshot.lessonsPreview || [];
   const journal = snapshot.memoryJournal || {};
+  const entities = snapshot.entitiesPreview || {};
+  const entityRows = entities.preview || [];
   const longTerm = journal.longTermPreview || [];
   const working = journal.workingPreview || [];
   const loops = journal.openLoopPreview || [];
@@ -817,9 +819,11 @@ function memoryView(snapshot) {
         <h3>Memory</h3>
         ${statCard("Long-term", journal.longTermCount || 0)}
         ${statCard("Open loops", journal.openLoopCount || 0)}
+        ${statCard("Entities", entities.count || 0)}
         ${statCard("Lessons", snapshot.lessons || 0)}
       </div>
     </section>
+    <section class="data-list">${entityRows.map(entityRow).join("") || ""}</section>
     <section class="data-list">${longTerm.map(memorySignalRow).join("") || emptyRow("No long-term journal memory yet")}</section>
     <section class="data-list">${loops.map(memorySignalRow).join("") || ""}</section>
     <section class="data-list">${working.map(memorySignalRow).join("") || ""}</section>
@@ -831,6 +835,15 @@ function memorySignalRow(item) {
   const label = item.category || "memory";
   const detail = `${(item.tags || []).join(" / ") || item.source || "journal"}${item.hits > 1 ? ` / hits ${item.hits}` : ""}`;
   return row(label, item.text || "", detail);
+}
+
+function entityRow(item) {
+  const detailParts = [
+    item.mentions ? `${item.mentions} mention(s)` : "",
+    (item.tags || []).slice(0, 3).join(" / "),
+    item.details?.platform || item.details?.relationship || "",
+  ].filter(Boolean);
+  return row(item.kind || "entity", item.name || "", detailParts.join(" / "));
 }
 
 function skillsView(snapshot) {
@@ -1471,6 +1484,13 @@ function handleEvent(event) {
       break;
     case "memoryJournalError":
       addActivity("Memory journal", event.error || "Could not update journal.");
+      break;
+    case "entitiesUpdated":
+      addActivity("Entity memory", oneLine(event.text || "Typed entity memory updated.", 160));
+      refresh({ renderView: state.currentView === "memory" || state.currentView === "persona" }).catch((error) => addActivity("Entities", error.message));
+      break;
+    case "entitiesError":
+      addActivity("Entity memory", event.error || "Could not update entity memory.");
       break;
     case "missionCreated":
       addActivity("Mission created", oneLine(event.text || event.goal?.title || "Autonomous mission saved.", 160), "mission");
