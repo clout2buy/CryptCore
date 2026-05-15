@@ -31,12 +31,19 @@ patches, and polling churn across the WebUI.
 
 Verification: backend tests, WebUI smoke test, browser console clean.
 
-## Phase 2 - Live Event Contract
+## Phase 2 - Live Event Contract [started]
 
 Define one event schema for thinking, streaming text, tool starts, tool updates,
 tool results, permission waits, errors, and final answers.
 
 Verification: contract tests for every event type.
+
+Progress:
+
+- Added `core/live_events.py` as the shared event version/spec/normalizer for
+  daemon and WebUI event buffers.
+- Wired AppDaemon and WebUI event emission through the normalizer in
+  compatibility mode so future events can roll out without breaking older UI.
 
 ## Phase 3 - True Live Chat Rendering
 

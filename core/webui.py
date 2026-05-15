@@ -33,6 +33,7 @@ from . import (
     skills,
     soul,
     work_threads,
+    live_events,
 )
 from .agents import registry as agent_registry
 from tools import REGISTRY
@@ -63,7 +64,7 @@ class CryptWebServer(ThreadingHTTPServer):
 
     def emit_event(self, event: dict) -> None:
         with self.event_lock:
-            event = dict(event)
+            event = live_events.normalize_event(event, strict=False)
             if "seq" in event:
                 self._event_seq = max(self._event_seq, _int(event.get("seq"), self._event_seq))
             else:

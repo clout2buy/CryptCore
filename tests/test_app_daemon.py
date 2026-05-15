@@ -36,6 +36,7 @@ def test_app_daemon_set_approval_emits_snapshot(monkeypatch, tmp_path):
 
         assert runtime.approval_mode() == runtime.APPROVAL_ALL
         assert events[-1]["event"] == "snapshot"
+        assert events[-1]["eventVersion"] == 1
         assert events[-1]["id"] == "cmd-1"
         assert events[-1]["snapshot"]["approval"] == "yolo-all"
     finally:

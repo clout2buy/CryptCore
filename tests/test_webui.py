@@ -45,6 +45,8 @@ def test_webui_event_buffer(monkeypatch, tmp_path: Path):
         server.emit_event({"event": "demo", "text": "hello"})
         events = server.events_since(0)
         assert events[0]["event"] == "demo"
+        assert events[0]["eventVersion"] == 1
+        assert "ts" in events[0]
         assert json.dumps(events)
     finally:
         server.server_close()

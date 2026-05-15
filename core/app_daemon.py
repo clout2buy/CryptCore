@@ -17,7 +17,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable
 
-from . import auth, autonomy, doctor, learning, loop, redact, runtime, session as sessions, settings, skills
+from . import auth, autonomy, doctor, learning, live_events, loop, redact, runtime, session as sessions, settings, skills
 from tools import REGISTRY
 
 
@@ -175,7 +175,7 @@ class AppDaemon:
         }
 
     def emit(self, event: str, **payload) -> None:
-        body = {"event": event, "ts": time.time(), **payload}
+        body = live_events.normalize_event({"event": event, "ts": time.time(), **payload}, strict=False)
         self._emit(_redact_payload(body))
 
     def _stdout_emit(self, event: dict) -> None:
