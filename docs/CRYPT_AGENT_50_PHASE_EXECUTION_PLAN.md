@@ -317,12 +317,18 @@ Progress:
 - Added a repo fixture test that renders `$frontend-design` instructions from a
   sample UI task.
 
-## Phase 22 - Browser Operator V1
+## Phase 22 - Browser Operator V1 [started]
 
 Add a browser lane for search, reading pages, screenshots, local app QA, and
 structured extraction.
 
 Verification: browser smoke test against the local WebUI.
+
+Progress:
+
+- Added `core/browser_operator.py` to plan search, page-read, screenshot,
+  extraction, and local-app QA browser lanes.
+- Added a local WebUI HTTP smoke check for browser-operator verification.
 
 ## Phase 23 - Browser Operator V2
 
