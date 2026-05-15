@@ -79,6 +79,7 @@ from . import (
     website_pipeline,
     work_threads,
     live_events,
+    live_replay,
 )
 from .agents import registry as agent_registry
 from tools import REGISTRY
@@ -126,6 +127,10 @@ class CryptWebServer(ThreadingHTTPServer):
             self.events.append(event)
             if len(self.events) > MAX_EVENTS:
                 self.events[:] = self.events[-MAX_EVENTS:]
+        try:
+            live_replay.record_event(self.cwd, event)
+        except Exception:
+            pass
 
     def events_since(self, seq: int) -> list[dict]:
         with self.event_lock:
@@ -653,6 +658,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
         snapshot["autonomyContracts"] = autonomy_contracts.snapshot()
         snapshot["approvalPolicy"] = approval_policy.snapshot(self.server.cwd)
+        snapshot["liveReplay"] = live_replay.snapshot(self.server.cwd)
         snapshot["schedulesPreview"] = [asdict(item) for item in scheduler.list_jobs(self.server.cwd, include_all=True)[:20]]
         snapshot["missionScheduler"] = scheduler.snapshot(self.server.cwd)
         snapshot["monitorsPreview"] = [asdict(item) for item in monitors.list_monitors(self.server.cwd, include_all=True)[:20]]
@@ -1226,6 +1232,9 @@ def _prompt_with_context(
         notification_section = notification_center.prompt_section(workspace)
         if notification_section:
             hints.append(notification_section.replace("\n", " | "))
+        replay_section = live_replay.prompt_section(workspace)
+        if replay_section:
+            hints.append(replay_section.replace("\n", " | "))
         persona_governance_section = persona_governance.prompt_section(workspace)
         if persona_governance_section:
             hints.append(persona_governance_section.replace("\n", " | "))

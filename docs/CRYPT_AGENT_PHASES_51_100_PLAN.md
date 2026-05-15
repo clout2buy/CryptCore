@@ -283,6 +283,11 @@ surfaces the policy summary in WebUI settings.
 
 Replay tool calls, command output, browser events, and desktop events in WebUI.
 
+Progress: added `core.live_replay`, a persistent replay ledger for tool calls,
+tool results, command output, browser/desktop activity, mission steps, and
+approval events. WebUI now records replay-worthy events automatically and shows
+recent replay items on the home panel and prompt context.
+
 ## Phase 81 - Job Queue Persistence
 
 Persist background jobs with restart recovery, status, logs, and cancellation.

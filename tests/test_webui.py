@@ -56,6 +56,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "personaGovernance" in web_snapshot
         assert "autonomyContracts" in web_snapshot
         assert "approvalPolicy" in web_snapshot
+        assert "liveReplay" in web_snapshot
         assert "externalDrafts" in web_snapshot
         assert "businessEntities" in web_snapshot
         assert "businessLaunch" in web_snapshot
@@ -243,6 +244,7 @@ def test_webui_static_is_chat_first():
     assert "modelRouted" in script
     assert "Provider Health" in script
     assert "Notification Center" in script
+    assert "Live Replay" in script
     assert "Self-Upgrade Sandbox" in script
     assert "Patch Risk" in script
     assert "Autonomy Contracts" in script

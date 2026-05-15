@@ -525,6 +525,8 @@ function panelView(snapshot) {
   const revenueActions = revenueOps.nextActions || [];
   const notifications = snapshot.notifications || {};
   const notificationItems = notifications.items || [];
+  const replay = snapshot.liveReplay || {};
+  const replayItems = replay.items || [];
   const lookup = Object.fromEntries(features.map((feature) => [feature.id, feature]));
   const journal = snapshot.memoryJournal || {};
   const threads = snapshot.workThreads || [];
@@ -537,6 +539,7 @@ function panelView(snapshot) {
     ["Agents", (snapshot.agentProfiles || []).length, "Saved specialists Crypt can reuse."],
     ["Capabilities", `${matrix.ready || 0}/${matrix.total || 0} ready`, matrix.needsSetup ? `${matrix.needsSetup} need setup.` : "Runtime map is clean."],
     ["Notifications", notifications.unread || 0, notifications.critical ? `${notifications.critical} need attention.` : "Nothing urgent."],
+    ["Replay", replay.total || 0, `${replay.tools || 0} tool event(s).`],
   ];
   const calmCards = ["chat", "plan", "agents", "memory"]
     .map((id) => lookup[id])
@@ -568,6 +571,12 @@ function panelView(snapshot) {
         <h3>Recent Chats</h3>
         <div class="compact-list">
           ${recent.map((session) => compactItem(`${(session.messages || []).length} msgs`, session.title || "New conversation", relativeTime(session.updatedAt))).join("")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Live Replay</h3>
+        <div class="compact-list">
+          ${replayItems.slice(0, 5).map((item) => compactItem(item.event || "event", item.title || item.call_id || "Replay item", item.text || item.status || "")).join("") || compactItem("empty", "No replay events yet", "Tool calls, commands, browser, desktop, and approval events will replay here.")}
         </div>
       </div>
       <div class="panel-card wide">
