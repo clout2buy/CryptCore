@@ -79,6 +79,8 @@ def test_webui_static_is_chat_first():
     assert "composer-shell" in html
     assert "voiceButton" in html
     assert "ttsTestButton" in html
+    assert "composerAdvancedButton" in html
+    assert "composerAdvanced" in html
     assert "providerSelect" in html
     assert "data-view=\"missions\"" in html
     assert "data-view=\"agents\"" in html
@@ -119,6 +121,7 @@ def test_webui_static_is_chat_first():
     assert "coreFeatures" in script
     assert "renderCurrentView" in script
     assert "syncEngineControls" in script
+    assert "toggleComposerAdvanced" in script
     assert "data-message-id" in script
     assert "renderView = false" in script
     assert "Crypt runtime hints" not in html

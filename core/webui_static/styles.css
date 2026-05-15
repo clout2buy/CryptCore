@@ -1392,6 +1392,24 @@ select option {
   min-width: 72px;
 }
 
+.composer-advanced-button {
+  flex: 0 0 auto;
+  min-width: 76px;
+  min-height: 40px;
+  padding: 0 13px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, .045);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+
+.composer-advanced-button.active,
+.composer-advanced-button:hover {
+  color: var(--ink);
+  border-color: rgba(255, 155, 84, .38);
+  background: rgba(255, 107, 53, .095);
+}
+
 .voice-button {
   flex: 0 0 auto;
   min-width: 48px;
@@ -1411,12 +1429,20 @@ select option {
   box-shadow: 0 0 28px rgba(77, 230, 196, .14);
 }
 
+.composer-status,
 .composer-meta {
   justify-content: space-between;
   gap: 10px;
   padding: 8px 4px 0;
   color: var(--dim);
   font-size: 12px;
+}
+
+.composer-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 22px;
 }
 
 .engine-controls {
@@ -1525,6 +1551,7 @@ select option {
   font-weight: 800;
 }
 
+.composer-status > span,
 .composer-meta > span {
   flex: 0 1 auto;
   min-width: 0;
@@ -1861,6 +1888,10 @@ select option {
     gap: 8px;
   }
 
+  .composer-status {
+    flex-wrap: wrap;
+  }
+
   .engine-controls {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1918,6 +1949,16 @@ select option {
 
   .composer-main {
     gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .composer-main textarea {
+    order: 4;
+    flex-basis: 100%;
+  }
+
+  .composer-advanced-button {
+    min-width: 70px;
   }
 
   .prompt-mark {

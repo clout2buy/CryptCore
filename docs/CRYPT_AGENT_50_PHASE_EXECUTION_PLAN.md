@@ -61,12 +61,18 @@ Progress:
   switches do not erase visible tool/thinking history.
 - Thinking deltas now surface useful live text when the provider exposes them.
 
-## Phase 4 - Minimal Composer
+## Phase 4 - Minimal Composer [started]
 
 Reduce the chat input to one natural box with voice, send, provider/model
 dropdowns, and an advanced drawer for route/agent controls.
 
 Verification: responsive screenshots and keyboard interaction smoke test.
+
+Progress:
+
+- Moved provider/model/route/agent and TTS controls behind an Options drawer so
+  the default composer stays focused on mic, message, options, and send.
+- Kept concise live status chips visible under the input for engine/voice state.
 
 ## Phase 5 - Provider And Model Registry
 

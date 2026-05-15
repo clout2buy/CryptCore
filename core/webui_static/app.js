@@ -26,6 +26,9 @@ const state = {
     route: "",
     agentId: "",
   },
+  composer: {
+    advanced: localStorage.getItem("crypt.composer.advanced") === "1",
+  },
   voice: {
     recognition: null,
     desired: false,
@@ -1472,6 +1475,23 @@ async function setEngine(provider, model) {
   }
 }
 
+function syncComposerAdvanced() {
+  const panel = $("#composerAdvanced");
+  const button = $("#composerAdvancedButton");
+  if (!panel || !button) return;
+  panel.hidden = !state.composer.advanced;
+  button.classList.toggle("active", state.composer.advanced);
+  button.setAttribute("aria-expanded", String(state.composer.advanced));
+  button.textContent = state.composer.advanced ? "Hide" : "Options";
+}
+
+function toggleComposerAdvanced() {
+  state.composer.advanced = !state.composer.advanced;
+  localStorage.setItem("crypt.composer.advanced", state.composer.advanced ? "1" : "0");
+  syncComposerAdvanced();
+  $("#prompt").focus();
+}
+
 function handleProviderChange() {
   const provider = $("#providerSelect")?.value || "";
   const models = modelsFor(provider, state.snapshot);
@@ -1905,6 +1925,7 @@ document.querySelectorAll("[data-view]").forEach((button) => {
 
 $("#providerSelect").addEventListener("change", handleProviderChange);
 $("#modelSelect").addEventListener("change", handleModelChange);
+$("#composerAdvancedButton").addEventListener("click", toggleComposerAdvanced);
 $("#routeSelect").addEventListener("change", (event) => {
   state.engine.route = event.currentTarget.value || "auto";
   $("#prompt").focus();
@@ -1939,6 +1960,7 @@ $("#approveButton").addEventListener("click", () => answerApproval(true));
 $("#denyButton").addEventListener("click", () => answerApproval(false));
 
 loadChatSessions();
+syncComposerAdvanced();
 startAmbient();
 refresh().then(() => {
   pollEvents();

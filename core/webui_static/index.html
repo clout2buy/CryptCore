@@ -106,9 +106,15 @@
               </button>
               <span class="prompt-mark" aria-hidden="true">&gt;</span>
               <textarea id="prompt" rows="1" placeholder="Say it. I got you."></textarea>
+              <button id="composerAdvancedButton" class="composer-advanced-button" type="button" aria-expanded="false" aria-controls="composerAdvanced">Options</button>
               <button id="sendButton" type="submit" aria-label="Send message">Send</button>
             </div>
-            <div class="composer-meta">
+            <div class="composer-status">
+              <span id="enginePill">crypt</span>
+              <span id="voiceStatus">voice ready</span>
+              <span id="ttsStatus">kokoro local</span>
+            </div>
+            <div id="composerAdvanced" class="composer-meta" hidden>
               <div class="engine-controls" aria-label="Engine controls">
                 <label>
                   <span>Provider</span>
@@ -140,9 +146,6 @@
                 <select id="ttsVoiceSelect" aria-label="Kokoro voice"></select>
                 <button id="ttsTestButton" class="voice-test-button" type="button">Test</button>
               </div>
-              <span id="enginePill">crypt</span>
-              <span id="voiceStatus">voice ready</span>
-              <span id="ttsStatus">kokoro local</span>
             </div>
           </div>
         </form>
