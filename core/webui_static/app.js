@@ -519,6 +519,8 @@ function renderCurrentView() {
 
 function panelView(snapshot) {
   const features = snapshot.coreFeatures || [];
+  const matrix = snapshot.capabilityMatrix || {};
+  const capabilities = matrix.capabilities || [];
   const lookup = Object.fromEntries(features.map((feature) => [feature.id, feature]));
   const journal = snapshot.memoryJournal || {};
   const threads = snapshot.workThreads || [];
@@ -529,6 +531,7 @@ function panelView(snapshot) {
     ["Threads", activeThreads.length, blocked.length ? `${blocked.length} blocked approval item(s)` : "No blocked work."],
     ["Memory", `${journal.longTermCount || 0} long-term`, `${journal.openLoopCount || 0} open loop(s).`],
     ["Agents", (snapshot.agentProfiles || []).length, "Saved specialists Crypt can reuse."],
+    ["Capabilities", `${matrix.ready || 0}/${matrix.total || 0} ready`, matrix.needsSetup ? `${matrix.needsSetup} need setup.` : "Runtime map is clean."],
   ];
   const calmCards = ["chat", "plan", "agents", "memory"]
     .map((id) => lookup[id])
@@ -560,6 +563,12 @@ function panelView(snapshot) {
         <h3>Recent Chats</h3>
         <div class="compact-list">
           ${recent.map((session) => compactItem(`${(session.messages || []).length} msgs`, session.title || "New conversation", relativeTime(session.updatedAt))).join("")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Capability Matrix</h3>
+        <div class="compact-list">
+          ${capabilities.slice(0, 6).map((capability) => compactItem(capability.status || "watch", capability.label, capability.evidence || capability.summary)).join("") || compactItem("empty", "No capability snapshot yet", "Refresh once the runtime is ready.")}
         </div>
       </div>
     </section>

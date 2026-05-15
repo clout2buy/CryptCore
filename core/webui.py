@@ -22,6 +22,7 @@ from . import (
     autonomy,
     artifact_studio,
     business_mission,
+    capability_matrix,
     clarification_policy,
     code_builder,
     context_packs,
@@ -548,6 +549,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["artifactGroups"] = studio["groups"]
         snapshot["artifactSummary"] = studio["summary"]
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
+        snapshot["capabilityMatrix"] = capability_matrix.build(self.server.cwd, snapshot).to_dict()
         return snapshot
 
     def _authorize(self, method: str, parsed) -> bool:

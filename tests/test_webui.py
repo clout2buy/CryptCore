@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 
 import pytest
 
-from core import goals, settings, webui, webui_access, webui_backup, work_threads
+from core import capability_matrix, goals, settings, webui, webui_access, webui_backup, work_threads
 
 
 def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
@@ -35,6 +35,8 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "monitorsPreview" in web_snapshot
         assert "memoryJournal" in web_snapshot
         assert "remoteAccess" in web_snapshot
+        assert "capabilityMatrix" in web_snapshot
+        assert web_snapshot["capabilityMatrix"]["total"] >= 10
         json.dumps(web_snapshot)
     finally:
         server.server_close()
@@ -187,6 +189,8 @@ def test_webui_static_is_chat_first():
     assert "data-prompt" not in html
     assert "approvalRequested" in script
     assert "coreFeatures" in script
+    assert "capabilityMatrix" in script
+    assert "Capability Matrix" in script
     assert "renderCurrentView" in script
     assert "syncEngineControls" in script
     assert "toggleComposerAdvanced" in script
@@ -196,6 +200,37 @@ def test_webui_static_is_chat_first():
     assert "Crypt runtime hints" not in html
     assert "data-view=\"providers\"" not in html
     assert "data-view=\"gateway\"" not in html
+
+
+def test_capability_matrix_reports_runtime_state(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+
+    matrix = capability_matrix.build(
+        workspace,
+        {
+            "provider": "crypt",
+            "model": "gpt-5.5",
+            "authOk": True,
+            "memoryJournal": {"longTermCount": 2, "workingCount": 1, "openLoopCount": 0},
+            "voice": {"ready": False, "missing": ["kokoro-v1.0.onnx"]},
+            "integrationsPreview": [{"configured": True, "enabled": False}],
+            "agentProfiles": [{"name": "research"}],
+            "skillsPreview": [{"name": "frontend-design"}],
+            "workThreads": [{"state": "active"}],
+            "remoteAccess": {"remote": False},
+            "webui": {"url": "http://127.0.0.1:8765/"},
+            "revenue": {"summary": {"revenue": 12.0, "leads": 3}},
+            "schedulesPreview": [],
+        },
+    )
+    data = matrix.to_dict()
+
+    assert data["total"] >= 10
+    assert data["ready"] >= 6
+    assert any(item["id"] == "voice-loop" and item["status"] == "needs-setup" for item in data["capabilities"])
+    assert any(item["id"] == "desktop-operator" and item["status"] == "approval-gated" for item in data["capabilities"])
 
 
 def test_webui_core_features_include_hermes_style_sections(monkeypatch, tmp_path: Path):
