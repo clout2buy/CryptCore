@@ -204,12 +204,19 @@ Progress:
   memory into long-term memory and discard stale low-confidence noise.
 - Autonomy cycles now run the condenser and record memory promotion counts.
 
-## Phase 14 - Persona Evolution
+## Phase 14 - Persona Evolution [started]
 
 Let Crypt maintain a durable voice/persona profile that adapts to user
 preferences while staying factual, bounded, and non-pretend-conscious.
 
 Verification: persona update tests and prompt snapshot tests.
+
+Progress:
+
+- Persona evolution now pulls from typed memory-journal persona/preference
+  signals, not only structured lesson records.
+- Learned persona bullets normalize sentience/consciousness language into a
+  bounded "vivid persona, no literal consciousness claims" rule.
 
 ## Phase 15 - Tool Capability Registry
 

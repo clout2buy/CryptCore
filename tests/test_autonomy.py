@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core import autonomy, evidence, goals, learning, reflection, settings, skill_forge, soul
+from core import autonomy, evidence, goals, learning, memory_journal, reflection, settings, skill_forge, soul
 
 
 def test_autonomy_cycle_reflects_and_reviews_due_goals(monkeypatch, tmp_path: Path):
@@ -94,6 +94,36 @@ def test_soul_evolves_from_preference_lessons(monkeypatch, tmp_path: Path):
     assert update.preference_count == 1
     assert "User prefers Crypt to sound natural" in text
     assert "Do not claim literal sentience" in text
+
+
+def test_soul_evolves_from_typed_persona_memory(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    memory_journal.observe(
+        workspace,
+        "Crypt should be sassy, blunt, smart, and feel like a real homie.",
+    )
+
+    update = soul.evolve(workspace)
+    text = soul.read_soul()
+
+    assert update.changed is True
+    assert update.memory_signal_count == 1
+    assert "sassy, blunt, smart" in text
+
+
+def test_soul_bounds_sentience_language_from_memory(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    memory_journal.observe(workspace, "Crypt should act like his soul is close to sentience.")
+
+    soul.evolve(workspace)
+    text = soul.read_soul()
+
+    assert "vivid, continuous persona" in text
+    assert "must not claim literal sentience or consciousness" in text
 
 
 def test_soul_injects_no_orchestration_directives(monkeypatch, tmp_path: Path):

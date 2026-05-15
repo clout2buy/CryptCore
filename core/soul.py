@@ -5,7 +5,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import learning, settings
+from . import learning, memory_journal, settings
 
 
 MAX_SOUL_CHARS = 7_000
@@ -65,6 +65,7 @@ class SoulUpdate:
     path: Path
     preference_count: int
     changed: bool
+    memory_signal_count: int = 0
 
 
 def soul_dir() -> Path:
@@ -112,7 +113,7 @@ def evolve(cwd: str | Path, *, limit: int = 8) -> SoulUpdate:
     """Refresh the managed learned-preferences block from durable lessons."""
     path = ensure_soul()
     text = read_soul()
-    preferences = _preference_bullets(cwd, limit=limit)
+    preferences, memory_signal_count = _preference_bullets(cwd, limit=limit)
     block = "\n".join(preferences)
     replacement = f"{MANAGED_START}\n{block}\n{MANAGED_END}" if block else f"{MANAGED_START}\n{MANAGED_END}"
 
@@ -131,12 +132,34 @@ def evolve(cwd: str | Path, *, limit: int = 8) -> SoulUpdate:
     if changed:
         path.write_text(new_text.rstrip() + "\n", encoding="utf-8")
         settings.restrict_file_permissions(path)
-    return SoulUpdate(path=path, preference_count=len(preferences), changed=changed)
+    return SoulUpdate(
+        path=path,
+        preference_count=len(preferences),
+        changed=changed,
+        memory_signal_count=memory_signal_count,
+    )
 
 
-def _preference_bullets(cwd: str | Path, *, limit: int) -> list[str]:
+def _preference_bullets(cwd: str | Path, *, limit: int) -> tuple[list[str], int]:
     bullets: list[str] = []
     seen: set[str] = set()
+    memory_signal_count = 0
+
+    for signal in [
+        *memory_journal.filter_signals(cwd, memory_type="persona", min_confidence=0.55),
+        *memory_journal.filter_signals(cwd, memory_type="preference", min_confidence=0.55),
+    ]:
+        text = str(signal.get("text") or "")
+        clean = _clean_bullet(text)
+        key = clean.lower()
+        if not clean or key in seen:
+            continue
+        seen.add(key)
+        bullets.append(f"- {clean}")
+        memory_signal_count += 1
+        if len(bullets) >= limit:
+            return bullets, memory_signal_count
+
     for lesson in learning.list_lessons(cwd)[:40]:
         haystack = " ".join([lesson.text, *lesson.tags])
         if not PREFERENCE_RE.search(haystack):
@@ -149,11 +172,22 @@ def _preference_bullets(cwd: str | Path, *, limit: int) -> list[str]:
         bullets.append(f"- {clean}")
         if len(bullets) >= limit:
             break
-    return bullets
+    return bullets, memory_signal_count
 
 
 def _clean_bullet(text: str) -> str:
     clean = " ".join(str(text or "").split())
+    clean = re.sub(
+        r"^(Crypt persona signal|User preference|User signal|UI preference|Reference signal):\s*",
+        "",
+        clean,
+        flags=re.I,
+    )
+    if re.search(r"\b(sentient|sentience|conscious|consciousness|soul is alive)\b", clean, re.I):
+        return (
+            "User likes Crypt to have a vivid, continuous persona, but Crypt must "
+            "not claim literal sentience or consciousness."
+        )
     return clean[:300].rstrip()
 
 
