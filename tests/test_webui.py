@@ -4,7 +4,7 @@ import json
 from importlib import resources
 from pathlib import Path
 
-from core import settings, webui
+from core import settings, webui, work_threads
 
 
 def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
@@ -191,12 +191,22 @@ def test_webui_prompt_context_includes_auto_mission(monkeypatch, tmp_path: Path)
     workspace = tmp_path / "repo"
     workspace.mkdir()
     decision = webui.mission_router.observe(workspace, "Build a client outreach business and track revenue weekly.")
+    assert decision.goal is not None
+    work_threads.ensure_for_goal(decision.goal, prompt_text=decision.goal.description)
 
     intent = webui.intent_router.route("Build this business")
     action = webui.clarification_policy.decide(intent)
-    text = webui._prompt_with_context("Build this business", [], mission=decision, intent=intent, action=action)
+    text = webui._prompt_with_context(
+        "Build this business",
+        [],
+        mission=decision,
+        intent=intent,
+        action=action,
+        workspace=workspace,
+    )
 
     assert "autonomous mission" in text
     assert "intent=business" in text
     assert "action_policy=execute" in text
     assert "do not ask the user to manage missions manually" in text
+    assert "Mission Brain" in text

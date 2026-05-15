@@ -148,12 +148,19 @@ Progress:
 - The WebUI emits `missionMatched` for duplicate mission reuse, keeping the live
   chat transparent without asking the user to manage the mission panel.
 
-## Phase 10 - Mission Brain Loop
+## Phase 10 - Mission Brain Loop [started]
 
 Add a loop that chooses the next useful action for each active mission based on
 status, blockers, due dates, and available tools.
 
 Verification: deterministic mission-step planning tests.
+
+Progress:
+
+- Added `core/mission_brain.py` to pick deterministic next steps from blockers,
+  due dates, pending tasks, and explicit next-action state.
+- Autonomy cycles now run the mission brain and record selected mission steps;
+  prompt context includes a compact Mission Brain section.
 
 ## Phase 11 - Passive Memory V2
 

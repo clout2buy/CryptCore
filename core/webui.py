@@ -25,6 +25,7 @@ from . import (
     learning,
     local_voice,
     memory_journal,
+    mission_brain,
     mission_router,
     passive_memory,
     project_index,
@@ -264,7 +265,15 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                         )
             intents = _intent_hints(body.get("intents"))
             profile = agent_profiles.get_profile(self.server.cwd, str(body.get("agentId") or ""))
-            prompt_text = _prompt_with_context(text, intents, profile, mission_result, intent_decision, action_decision)
+            prompt_text = _prompt_with_context(
+                text,
+                intents,
+                profile,
+                mission_result,
+                intent_decision,
+                action_decision,
+                workspace=self.server.cwd,
+            )
             route_role = str(body.get("route") or "").strip() or intent_decision.route_role
             self.server.daemon.handle_command(
                 {
@@ -786,6 +795,7 @@ def _prompt_with_context(
     mission: mission_router.MissionDecision | None = None,
     intent: intent_router.IntentRoute | None = None,
     action: clarification_policy.ActionDecision | None = None,
+    workspace: str | Path | None = None,
 ) -> str:
     hints: list[str] = []
     hint_map = {
@@ -811,6 +821,10 @@ def _prompt_with_context(
             hints.append(hint)
     if action:
         hints.append(clarification_policy.prompt_hint(action))
+    if workspace:
+        section = mission_brain.prompt_section(workspace)
+        if section:
+            hints.append(section.replace("\n", " | "))
     if not hints:
         return text
     return f"{text}\n\n[Crypt runtime hints: {'; '.join(hints)}]"

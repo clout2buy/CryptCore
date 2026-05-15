@@ -14,7 +14,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import goals, learning, reflection, settings, skill_forge, soul, work_threads
+from . import goals, learning, mission_brain, reflection, settings, skill_forge, soul, work_threads
 
 
 SCHEMA_VERSION = 1
@@ -27,6 +27,7 @@ class AutonomyCycle:
     created_at: int
     reflected: int = 0
     goal_reviews: int = 0
+    mission_steps: int = 0
     forged_skills: list[str] = field(default_factory=list)
     lessons_added: int = 0
     notes: list[str] = field(default_factory=list)
@@ -55,6 +56,9 @@ def run_cycle(
         notes.append(f"reflected on {len(reflected)} recent task episode(s)")
 
     goal_reviews = _review_goals(root, notes)
+    mission_steps = mission_brain.review_workspace(root)
+    for step in mission_steps[:4]:
+        notes.append(f"mission brain selected {step.kind} for {step.thread_id}: {step.action}")
     thread_reviews = work_threads.review_due(root)
     for thread in thread_reviews:
         notes.append(f"reviewed work thread {thread.thread_id}: {thread.title}")
@@ -69,6 +73,7 @@ def run_cycle(
         created_at=int(time.time()),
         reflected=len(reflected),
         goal_reviews=goal_reviews,
+        mission_steps=len(mission_steps),
         forged_skills=forged,
         lessons_added=max(0, len(learning.list_lessons(root)) - lessons_before),
         notes=notes or ["no autonomous changes needed"],
@@ -90,6 +95,7 @@ def list_cycles(cwd: str | Path | None = None, *, limit: int = 12) -> list[Auton
                 created_at=int(item.get("created_at") or 0),
                 reflected=int(item.get("reflected") or 0),
                 goal_reviews=int(item.get("goal_reviews") or 0),
+                mission_steps=int(item.get("mission_steps") or 0),
                 forged_skills=[str(value) for value in item.get("forged_skills", [])],
                 lessons_added=int(item.get("lessons_added") or 0),
                 notes=[str(value) for value in item.get("notes", [])],
@@ -113,7 +119,8 @@ def prompt_section(cwd: str | Path, *, limit: int = 3) -> str:
         when = time.strftime("%Y-%m-%d %H:%M", time.localtime(cycle.created_at))
         lines.append(
             f"- {when}: {cycle.reflected} reflection(s), "
-            f"{cycle.goal_reviews} goal review(s), {cycle.lessons_added} lesson(s)"
+            f"{cycle.goal_reviews} goal review(s), {cycle.mission_steps} mission step(s), "
+            f"{cycle.lessons_added} lesson(s)"
         )
         for note in cycle.notes[:2]:
             lines.append(f"  - {note}")
@@ -129,7 +136,7 @@ def format_cycles(cwd: str | Path, *, limit: int = 12) -> str:
         when = time.strftime("%Y-%m-%d %H:%M", time.localtime(cycle.created_at))
         lines.append(
             f"{cycle.cycle_id} {when} - reflected={cycle.reflected} "
-            f"goals={cycle.goal_reviews} lessons={cycle.lessons_added}"
+            f"goals={cycle.goal_reviews} missions={cycle.mission_steps} lessons={cycle.lessons_added}"
         )
         for note in cycle.notes[:3]:
             lines.append(f"  - {note}")
