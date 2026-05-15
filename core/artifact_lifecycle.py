@@ -54,6 +54,7 @@ def record_open(path: str | Path) -> ArtifactRecord:
         rec.updated_at = time.time()
         _RECORDS[key] = rec
     _record_evidence(rec, "artifact_open")
+    _record_studio_status(rec.path, "opened", "open_file")
     return rec
 
 
@@ -68,6 +69,7 @@ def record_verification(path: str | Path, *, ok: bool, note: str = "") -> Artifa
             rec.notes.append(note)
         _RECORDS[key] = rec
     _record_evidence(rec, "artifact_verification")
+    _record_studio_status(rec.path, "verified" if ok else "failed", note or "artifact_verification")
     return rec
 
 
@@ -106,6 +108,21 @@ def _record_evidence(rec: ArtifactRecord, source: str) -> None:
             source,
             f"{rec.state}: {rec.path}",
             details=asdict(rec),
+        )
+    except Exception:
+        return
+
+
+def _record_studio_status(path: str, status: str, provenance: str) -> None:
+    try:
+        from . import artifact_studio, runtime
+
+        artifact_studio.update_status(
+            runtime.cwd(),
+            path,
+            status=status,
+            provenance=provenance,
+            source="artifact-lifecycle",
         )
     except Exception:
         return

@@ -585,25 +585,78 @@ function chatView() {
 function filesView(snapshot) {
   const project = snapshot.project || {};
   const files = snapshot.filesPreview || [];
+  const artifacts = snapshot.artifactsPreview || [];
+  const groups = snapshot.artifactGroups || [];
+  const summary = snapshot.artifactSummary || {};
+  const latest = artifacts[0];
   return `
     <section class="two-col">
-      <div class="panel-card wide">
-        <h3>Workspace</h3>
-        <p>${escapeHtml(snapshot.workspace || "")}</p>
+      <div class="panel-card wide artifact-studio-hero">
+        <span class="eyebrow">Artifact Studio</span>
+        <h3>Every file Crypt makes gets a trail.</h3>
+        <p>${escapeHtml(latest ? `${latest.name || latest.rel_path} - ${oneLine(latest.preview || latest.provenance || "ready", 160)}` : "Generated sites, docs, reports, scripts, and screenshots will land here with mission context and status.")}</p>
         <div class="pill-row">
           ${(project.languages || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
           ${(project.frameworks || []).slice(0, 5).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
         </div>
       </div>
       <div class="panel-card">
-        <h3>Ask Crypt</h3>
-        <button class="ask-button" data-ask="Inspect this workspace and tell me what matters.">Inspect workspace</button>
-        <button class="ask-button" data-ask="Find the next files we should edit for the current goal.">Find edit targets</button>
+        <h3>Output State</h3>
+        ${statCard("Artifacts", summary.total || artifacts.length || 0)}
+        ${statCard("Mission linked", summary.missionLinked || 0)}
+        ${statCard("Verified", summary.verified || 0)}
       </div>
     </section>
-    <section class="data-list">
+    <section class="artifact-grid">
+      ${groups.map(artifactGroupMarkup).join("") || emptyArtifactStudio()}
+    </section>
+    <section class="data-list workspace-file-list">
       ${files.map((file) => row(file.kind === "dir" ? "Folder" : "File", file.name, file.path)).join("") || emptyRow("No files listed")}
     </section>
+  `;
+}
+
+function artifactGroupMarkup(group) {
+  const artifacts = group.artifacts || [];
+  return `
+    <article class="artifact-group">
+      <header>
+        <span>${escapeHtml(group.status || "workspace")}</span>
+        <b>${escapeHtml(group.title || "Workspace artifacts")}</b>
+        <em>${escapeHtml(`${group.count || artifacts.length || 0} file${(group.count || artifacts.length || 0) === 1 ? "" : "s"}`)}</em>
+      </header>
+      <div class="artifact-items">
+        ${artifacts.map(artifactRowMarkup).join("") || `<p>No artifacts attached yet.</p>`}
+      </div>
+    </article>
+  `;
+}
+
+function artifactRowMarkup(artifact) {
+  const updated = Number(artifact.updated_at || 0) ? reviewTime(Number(artifact.updated_at) * 1000) : "new";
+  const detail = artifact.provenance || artifact.source || updated;
+  return `
+    <div class="artifact-item">
+      <span>${escapeHtml(artifact.kind || "file")}</span>
+      <b>${escapeHtml(oneLine(artifact.name || artifact.rel_path || "artifact", 80))}</b>
+      <p>${escapeHtml(oneLine(artifact.preview || detail, 180))}</p>
+      <em>${escapeHtml(artifact.status || "ready")}</em>
+    </div>
+  `;
+}
+
+function emptyArtifactStudio() {
+  return `
+    <article class="artifact-group empty-artifacts">
+      <header>
+        <span>ready</span>
+        <b>No generated artifacts yet</b>
+        <em>0 files</em>
+      </header>
+      <div class="artifact-items">
+        <p>Ask Crypt to build a site, write a report, make a script, or create a tracker. The output will be indexed here automatically.</p>
+      </div>
+    </article>
   `;
 }
 

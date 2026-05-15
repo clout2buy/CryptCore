@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import difflib
 
-from core import artifact_lifecycle, file_state
+from core import artifact_lifecycle, artifact_studio, file_state
 
-from .fs import rel, resolve
+from .fs import rel, resolve, root
 from .types import Tool
 
 
@@ -24,6 +24,16 @@ def run(args: dict) -> str:
     path.write_text(content, encoding="utf-8")
     file_state.record_write(path)
     artifact_lifecycle.record_write(path)
+    try:
+        artifact_studio.record_artifact(
+            root(),
+            path,
+            status="created",
+            provenance="write_file",
+            source="write_file",
+        )
+    except Exception:
+        pass
     return f"{'overwrote' if existed else 'created'} {rel(path)}"
 
 

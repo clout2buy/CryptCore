@@ -25,6 +25,9 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "agentDefinitions" in web_snapshot
         assert "voice" in web_snapshot
         assert "workThreads" in web_snapshot
+        assert "artifactsPreview" in web_snapshot
+        assert "artifactGroups" in web_snapshot
+        assert "artifactSummary" in web_snapshot
         assert "memoryJournal" in web_snapshot
         json.dumps(web_snapshot)
     finally:
@@ -88,6 +91,9 @@ def test_webui_static_is_chat_first():
     assert "currentView: \"chat\"" in script
     assert "Self-Updating Memory" in script
     assert "Mission brain" in script
+    assert "Artifact Studio" in script
+    assert "artifactGroups" in script
+    assert "artifactSummary" in script
     assert "Talk. I will move." in script
     assert "Autoforge Skill" in script
     assert "workThreadUpdated" in script

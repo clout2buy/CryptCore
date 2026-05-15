@@ -1227,6 +1227,143 @@ select option {
   color: var(--orange-hot);
 }
 
+.artifact-studio-hero {
+  min-height: 252px;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  background:
+    linear-gradient(135deg, rgba(255, 107, 53, .12), transparent 36%),
+    radial-gradient(circle at 86% 20%, rgba(136, 167, 255, .16), transparent 32%),
+    rgba(23, 23, 26, .82);
+}
+
+.artifact-studio-hero h3 {
+  max-width: 720px;
+  font-size: clamp(34px, 4.8vw, 58px);
+  letter-spacing: -.05em;
+}
+
+.artifact-studio-hero p {
+  max-width: 760px;
+  color: var(--muted);
+}
+
+.artifact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.artifact-group {
+  min-height: 210px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 155, 84, .10), transparent 38%),
+    rgba(16, 16, 18, .78);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.artifact-group header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 14px;
+}
+
+.artifact-group header span,
+.artifact-item span,
+.artifact-item em {
+  width: max-content;
+  max-width: 100%;
+  border: 1px solid rgba(255, 255, 255, .10);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .045);
+  color: var(--muted);
+  padding: 5px 9px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.artifact-group header b {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artifact-group header em {
+  color: var(--dim);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.artifact-items {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.artifact-item {
+  display: grid;
+  grid-template-columns: auto minmax(100px, .85fr) minmax(0, 1.4fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  border: 1px solid rgba(255, 255, 255, .065);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .035);
+  padding: 9px 10px;
+}
+
+.artifact-item b,
+.artifact-item p {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artifact-item b {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.artifact-item p,
+.artifact-items > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.artifact-item em {
+  border-color: rgba(77, 230, 196, .18);
+  background: rgba(77, 230, 196, .07);
+  color: var(--teal);
+}
+
+.empty-artifacts {
+  min-height: 180px;
+}
+
+.workspace-file-list {
+  opacity: .72;
+}
+
 .data-list {
   display: grid;
   gap: 8px;

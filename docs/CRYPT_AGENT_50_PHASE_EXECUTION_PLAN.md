@@ -371,12 +371,21 @@ Progress:
 - The Core activity feed now renders distinct compact rows for tool, browser,
   desktop, mission, approval, and error activity.
 
-## Phase 26 - Files And Artifact Studio
+## Phase 26 - Files And Artifact Studio [started]
 
 Group generated files, docs, sites, plans, scripts, screenshots, and reports by
 mission with preview, status, and provenance.
 
 Verification: create artifacts from a mission and display them.
+
+Progress:
+
+- Added a persistent artifact studio index with preview, kind, provenance,
+  status, and mission/thread ownership.
+- `write_file` now registers generated files automatically and links them to
+  the most recent active mission thread when appropriate.
+- The WebUI Files view now shows mission-grouped artifact cards, summary
+  counts, and workspace file fallback rows.
 
 ## Phase 27 - Code Builder Loop
 

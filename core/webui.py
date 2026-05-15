@@ -19,6 +19,7 @@ from . import (
     agent_profiles,
     app_daemon,
     autonomy,
+    artifact_studio,
     clarification_policy,
     goals,
     intent_router,
@@ -439,6 +440,10 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["skillsPreview"] = [skill.as_dict() for skill in skills.discover(self.server.cwd, include_disabled=True)[:40]]
         snapshot["toolsPreview"] = _tool_previews()
         snapshot["filesPreview"] = _workspace_files(self.server.cwd)
+        studio = artifact_studio.snapshot(self.server.cwd)
+        snapshot["artifactsPreview"] = studio["artifacts"]
+        snapshot["artifactGroups"] = studio["groups"]
+        snapshot["artifactSummary"] = studio["summary"]
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         return snapshot
 
