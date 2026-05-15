@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 
 import pytest
 
-from core import capability_matrix, goals, settings, webui, webui_access, webui_backup, work_threads
+from core import autonomy_contracts, capability_matrix, goals, settings, webui, webui_access, webui_backup, work_threads
 
 
 def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
@@ -36,6 +36,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "memoryJournal" in web_snapshot
         assert "remoteAccess" in web_snapshot
         assert "capabilityMatrix" in web_snapshot
+        assert "autonomyContracts" in web_snapshot
         assert web_snapshot["capabilityMatrix"]["total"] >= 10
         json.dumps(web_snapshot)
     finally:
@@ -191,6 +192,7 @@ def test_webui_static_is_chat_first():
     assert "coreFeatures" in script
     assert "capabilityMatrix" in script
     assert "Capability Matrix" in script
+    assert "Autonomy Contracts" in script
     assert "renderCurrentView" in script
     assert "syncEngineControls" in script
     assert "toggleComposerAdvanced" in script
@@ -231,6 +233,17 @@ def test_capability_matrix_reports_runtime_state(monkeypatch, tmp_path: Path):
     assert data["ready"] >= 6
     assert any(item["id"] == "voice-loop" and item["status"] == "needs-setup" for item in data["capabilities"])
     assert any(item["id"] == "desktop-operator" and item["status"] == "approval-gated" for item in data["capabilities"])
+
+
+def test_autonomy_contracts_select_safe_profile_for_external_actions():
+    route = webui.intent_router.route("Post this on Reddit and email the leads.")
+    contract = autonomy_contracts.select(route=route)
+
+    assert contract.profile_id == "external-action"
+    assert contract.default_action == "approval-gate"
+    assert "all sends" in contract.approval_required
+    assert "send without approval" in contract.forbidden
+    assert "autonomy_contract=external-action" in autonomy_contracts.prompt_hint(contract)
 
 
 def test_webui_core_features_include_hermes_style_sections(monkeypatch, tmp_path: Path):
@@ -309,6 +322,7 @@ def test_webui_prompt_context_includes_auto_mission(monkeypatch, tmp_path: Path)
     assert "autonomous mission" in text
     assert "intent=business" in text
     assert "action_policy=execute" in text
+    assert "autonomy_contract=business-ops" in text
     assert "do not ask the user to manage missions manually" in text
     assert "Mission Brain" in text
 

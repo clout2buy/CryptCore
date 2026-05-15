@@ -20,6 +20,7 @@ from . import (
     agent_delegation,
     app_daemon,
     autonomy,
+    autonomy_contracts,
     artifact_studio,
     business_mission,
     capability_matrix,
@@ -213,6 +214,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
             session_key = str(body.get("sessionKey") or "web")
             intent_decision = intent_router.route(text)
             action_decision = clarification_policy.decide(intent_decision)
+            contract = autonomy_contracts.select(text, intent_decision)
             self.server.emit_event(
                 {
                     "event": "intentRouted",
@@ -225,6 +227,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                     "durable": intent_decision.durable,
                     "needsApproval": intent_decision.needs_approval,
                     "needsClarification": intent_decision.needs_clarification,
+                    "autonomyContract": contract.profile_id,
                     "text": intent_router.prompt_hint(intent_decision),
                 }
             )
@@ -351,6 +354,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                 mission_result,
                 intent_decision,
                 action_decision,
+                contract,
                 workspace=self.server.cwd,
             )
             route_role = str(body.get("route") or "").strip() or intent_decision.route_role
@@ -523,6 +527,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["lessonsPreview"] = [asdict(lesson) for lesson in learning.list_lessons(self.server.cwd)[:8]]
         snapshot["reflections"] = [asdict(item) for item in reflection.list_reflections(self.server.cwd, limit=5)]
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
+        snapshot["autonomyContracts"] = autonomy_contracts.snapshot()
         snapshot["schedulesPreview"] = [asdict(item) for item in scheduler.list_jobs(self.server.cwd, include_all=True)[:20]]
         snapshot["monitorsPreview"] = [asdict(item) for item in monitors.list_monitors(self.server.cwd, include_all=True)[:20]]
         snapshot["revenue"] = revenue.dashboard_snapshot(self.server.cwd)
@@ -963,6 +968,7 @@ def _prompt_with_context(
     mission: mission_router.MissionDecision | None = None,
     intent: intent_router.IntentRoute | None = None,
     action: clarification_policy.ActionDecision | None = None,
+    contract: autonomy_contracts.AutonomyContract | None = None,
     workspace: str | Path | None = None,
 ) -> str:
     hints: list[str] = []
@@ -990,6 +996,10 @@ def _prompt_with_context(
             hints.append(hint)
     if action:
         hints.append(clarification_policy.prompt_hint(action))
+    if contract is None and intent:
+        contract = autonomy_contracts.select(text, intent)
+    if contract:
+        hints.append(autonomy_contracts.prompt_hint(contract))
     if business_mission.is_business_text(text):
         hints.append(business_mission.prompt_section().replace("\n", " | "))
     if workspace:

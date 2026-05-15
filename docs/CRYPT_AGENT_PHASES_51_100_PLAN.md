@@ -17,6 +17,10 @@ and surfaced a compact home-screen capability panel.
 Add named autonomy profiles for casual chat, build work, business operations,
 browser operation, desktop operation, and high-risk external actions.
 
+Progress: added `core.autonomy_contracts`, selected contracts during prompt
+routing, exposed contracts in the WebUI snapshot/settings, and inject the
+selected contract into runtime hints.
+
 ## Phase 53 - External Action Draft Queue
 
 Create a queue for emails, Reddit posts, purchases, DMs, account actions, and

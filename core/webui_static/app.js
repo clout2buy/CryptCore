@@ -956,6 +956,7 @@ function settingsView(snapshot) {
   const providers = snapshot.providers || [];
   const routes = snapshot.routes || [];
   const tools = snapshot.toolsPreview || [];
+  const contracts = snapshot.autonomyContracts?.profiles || [];
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Engine", value: modelLabel(snapshot.model), status: providerLabel(snapshot.provider, snapshot), detail: "Current model used by chat." })}
@@ -977,6 +978,10 @@ function settingsView(snapshot) {
       <div class="panel-card wide">
         <h3>Tool Surface</h3>
         <div class="compact-list">${tools.slice(0, 8).map((tool) => compactItem("tool", tool.name, tool.description)).join("")}</div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Autonomy Contracts</h3>
+        <div class="compact-list">${contracts.map((contract) => compactItem(contract.autonomy_level || "auto", contract.label, contract.ui_summary || contract.default_action)).join("")}</div>
       </div>
     </section>
   `;
