@@ -1679,8 +1679,13 @@ select option {
 }
 
 .activity-item {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr);
+  column-gap: 9px;
   overflow-wrap: anywhere;
+  border: 1px solid rgba(255, 255, 255, .075);
   border-left: 2px solid var(--teal);
+  border-radius: 8px;
   background: rgba(255, 255, 255, .045);
   padding: 10px 11px;
   color: var(--muted);
@@ -1688,10 +1693,54 @@ select option {
   line-height: 1.4;
 }
 
+.activity-item i {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: var(--teal);
+  box-shadow: 0 0 18px rgba(77, 230, 196, .35);
+}
+
 .activity-item strong {
   display: block;
   margin-bottom: 3px;
   color: var(--ink);
+}
+
+.activity-item span {
+  grid-column: 2;
+}
+
+.activity-tool {
+  border-left-color: var(--orange-hot);
+}
+
+.activity-tool i {
+  background: var(--orange-hot);
+  box-shadow: 0 0 18px rgba(255, 155, 84, .35);
+}
+
+.activity-browser,
+.activity-desktop {
+  border-left-color: #88a7ff;
+}
+
+.activity-browser i,
+.activity-desktop i {
+  background: #88a7ff;
+  box-shadow: 0 0 18px rgba(136, 167, 255, .35);
+}
+
+.activity-approval,
+.activity-error {
+  border-left-color: #ff9aae;
+}
+
+.activity-approval i,
+.activity-error i {
+  background: #ff9aae;
+  box-shadow: 0 0 18px rgba(255, 154, 174, .35);
 }
 
 @keyframes signalSweep {

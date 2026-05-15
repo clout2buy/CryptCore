@@ -22,6 +22,9 @@ def test_live_event_contract_contains_core_streaming_events():
         "approvalResolved",
         "missionCreated",
         "missionMatched",
+        "browserActivity",
+        "desktopActivity",
+        "missionStep",
         "taskFinished",
         "taskFailed",
     } <= names

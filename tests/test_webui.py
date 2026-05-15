@@ -95,6 +95,10 @@ def test_webui_static_is_chat_first():
     assert "missionCreated" in script
     assert "missionMatched" in script
     assert "intentRouted" in script
+    assert "browserActivity" in script
+    assert "desktopActivity" in script
+    assert "missionStep" in script
+    assert "activity-browser" in resources.files("core.webui_static").joinpath("styles.css").read_text(encoding="utf-8")
     assert "kokoro ready" in script
     assert "af_heart" in script
     assert "ChatGPT 5.5" in script

@@ -1246,10 +1246,14 @@ function registerEventSession(event, id) {
   touchLiveTurn(id, { sessionKey: String(event.sessionKey) });
 }
 
-function addActivity(title, body = "") {
+function addActivity(title, body = "", kind = "event") {
   const item = document.createElement("article");
-  item.className = "activity-item";
-  item.innerHTML = `<strong>${escapeHtml(oneLine(title, 80))}</strong><span>${escapeHtml(oneLine(body, 220))}</span>`;
+  item.className = `activity-item activity-${String(kind || "event").replace(/[^a-z0-9_-]/gi, "")}`;
+  item.innerHTML = `
+    <i aria-hidden="true"></i>
+    <strong>${escapeHtml(oneLine(title, 80))}</strong>
+    <span>${escapeHtml(oneLine(body, 220))}</span>
+  `;
   const feed = $("#activityFeed");
   feed.prepend(item);
   while (feed.children.length > 80) feed.lastElementChild?.remove();
@@ -1287,7 +1291,7 @@ function handleEvent(event) {
       setStatus("Working");
       updateAssistantMessage(id, "", { typing: true });
       startLivePulse(id);
-      addActivity("Started", event.prompt || "New request");
+      addActivity("Started", event.prompt || "New request", "mission");
       break;
     case "taskProgress":
       appendLiveEvent(id, {
@@ -1307,7 +1311,7 @@ function handleEvent(event) {
         body: event.rationale || event.text || "",
         status: "running",
       });
-      addActivity("Intent", `${event.intent || "task"} / ${(Number(event.confidence || 0) * 100).toFixed(0)}%`);
+      addActivity("Intent", `${event.intent || "task"} / ${(Number(event.confidence || 0) * 100).toFixed(0)}%`, "mission");
       break;
     case "thinkingDelta":
       appendLiveEvent(id, {
@@ -1352,7 +1356,7 @@ function handleEvent(event) {
         body: event.text || "Receiving tool input.",
         status: "running",
       });
-      addActivity(friendlyToolName(event.tool), event.text || "");
+      addActivity(friendlyToolName(event.tool), event.text || "", "tool");
       break;
     case "toolCall":
     case "toolStarted":
@@ -1363,7 +1367,7 @@ function handleEvent(event) {
         body: event.text || event.callId || "Tool started.",
         status: "running",
       });
-      addActivity(friendlyToolName(event.tool), event.text || "");
+      addActivity(friendlyToolName(event.tool), event.text || "", "tool");
       break;
     case "toolResult":
       appendLiveEvent(id, {
@@ -1373,7 +1377,7 @@ function handleEvent(event) {
         body: toolResultSummary(event),
         status: event.ok === false ? "failed" : "done",
       });
-      addActivity(event.ok === false ? "Tool failed" : "Tool finished", toolResultSummary(event));
+      addActivity(event.ok === false ? "Tool failed" : "Tool finished", toolResultSummary(event), event.ok === false ? "error" : "tool");
       break;
     case "approvalRequested":
       showApproval(event);
@@ -1383,7 +1387,7 @@ function handleEvent(event) {
         body: event.text || event.question || "",
         status: "running",
       });
-      addActivity("Waiting for permission", event.text || event.question || "");
+      addActivity("Waiting for permission", event.text || event.question || "", "approval");
       break;
     case "approvalResolved":
       hideApproval();
@@ -1393,7 +1397,7 @@ function handleEvent(event) {
         body: event.text || "",
         status: event.approved ? "done" : "failed",
       });
-      addActivity(event.approved ? "Approved" : "Denied", event.text || "");
+      addActivity(event.approved ? "Approved" : "Denied", event.text || "", "approval");
       break;
     case "commandResult":
       updateAssistantMessage(id, textFrom(event), { typing: false });
@@ -1416,16 +1420,25 @@ function handleEvent(event) {
       addActivity("Memory journal", event.error || "Could not update journal.");
       break;
     case "missionCreated":
-      addActivity("Mission created", oneLine(event.text || event.goal?.title || "Autonomous mission saved.", 160));
+      addActivity("Mission created", oneLine(event.text || event.goal?.title || "Autonomous mission saved.", 160), "mission");
       refresh({ renderView: state.currentView === "missions" }).catch((error) => addActivity("Missions", error.message));
       break;
     case "missionMatched":
-      addActivity("Mission matched", oneLine(event.text || event.goal?.title || "Using the existing autonomous mission.", 160));
+      addActivity("Mission matched", oneLine(event.text || event.goal?.title || "Using the existing autonomous mission.", 160), "mission");
       refresh({ renderView: state.currentView === "missions" }).catch((error) => addActivity("Missions", error.message));
       break;
     case "workThreadUpdated":
-      addActivity("Work thread", oneLine(event.nextAction || event.text || "Thread updated.", 160));
+      addActivity("Work thread", oneLine(event.nextAction || event.text || "Thread updated.", 160), "mission");
       refresh({ renderView: state.currentView === "missions" || state.currentView === "jobs" }).catch((error) => addActivity("Threads", error.message));
+      break;
+    case "browserActivity":
+      addActivity("Browser", event.url ? `${event.text} / ${event.url}` : event.text, "browser");
+      break;
+    case "desktopActivity":
+      addActivity("Desktop", event.action ? `${event.action}: ${event.text}` : event.text, "desktop");
+      break;
+    case "missionStep":
+      addActivity("Mission step", event.text || "", "mission");
       break;
     case "workThreadError":
       addActivity("Work thread", event.error || "Could not update thread.");

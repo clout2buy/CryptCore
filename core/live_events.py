@@ -96,6 +96,9 @@ LIVE_EVENT_SPECS: dict[str, EventSpec] = {
         optional=frozenset({"thread", "state", "nextAction"}),
     ),
     "workThreadError": EventSpec(required=frozenset({"error"}), terminal=True),
+    "browserActivity": EventSpec(required=frozenset({"text"}), optional=frozenset({"id", "sessionKey", "status", "url"})),
+    "desktopActivity": EventSpec(required=frozenset({"text"}), optional=frozenset({"id", "sessionKey", "status", "action"})),
+    "missionStep": EventSpec(required=frozenset({"text"}), optional=frozenset({"id", "sessionKey", "status", "missionId"})),
 }
 
 

@@ -357,12 +357,19 @@ Progress:
   click, type, screenshot, narration, and approval-gated sensitive actions.
 - Added safe desktop planner tests for visible actions and password/login gates.
 
-## Phase 25 - Visual Activity Feed
+## Phase 25 - Visual Activity Feed [started]
 
 Show what Crypt is doing visually: current tool, browser screenshot, desktop
 cursor action, mission step, and live reasoning summary.
 
 Verification: UI smoke test with fake and real activity events.
+
+Progress:
+
+- Added live-event contract entries for browser, desktop, and mission-step
+  visual activity.
+- The Core activity feed now renders distinct compact rows for tool, browser,
+  desktop, mission, approval, and error activity.
 
 ## Phase 26 - Files And Artifact Studio
 
