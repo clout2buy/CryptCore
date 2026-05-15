@@ -5,6 +5,9 @@ agent runtime plus WebUI into a self-improving personal operator. The goal is a
 simple chat-first experience where the user can speak normally and Crypt handles
 planning, tools, memory, verification, and follow-through behind the scenes.
 
+For the expanded execution sequence used by unattended core-agent work, see
+`docs/CRYPT_AGENT_50_PHASE_EXECUTION_PLAN.md`.
+
 ## Product North Star
 
 Crypt should feel like one capable assistant, not a pile of modes. The user
