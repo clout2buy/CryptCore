@@ -707,7 +707,17 @@ def _tool_previews(limit: int = 60) -> list[dict]:
     for schema in REGISTRY.schemas()[:limit]:
         name = str(schema.get("name") or "")
         desc = str(schema.get("description") or "")
-        out.append({"name": name, "description": desc})
+        meta = schema.get("x_crypt") if isinstance(schema.get("x_crypt"), dict) else {}
+        out.append(
+            {
+                "name": name,
+                "description": desc,
+                "capability": str(meta.get("capability") or ""),
+                "risk": str(meta.get("risk") or ""),
+                "permissionNeeds": list(meta.get("permissionNeeds") or []),
+                "recoveryHints": list(meta.get("recoveryHints") or []),
+            }
+        )
     return out
 
 

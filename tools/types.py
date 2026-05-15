@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable
 
 
@@ -37,3 +37,10 @@ class Tool:
     # express, such as "old+new or non-empty edits[]". Return a list of
     # human-readable errors; dispatch surfaces them before approvals.
     validate: Callable[[dict], list[str]] | None = None
+    capability: str = ""
+    risk: str = ""
+    inputs: list[str] = field(default_factory=list)
+    outputs: list[str] = field(default_factory=list)
+    examples: list[dict] = field(default_factory=list)
+    permission_needs: list[str] = field(default_factory=list)
+    recovery_hints: list[str] = field(default_factory=list)

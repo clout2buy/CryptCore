@@ -51,8 +51,18 @@ class Registry:
                 "name": tool.name,
                 "description": tool.description,
                 "input_schema": tool.schema,
+                "x_crypt": self.capability(tool.name),
             })
         return out
+
+    def capabilities(self) -> list[dict]:
+        return [self.capability(tool.name) for tool in self._ordered_tools()]
+
+    def capability(self, name: str) -> dict:
+        tool = self.get(name)
+        if tool is None:
+            return {}
+        return _capability_card(tool)
 
     def prompts(self, *, only: set[str] | None = None) -> str:
         chunks = []
@@ -658,6 +668,91 @@ def _subagent_can_run_ask_tool(tool_name: str, classification: str | None) -> bo
     if tool_name in {"write_file", "edit_file", "multi_edit"} and runtime.current_write_scope():
         return True
     return False
+
+
+def _capability_card(tool: Tool) -> dict:
+    properties = tool.schema.get("properties") if isinstance(tool.schema, dict) else {}
+    required = tool.schema.get("required") if isinstance(tool.schema, dict) else []
+    inferred_inputs = [str(name) for name in properties.keys()] if isinstance(properties, dict) else []
+    inputs = tool.inputs or inferred_inputs
+    return {
+        "name": tool.name,
+        "capability": tool.capability or _infer_capability(tool.name),
+        "risk": tool.risk or _infer_risk(tool),
+        "inputs": inputs,
+        "requiredInputs": [str(name) for name in required] if isinstance(required, list) else [],
+        "outputs": tool.outputs or _infer_outputs(tool.name),
+        "examples": tool.examples or _infer_examples(tool, inputs),
+        "permissionNeeds": tool.permission_needs or _permission_needs(tool),
+        "recoveryHints": tool.recovery_hints or _recovery_hints(tool.name),
+        "parallelSafe": bool(tool.parallel_safe),
+        "subagentAvailable": bool(tool.available_in_subagent),
+    }
+
+
+def _infer_capability(name: str) -> str:
+    if name in {"read_file", "open_file", "read_media", "list_files", "glob", "grep"}:
+        return "filesystem-read"
+    if name in {"write_file", "edit_file", "multi_edit"}:
+        return "filesystem-write"
+    if name in {"bash", "bash_start", "bash_poll", "bash_kill"}:
+        return "shell"
+    if name.startswith("git"):
+        return "git"
+    if name.startswith("web_"):
+        return "web"
+    if name in {"memory", "learn", "reflect", "autonomy", "goals", "skill_forge"}:
+        return "memory-autonomy"
+    if "agent" in name:
+        return "agent-delegation"
+    if name in {"ask", "plan", "todos"}:
+        return "coordination"
+    return "general"
+
+
+def _infer_risk(tool: Tool) -> str:
+    if tool.name in {"bash", "bash_start", "bash_kill"}:
+        return "high"
+    if tool.name in {"write_file", "edit_file", "multi_edit", "git_commit", "git_stage", "git_branch"}:
+        return "medium"
+    if tool.permission == "ask":
+        return "approval"
+    return "low"
+
+
+def _infer_outputs(name: str) -> list[str]:
+    if name in {"read_file", "grep", "glob", "list_files", "web_search", "web_fetch"}:
+        return ["text"]
+    if name in {"edit_file", "multi_edit", "write_file"}:
+        return ["changed paths", "diff or summary"]
+    if name.startswith("git"):
+        return ["git status", "commit or branch result"]
+    if name.startswith("bash"):
+        return ["stdout", "stderr", "exit status"]
+    return ["tool result"]
+
+
+def _infer_examples(tool: Tool, inputs: list[str]) -> list[dict]:
+    args = {name: f"<{name}>" for name in inputs[:3]}
+    return [{"tool": tool.name, "args": args}]
+
+
+def _permission_needs(tool: Tool) -> list[str]:
+    if tool.permission == "auto":
+        return ["auto unless runtime policy flags the call"]
+    return ["approval required unless user mode or rule allows it"]
+
+
+def _recovery_hints(name: str) -> list[str]:
+    if name in {"edit_file", "multi_edit"}:
+        return ["read the full target file before retrying failed replacements"]
+    if name in {"bash", "bash_start"}:
+        return ["use platform-appropriate shell syntax and bash_start for long-running commands"]
+    if name in {"read_file", "open_file", "read_media"}:
+        return ["list or glob the parent directory when a path is missing"]
+    if name.startswith("web_"):
+        return ["retry with a narrower query or cite source limitations"]
+    return ["inspect the error, adjust arguments once, then retry"]
 
 
 def _preflight(tool: Tool, args: dict) -> str | None:

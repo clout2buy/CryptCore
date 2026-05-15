@@ -218,12 +218,20 @@ Progress:
 - Learned persona bullets normalize sentience/consciousness language into a
   bounded "vivid persona, no literal consciousness claims" rule.
 
-## Phase 15 - Tool Capability Registry
+## Phase 15 - Tool Capability Registry [started]
 
 Record every tool by capability, risk level, inputs, outputs, examples,
 permission needs, and recovery hints.
 
 Verification: registry validation and tool selection tests.
+
+Progress:
+
+- Tool definitions now support capability, risk, inputs, outputs, examples,
+  permission needs, and recovery hints without requiring every existing tool to
+  be rewritten.
+- The registry infers capability cards for all loaded tools and exposes them in
+  tool schemas plus WebUI tool previews.
 
 ## Phase 16 - Tool Recovery Engine
 

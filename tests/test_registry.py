@@ -384,6 +384,38 @@ def test_edit_failure_includes_specific_recovery_hint(monkeypatch):
     assert "exact current source" in msg
 
 
+def test_registry_exposes_tool_capability_metadata(monkeypatch):
+    tool = _stub_tool(name="read_file", permission="auto", parallel_safe=True)
+    monkeypatch.setitem(registry.REGISTRY._tools, tool.name, tool)
+
+    card = registry.REGISTRY.capability("read_file")
+    schema = next(item for item in registry.REGISTRY.schemas() if item["name"] == "read_file")
+
+    assert card["capability"] == "filesystem-read"
+    assert card["risk"] == "low"
+    assert card["inputs"] == ["x"]
+    assert card["requiredInputs"] == ["x"]
+    assert card["parallelSafe"] is True
+    assert schema["x_crypt"]["capability"] == "filesystem-read"
+
+
+def test_registry_honors_explicit_capability_metadata(monkeypatch):
+    tool = _stub_tool(name="custom_tool", permission="ask")
+    tool.capability = "business-ops"
+    tool.risk = "approval"
+    tool.outputs = ["invoice draft"]
+    tool.permission_needs = ["ask before sending invoices"]
+    tool.recovery_hints = ["retry with a smaller customer list"]
+    monkeypatch.setitem(registry.REGISTRY._tools, tool.name, tool)
+
+    card = registry.REGISTRY.capability("custom_tool")
+
+    assert card["capability"] == "business-ops"
+    assert card["outputs"] == ["invoice draft"]
+    assert card["permissionNeeds"] == ["ask before sending invoices"]
+    assert card["recoveryHints"] == ["retry with a smaller customer list"]
+
+
 # ─── lifecycle UI integration ───────────────────────────────────────────
 
 
