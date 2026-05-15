@@ -63,6 +63,9 @@ def main() -> int:
     )
     p.add_argument("--eval-no-clean", action="store_true", help="do not remove new generated cache artifacts")
     p.add_argument("--eval-json", action="store_true", help="print eval-target JSON report")
+    p.add_argument("--release-output", help="directory for release checklist artifacts")
+    p.add_argument("--release-check", action="append", help="release verification command; repeatable")
+    p.add_argument("--release-no-run", action="store_true", help="generate release checklist without running checks")
     p.add_argument(
         "command",
         nargs="?",
@@ -73,6 +76,7 @@ def main() -> int:
             "doctor",
             "bench",
             "eval-target",
+            "release",
             "app-daemon",
             "skills",
             "tasks",
@@ -85,7 +89,7 @@ def main() -> int:
             "webui",
         ],
         help=(
-            "login | logout | setup | doctor | bench | eval-target | app-daemon | "
+            "login | logout | setup | doctor | bench | eval-target | release | app-daemon | "
             "skills | tasks | project | learn | reflect | goals | forge | autonomy | webui"
         ),
     )
@@ -138,6 +142,8 @@ def main() -> int:
         return _do_bench(saved, args)
     if args.command == "eval-target":
         return _do_eval_target(saved, args)
+    if args.command == "release":
+        return _do_release(saved, args)
     if args.command == "app-daemon":
         from core.app_daemon import main as app_daemon_main
 
@@ -923,6 +929,24 @@ def _do_eval_target(saved: dict, args: argparse.Namespace) -> int:
         ui.error(f"eval-target failed: {type(e).__name__}: {e}")
         return 1
     print(report.to_json() if args.eval_json else target_eval.format_report(report))
+    return 0 if report.success else 1
+
+
+def _do_release(saved: dict, args: argparse.Namespace) -> int:
+    from core import release_train
+
+    cwd = settings.resolve_workspace(args.cwd, saved)
+    try:
+        report = release_train.generate(
+            cwd,
+            checks=args.release_check,
+            output_root=args.release_output,
+            run_checks=not args.release_no_run,
+        )
+    except Exception as e:
+        ui.error(f"release failed: {type(e).__name__}: {e}")
+        return 1
+    print(release_train.format_report(report))
     return 0 if report.success else 1
 
 

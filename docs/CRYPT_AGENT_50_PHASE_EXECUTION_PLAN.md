@@ -775,6 +775,16 @@ notes, known risks, rollback path, and GitHub push/PR behavior.
 
 Verification: release checklist generated from a verified build.
 
+Progress:
+
+- Added `core.release_train`, which runs release checks and writes
+  `release-checklist.md` plus `release-checklist.json` artifacts.
+- Release reports include version, branch, commit, changelog, verification,
+  upgrade notes, known risks, rollback steps, screenshot artifacts, and GitHub
+  push/PR behavior.
+- Added `python main.py release` with repeatable `--release-check`,
+  `--release-output`, and `--release-no-run` options.
+
 ## Overnight Execution Rules
 
 Each unattended run should:
