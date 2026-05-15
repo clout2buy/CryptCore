@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import time
+import unicodedata
 import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -39,9 +40,14 @@ VOICE_CHOICES = [
     {"id": "af_heart", "label": "Heart", "accent": "US", "grade": "A", "style": "warm natural"},
     {"id": "af_bella", "label": "Bella", "accent": "US", "grade": "A-", "style": "expressive"},
     {"id": "af_nicole", "label": "Nicole", "accent": "US", "grade": "B-", "style": "soft whisper"},
+    {"id": "af_jessica", "label": "Jessica", "accent": "US", "grade": "B", "style": "confident"},
     {"id": "am_puck", "label": "Puck", "accent": "US", "grade": "C+", "style": "bright energetic"},
     {"id": "am_fenrir", "label": "Fenrir", "accent": "US", "grade": "C+", "style": "deep"},
+    {"id": "am_adam", "label": "Adam", "accent": "US", "grade": "D", "style": "low steady"},
+    {"id": "am_santa", "label": "Santa", "accent": "US", "grade": "D", "style": "gravelly"},
     {"id": "bf_isabella", "label": "Isabella", "accent": "UK", "grade": "C", "style": "clean british"},
+    {"id": "bf_alice", "label": "Alice", "accent": "UK", "grade": "C", "style": "bright british"},
+    {"id": "bf_lily", "label": "Lily", "accent": "UK", "grade": "C", "style": "soft british"},
     {"id": "bm_george", "label": "George", "accent": "UK", "grade": "C", "style": "grounded british"},
     {"id": "af_alloy", "label": "Alloy", "accent": "US", "grade": "C", "style": "clear"},
     {"id": "af_aoede", "label": "Aoede", "accent": "US", "grade": "C+", "style": "melodic"},
@@ -215,12 +221,29 @@ def audio_path(name: str) -> Path:
 
 
 def _clean_text(text: str) -> str:
-    no_emoji = EMOJI_RE.sub(" ", str(text or ""))
-    clean = " ".join(redact.text(no_emoji).split())
+    raw = str(text or "")
+    raw = re.sub(r"```[\s\S]*?```", " code omitted ", raw)
+    raw = re.sub(r"`([^`\n]+?)`", r"\1", raw)
+    raw = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", raw)
+    raw = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", raw)
+    raw = re.sub(r"https?://\S+", " ", raw)
+    raw = raw.replace("&", " and ")
+    no_emoji = EMOJI_RE.sub(" ", raw)
+    no_symbols = "".join(" " if _is_speechless_symbol(char) else char for char in no_emoji)
+    clean = " ".join(redact.text(no_symbols).split())
+    clean = re.sub(r"^[\s>*#-]+", "", clean)
+    clean = re.sub(r"[*_~]+", "", clean)
     clean = re.sub(r"\s+([.,!?;:])", r"\1", clean)
     if len(clean) > MAX_TEXT_CHARS:
         clean = clean[:MAX_TEXT_CHARS].rsplit(" ", 1)[0].strip()
     return clean
+
+
+def _is_speechless_symbol(char: str) -> bool:
+    category = unicodedata.category(char)
+    if category == "So":
+        return True
+    return char in {"\ufe0e", "\ufe0f", "\u200d"}
 
 
 def _voice_id(value: str) -> str:

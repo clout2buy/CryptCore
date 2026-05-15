@@ -35,6 +35,8 @@ const state = {
     listening: false,
     manuallyStopping: false,
     restartAttempts: 0,
+    restartTimer: 0,
+    interim: "",
     supported: null,
   },
   voiceOut: {
@@ -43,6 +45,7 @@ const state = {
     speed: Number(localStorage.getItem("crypt.voice.output.speed") || "0.96"),
     audio: null,
     busy: false,
+    speakToken: 0,
   },
   poll: {
     eventsStarted: false,
@@ -1679,6 +1682,10 @@ function selectedRoute() {
 }
 
 async function sendPrompt(text) {
+  if (!String(text || "").trim()) {
+    flushVoiceInterim();
+    text = $("#prompt").value;
+  }
   const trimmed = text.trim();
   if (!trimmed || state.busy) return;
   const requestId = `web-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -1845,6 +1852,24 @@ function updateVoiceUi(text) {
   if (status) status.textContent = text;
 }
 
+function clearVoiceRestart() {
+  if (!state.voice.restartTimer) return;
+  window.clearTimeout(state.voice.restartTimer);
+  state.voice.restartTimer = 0;
+}
+
+function scheduleVoiceRestart() {
+  if (!state.voice.desired || state.voice.manuallyStopping) return;
+  clearVoiceRestart();
+  state.voice.restartAttempts += 1;
+  const delay = Math.min(900, 140 + state.voice.restartAttempts * 120);
+  updateVoiceUi("reconnecting mic");
+  state.voice.restartTimer = window.setTimeout(() => {
+    state.voice.restartTimer = 0;
+    startVoice();
+  }, delay);
+}
+
 function ensureVoice() {
   if (state.voice.supported === false) return null;
   if (state.voice.recognition) return state.voice.recognition;
@@ -1861,6 +1886,8 @@ function ensureVoice() {
   recognition.onstart = () => {
     state.voice.listening = true;
     state.voice.manuallyStopping = false;
+    state.voice.restartAttempts = 0;
+    clearVoiceRestart();
     updateVoiceUi("listening");
   };
   recognition.onresult = (event) => {
@@ -1872,7 +1899,12 @@ function ensureVoice() {
       if (result.isFinal) finalText += text;
       else interimText += text;
     }
-    if (finalText.trim()) appendTranscript(finalText);
+    if (finalText.trim()) {
+      appendTranscript(finalText);
+      state.voice.interim = "";
+    } else {
+      state.voice.interim = interimText.trim();
+    }
     updateVoiceUi(interimText.trim() ? `hearing: ${oneLine(interimText, 32)}` : "listening");
   };
   recognition.onerror = (event) => {
@@ -1880,6 +1912,7 @@ function ensureVoice() {
     if (error === "not-allowed" || error === "service-not-allowed") {
       state.voice.desired = false;
       state.voice.listening = false;
+      state.voice.interim = "";
       updateVoiceUi("mic blocked");
       return;
     }
@@ -1887,10 +1920,8 @@ function ensureVoice() {
   };
   recognition.onend = () => {
     state.voice.listening = false;
-    if (state.voice.desired && !state.voice.manuallyStopping && state.voice.restartAttempts < 2) {
-      state.voice.restartAttempts += 1;
-      updateVoiceUi("reconnecting mic");
-      window.setTimeout(startVoice, 180);
+    if (state.voice.desired && !state.voice.manuallyStopping) {
+      scheduleVoiceRestart();
       return;
     }
     state.voice.desired = false;
@@ -1913,23 +1944,39 @@ function appendTranscript(text) {
   prompt.focus();
 }
 
+function flushVoiceInterim() {
+  const clean = String(state.voice.interim || "").replace(/\s+/g, " ").trim();
+  if (!clean) return;
+  appendTranscript(clean);
+  state.voice.interim = "";
+  updateVoiceUi(state.voice.listening ? "listening" : "voice ready");
+}
+
 function startVoice() {
   const recognition = ensureVoice();
   if (!recognition) return;
+  if (state.voice.listening) {
+    updateVoiceUi("listening");
+    return;
+  }
   state.voice.desired = true;
   state.voice.manuallyStopping = false;
+  clearVoiceRestart();
   try {
     recognition.start();
   } catch (error) {
-    updateVoiceUi(state.voice.listening ? "listening" : "mic starting");
+    if (state.voice.desired && !state.voice.listening) scheduleVoiceRestart();
+    else updateVoiceUi(state.voice.listening ? "listening" : "mic starting");
   }
 }
 
 function stopVoice() {
   const recognition = ensureVoice();
+  clearVoiceRestart();
   state.voice.desired = false;
   state.voice.listening = false;
   state.voice.manuallyStopping = true;
+  state.voice.interim = "";
   updateVoiceUi("voice ready");
   try {
     recognition?.stop();
@@ -1967,14 +2014,42 @@ async function testVoiceOutput() {
 
 async function maybeSpeak(text) {
   if (!state.voiceOut.enabled) return;
+  if (!shouldSpeakResponse(text)) {
+    setTtsStatus("speech skipped");
+    return;
+  }
   if (state.voice.desired || state.voice.listening) stopVoice();
   await speakText(text, { force: false });
 }
 
+function shouldSpeakResponse(text) {
+  const clean = voiceTextForSpeech(text);
+  if (!clean) return false;
+  if (/\[tool_(?:result|call):/i.test(clean)) return false;
+  if (/schema validation failed|traceback|permissionerror|<html|<\/[a-z]+>/i.test(clean)) return false;
+  return true;
+}
+
+function voiceTextForSpeech(text) {
+  return String(text || "")
+    .replace(/```[\s\S]*?```/g, " code omitted ")
+    .replace(/`([^`\n]+?)`/g, "$1")
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/[*_~>#-]+/g, " ")
+    .replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 async function speakText(text, { force = false } = {}) {
-  const clean = String(text || "").replace(/\s+/g, " ").trim();
-  if (!clean || state.voiceOut.busy) return;
+  const clean = voiceTextForSpeech(text);
+  if (!clean) return;
   if (!force && !state.snapshot?.voice?.ready) return;
+  const token = Date.now() + Math.random();
+  state.voiceOut.speakToken = token;
+  stopVoicePlayback();
   state.voiceOut.busy = true;
   setTtsStatus("kokoro speaking");
   syncVoiceOutputControls(state.snapshot);
@@ -1989,14 +2064,17 @@ async function speakText(text, { force = false } = {}) {
     });
     const audioUrl = data.speech?.audio_url || data.speech?.audioUrl;
     if (!audioUrl) throw new Error("voice audio missing");
+    if (state.voiceOut.speakToken !== token) return;
     await playVoiceAudio(audioUrl);
     setTtsStatus("kokoro ready");
   } catch (error) {
     setTtsStatus(error.message.includes("Kokoro voice is not ready") ? "kokoro setup needed" : oneLine(error.message, 42));
     addActivity("Voice", error.message);
   } finally {
-    state.voiceOut.busy = false;
-    syncVoiceOutputControls(state.snapshot);
+    if (state.voiceOut.speakToken === token) {
+      state.voiceOut.busy = false;
+      syncVoiceOutputControls(state.snapshot);
+    }
   }
 }
 
@@ -2070,6 +2148,7 @@ function startAmbient() {
 
 $("#promptForm").addEventListener("submit", (event) => {
   event.preventDefault();
+  flushVoiceInterim();
   sendPrompt($("#prompt").value);
 });
 
@@ -2077,6 +2156,7 @@ $("#prompt").addEventListener("input", resizePrompt);
 $("#prompt").addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
+    flushVoiceInterim();
     sendPrompt($("#prompt").value);
   }
 });

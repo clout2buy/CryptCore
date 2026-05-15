@@ -19,16 +19,32 @@ def test_local_voice_status_reports_missing_setup(monkeypatch, tmp_path: Path):
 def test_local_voice_exposes_distinct_voice_choices():
     voice_ids = {voice["id"] for voice in local_voice.VOICE_CHOICES}
 
-    assert {"af_heart", "af_bella", "af_nicole", "am_puck", "am_fenrir", "bf_isabella", "bm_george"} <= voice_ids
+    assert {
+        "af_heart",
+        "af_bella",
+        "af_nicole",
+        "af_jessica",
+        "am_puck",
+        "am_fenrir",
+        "am_adam",
+        "bf_isabella",
+        "bm_george",
+    } <= voice_ids
     assert all(voice.get("style") for voice in local_voice.VOICE_CHOICES)
 
 
 def test_local_voice_removes_emoji_before_synthesis():
-    clean = local_voice._clean_text("Got it 😄🔥. Shipped ✅")
+    clean = local_voice._clean_text("Got it \U0001f604\U0001f525. Shipped \u2705")
 
     assert clean == "Got it. Shipped"
-    assert "😄" not in clean
-    assert "✅" not in clean
+    assert "\U0001f604" not in clean
+    assert "\u2705" not in clean
+
+
+def test_local_voice_cleans_markdown_and_links_for_speech():
+    clean = local_voice._clean_text("**Done** - see `index.html` and [tracker](https://example.test/a). ```print('skip')```")
+
+    assert clean == "Done - see index.html and tracker. code omitted"
 
 
 def test_local_voice_speak_uses_kokoro_runner(monkeypatch, tmp_path: Path):
@@ -49,7 +65,7 @@ def test_local_voice_speak_uses_kokoro_runner(monkeypatch, tmp_path: Path):
 
     monkeypatch.setattr(local_voice.subprocess, "run", fake_run)
 
-    result = local_voice.speak("hello from crypt 😄🔥", voice="af_heart", speed=0.94)
+    result = local_voice.speak("hello from crypt \U0001f604\U0001f525", voice="af_heart", speed=0.94)
 
     assert result.voice == "af_heart"
     assert result.audio_url.startswith("/api/voice/audio/kokoro-")

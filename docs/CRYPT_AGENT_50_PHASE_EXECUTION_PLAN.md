@@ -721,6 +721,18 @@ interruptions, and speak-only-when-appropriate logic.
 
 Verification: mocked voice events and TTS text sanitizer tests.
 
+Progress:
+
+- Mic capture now preserves interim speech and flushes it before Send, so a
+  voice prompt is not dropped when Chrome has not finalized the transcript yet.
+- Speech recognition restarts are resilient while the user wants the mic on,
+  and manual stop clears reconnect timers cleanly.
+- Local Kokoro TTS now sanitizes emoji, Markdown, links, and code blocks before
+  synthesis, skips bad tool/error payloads, and interrupts stale playback when a
+  newer response should speak.
+- Added more distinct Kokoro voice choices while keeping invalid selections
+  pinned back to the safe default.
+
 ## Phase 48 - Mobile And Remote Access
 
 Add secure optional remote/mobile access with authentication, limited scopes,

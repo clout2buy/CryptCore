@@ -117,6 +117,9 @@ def test_webui_static_is_chat_first():
     assert "toolProgress" in script
     assert "thinkingDelta" in script
     assert "stopVoicePlayback" in script
+    assert "flushVoiceInterim" in script
+    assert "voiceTextForSpeech" in script
+    assert "shouldSpeakResponse" in script
     assert "pollEventsOnce" in script
     assert "pollSnapshotOnce" in script
     assert "startLivePulse" in script
