@@ -600,12 +600,21 @@ Progress:
 - User corrections in normal chat are captured as durable feedback lessons so
   future routing and tool behavior can adapt without manual memory commands.
 
-## Phase 40 - Self-Upgrade Idea Queue
+## Phase 40 - Self-Upgrade Idea Queue [started]
 
 Let Crypt propose self-upgrades from repeated friction, failed tools, user
 feedback, and missing capabilities.
 
 Verification: idea queue dedupes, ranks, and converts to missions.
+
+Progress:
+
+- Added a durable self-upgrade queue that ranks ideas from user corrections,
+  failure/recovery lessons, reflections, and open-loop memory.
+- Upgrade ideas dedupe by normalized title, accumulate supporting signals, and
+  can convert into full autonomous missions/work threads.
+- Autonomy cycles now refresh the self-upgrade queue, and WebUI/runtime context
+  can surface the highest-priority proposed upgrades.
 
 ## Phase 41 - Live Runtime Rebuild
 
