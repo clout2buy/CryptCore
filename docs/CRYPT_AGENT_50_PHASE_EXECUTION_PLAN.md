@@ -233,13 +233,20 @@ Progress:
 - The registry infers capability cards for all loaded tools and exposes them in
   tool schemas plus WebUI tool previews.
 
-## Phase 16 - Tool Recovery Engine
+## Phase 16 - Tool Recovery Engine [started]
 
 Detect common tool failures, recover with safer alternatives, and avoid dumping
 raw tool errors into the chat unless they are genuinely useful.
 
 Verification: simulated failure tests for edit, shell, browser, and network
 errors.
+
+Progress:
+
+- Added `core/tool_recovery.py` for reusable recovery advice and compact
+  failure formatting.
+- Tool dispatch now truncates huge raw failures and falls back to recovery
+  advice instead of dumping noisy logs into chat.
 
 ## Phase 17 - Permission Boundary System
 

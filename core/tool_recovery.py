@@ -1,230 +1,228 @@
-"""Recovery policy for failed tool-call turns.
-
-Some model failures are not real blockers; they are bad tool arguments. The
-harness should correct those once instead of accepting a prose "I can continue"
-answer that leaves the repo half-edited.
-"""
+"""Recovery advice for failed tool calls."""
 from __future__ import annotations
 
-import re
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 
-_RECOVERABLE_RE = re.compile(
-    r"("
-    r"schema validation failed|missing required input|expected a non-empty|no edits provided|"
-    r"fix the arguments|Recovery:|no match for|matches for|file changed since Crypt read it|"
-    r"read-before-edit invariant|FileNotFoundError|unsupported media type|was not found on PATH|"
-    r"not installed on this Windows shell|\[hint:|command timed out"
-    r")",
-    re.I,
-)
-_HARD_STOP_RE = re.compile(
-    r"^(denied by user|PermissionError:|blocked by runtime policy|approval required)",
-    re.I,
-)
-_RECOVERABLE_TOOLS = {
-    "bash",
-    "bash_start",
-    "edit_file",
-    "glob",
-    "grep",
-    "list_files",
-    "multi_edit",
-    "open_file",
-    "read_file",
-    "read_media",
-    "write_file",
-}
-_SPIRAL_STOP_TOOLS = {"edit_file", "multi_edit", "write_file"}
-_SPIRAL_STOP_THRESHOLD = 3
+MAX_ERROR_CHARS = 900
 
 
-def should_retry_after_tool_failure(messages: list[dict], assistant_msg: dict) -> bool:
-    """True when the model gave prose after recoverable tool validation errors."""
-    if _has_tool_use(assistant_msg):
+@dataclass(frozen=True)
+class RecoveryAdvice:
+    category: str
+    hint: str
+    retry_tool: str = ""
+
+
+def advise(tool_name: str, args: dict | None, message: str) -> RecoveryAdvice | None:
+    lower = str(message or "").lower()
+    name = str(tool_name or "")
+    if name in {"edit_file", "multi_edit", "write_file"}:
+        path = _path_arg(args or {})
+        if "read-before-edit" in lower or "file changed" in lower:
+            return RecoveryAdvice(
+                "stale-file-context",
+                f"read {path or 'the target file'} again, then retry the edit against the newest exact text",
+                "read_file",
+            )
+        if "no match" in lower or "matches for" in lower:
+            return RecoveryAdvice(
+                "edit-context-mismatch",
+                "retry once with a smaller unique replacement or a longer old string with surrounding lines",
+                "read_file",
+            )
+    if name in {"read_file", "open_file", "read_media", "grep", "glob", "list_files"}:
+        if "filenotfounderror" in lower or "no such file" in lower:
+            return RecoveryAdvice(
+                "missing-path",
+                "list or glob the parent directory, then retry with an existing path",
+                "list_files",
+            )
+    if name in {"bash", "bash_start"}:
+        if "timed out" in lower:
+            return RecoveryAdvice("shell-timeout", "use bash_start for long-running commands, then bash_poll", "bash_start")
+        if "not recognized" in lower or "was not found" in lower:
+            return RecoveryAdvice("missing-command", "check the command with Get-Command or use the PowerShell equivalent")
+    if name.startswith("web_"):
+        if "timeout" in lower or "connection" in lower:
+            return RecoveryAdvice("network", "retry with a narrower query or state that network verification failed")
+    return None
+
+
+def format_hint(tool_name: str, args: dict | None, message: str) -> str:
+    advice = advise(tool_name, args, message)
+    if not advice:
+        return ""
+    return f"\nRecovery: {advice.hint}."
+
+
+def compact_failure(message: str, *, limit: int = MAX_ERROR_CHARS) -> str:
+    clean = " ".join(str(message or "").split())
+    if len(clean) <= limit:
+        return clean
+    head = clean[: max(0, limit - 80)].rstrip()
+    return f"{head}... [tool error truncated; keep the recovery step and avoid dumping raw logs]"
+
+
+def should_retry_after_tool_failure(messages: list[dict], assistant_message: dict) -> bool:
+    if _has_tool_use(assistant_message):
         return False
-    failed = recoverable_failures_before_final(messages)
-    if not failed:
+    if should_stop_after_failure_spiral(messages):
         return False
-    final_text = _extract_text(assistant_msg)
-    if not final_text.strip():
-        return True
-    # After recoverable arg failures, any final prose without tool use is too
-    # early. It may be a promise, apology, or partial-progress summary.
-    return True
-
-
-def recovery_message(messages: list[dict]) -> dict:
-    failures = recoverable_failures_before_final(messages)
-    lines = []
-    for item in failures[:4]:
-        name = item.get("tool_name") or "tool"
-        content = str(item.get("content") or "")
-        lines.append(f"- {name}: {_one_line(content, 220)}")
-    detail = "\n".join(lines) if lines else "- recoverable tool argument failure"
-    return {
-        "role": "user",
-        "content": [{
-            "type": "text",
-            "text": (
-                "Crypt harness correction: the previous tool calls failed because their arguments were invalid, "
-                "not because the task is impossible. Do not stop with a partial-progress summary. "
-                "Your next response must either retry the failed edit/write with valid non-empty arguments, "
-                "or use read_file/list_files/grep to recover exact context before retrying. "
-                "If read-before-edit says only a partial range was read, call read_file for that path with no "
-                "offset or limit exactly once; do not repeat the same partial slice. "
-                "If the chosen implementation is too large, split it into the next smallest concrete file edit. "
-                "Recent recoverable failures:\n"
-                f"{detail}"
-            ),
-        }],
-    }
-
-
-def should_stop_after_failure_spiral(messages: list[dict]) -> bool:
-    """True when the same task keeps failing tool invariants.
-
-    Recovery nudges are useful once. After several invalid edit/write attempts,
-    continuing usually burns turns and context without improving the result.
-    """
-    failures = recent_recoverable_failures(messages, tools=_SPIRAL_STOP_TOOLS)
-    return len(failures) >= _SPIRAL_STOP_THRESHOLD
-
-
-def spiral_stop_message(messages: list[dict]) -> dict:
-    failures = recent_recoverable_failures(messages, tools=_SPIRAL_STOP_TOOLS)
-    tools = sorted({str(item.get("tool_name") or "tool") for item in failures[-_SPIRAL_STOP_THRESHOLD:]})
-    detail = ", ".join(tools) if tools else "edit/write"
-    return {
-        "role": "assistant",
-        "content": [{
-            "type": "text",
-            "text": (
-                "I hit repeated invalid edit arguments, so I paused that tool path before making a messy change. "
-                f"The failing surface was {detail}. The recovery is straightforward: read the full target file, "
-                "make one concrete non-empty edit, then verify it. I will use that route on the next pass."
-            ),
-        }],
-    }
-
-
-def recent_recoverable_failures(
-    messages: list[dict],
-    *,
-    tools: set[str] | frozenset[str] | None = None,
-    limit: int = 8,
-) -> list[dict]:
-    names_by_id: dict[str, str] = {}
-    failures: list[dict] = []
-    for msg in messages:
-        role = msg.get("role")
-        content = msg.get("content")
-        if role == "assistant" and isinstance(content, list):
-            for block in content:
-                if not isinstance(block, dict) or block.get("type") != "tool_use":
-                    continue
-                call_id = str(block.get("id") or "")
-                if call_id:
-                    names_by_id[call_id] = str(block.get("name") or "")
-            continue
-        if role != "user" or not isinstance(content, list):
-            continue
-        for block in content:
-            if not isinstance(block, dict) or block.get("type") != "tool_result":
-                continue
-            if not block.get("is_error"):
-                continue
-            text = str(block.get("content") or "")
-            if _HARD_STOP_RE.search(text) or not _RECOVERABLE_RE.search(text):
-                continue
-            tool_name = names_by_id.get(str(block.get("tool_use_id") or ""), "tool")
-            if tools is not None and tool_name not in tools:
-                continue
-            failures.append({
-                "tool_use_id": block.get("tool_use_id"),
-                "tool_name": tool_name,
-                "content": text,
-            })
-    return failures[-max(1, limit):]
-
-
-def recoverable_failures_before_final(messages: list[dict]) -> list[dict]:
-    if len(messages) < 2:
-        return []
-    # messages[-1] is usually the final assistant prose by the time this is
-    # checked. Walk backward to the nearest tool_result user message.
-    for idx in range(len(messages) - 2, -1, -1):
-        msg = messages[idx]
-        if msg.get("role") == "assistant":
-            # Stop at previous assistant turn; older failures have already had
-            # a chance to influence a model response.
-            return []
-        content = msg.get("content")
-        if msg.get("role") != "user" or not isinstance(content, list):
-            continue
-        if not any(isinstance(block, dict) and block.get("type") == "tool_result" for block in content):
-            continue
-        names = _tool_names_from_previous_assistant(messages, idx)
-        out: list[dict] = []
-        for block in content:
-            if not isinstance(block, dict) or block.get("type") != "tool_result":
-                continue
-            if not block.get("is_error"):
-                continue
-            text = str(block.get("content") or "")
-            if _HARD_STOP_RE.search(text):
-                continue
-            if not _RECOVERABLE_RE.search(text):
-                continue
-            tool_name = names.get(str(block.get("tool_use_id") or ""))
-            if tool_name and tool_name not in _RECOVERABLE_TOOLS:
-                continue
-            out.append({
-                "tool_use_id": block.get("tool_use_id"),
-                "tool_name": tool_name or "tool",
-                "content": text,
-            })
-        return out
-    return []
-
-
-def _tool_names_from_previous_assistant(messages: list[dict], user_idx: int) -> dict[str, str]:
-    for idx in range(user_idx - 1, -1, -1):
-        msg = messages[idx]
-        if msg.get("role") != "assistant":
-            continue
-        content = msg.get("content")
-        if not isinstance(content, list):
-            return {}
-        return {
-            str(block.get("id")): str(block.get("name") or "")
-            for block in content
-            if isinstance(block, dict) and block.get("type") == "tool_use" and block.get("id")
-        }
-    return {}
-
-
-def _has_tool_use(message: dict) -> bool:
-    content = message.get("content")
-    return isinstance(content, list) and any(
-        isinstance(block, dict) and block.get("type") == "tool_use"
-        for block in content
+    failure = _last_recoverable_failure(messages)
+    if failure is None:
+        return False
+    text = _assistant_text(assistant_message).lower()
+    if any(marker in text for marker in ("recovered", "completed", "done", "fixed")):
+        return False
+    return not text or any(
+        marker in text
+        for marker in ("partway", "can continue", "try something else", "later", "failed", "unable", "could retry")
     )
 
 
-def _extract_text(message: dict) -> str:
+def recovery_message(messages: list[dict]) -> dict:
+    failure = _last_recoverable_failure(messages) or {}
+    tool_name = str(failure.get("tool") or "tool")
+    content = str(failure.get("content") or "")
+    if tool_name in {"edit_file", "multi_edit", "write_file"}:
+        detail = (
+            "The previous tool calls failed because their arguments were invalid. "
+            "Do not summarize or stop. retry the failed edit/write by first reading "
+            "the exact current file context, then call the edit tool once with a "
+            "non-empty concrete replacement."
+        )
+    elif tool_name in {"bash", "bash_start"}:
+        detail = (
+            "The previous bash tool call failed with a platform or command issue. "
+            "Use the recovery hint, switch to PowerShell-compatible syntax when on "
+            "Windows, and retry once with the corrected command."
+        )
+    else:
+        detail = (
+            "The previous tool call failed in a recoverable way. Use the recovery "
+            "hint, adjust the arguments, and retry once instead of stopping."
+        )
+    hint = format_hint(tool_name, failure.get("input") if isinstance(failure.get("input"), dict) else {}, content)
+    if hint:
+        detail += f" {hint.strip()}"
+    detail = f"Crypt harness correction: {detail}"
+    return {"role": "user", "content": [{"type": "text", "text": detail}]}
+
+
+def should_stop_after_failure_spiral(messages: list[dict]) -> bool:
+    failures = [
+        failure for failure in _failed_tool_results(messages)
+        if failure.get("tool") in {"edit_file", "multi_edit", "write_file"}
+        and _is_recoverable_failure(str(failure.get("content") or ""))
+    ]
+    return len(failures) >= 3
+
+
+def spiral_stop_message(messages: list[dict]) -> dict:
+    paths = [
+        str((failure.get("input") or {}).get("path") or "")
+        for failure in _failed_tool_results(messages)
+        if isinstance(failure.get("input"), dict)
+    ]
+    path_text = f" Target path: {paths[-1]}." if paths and paths[-1] else ""
+    text = (
+        "Stopped repeated invalid edit arguments before wasting more turns. "
+        "Recovery: read the full target file, identify the exact current text, "
+        "then retry with one concrete non-empty edit."
+        f"{path_text}"
+    )
+    return {"role": "assistant", "content": [{"type": "text", "text": text}]}
+
+
+def _path_arg(args: dict) -> str:
+    if not isinstance(args, dict):
+        return ""
+    if args.get("path"):
+        return str(Path(str(args.get("path"))))
+    changes = args.get("changes")
+    if isinstance(changes, list) and changes and isinstance(changes[0], dict):
+        return str(changes[0].get("path") or "")
+    return ""
+
+
+def _last_recoverable_failure(messages: list[dict]) -> dict | None:
+    for failure in reversed(_failed_tool_results(messages)):
+        if _is_recoverable_failure(str(failure.get("content") or "")):
+            return failure
+    return None
+
+
+def _failed_tool_results(messages: list[dict]) -> list[dict]:
+    uses = _tool_uses(messages)
+    out: list[dict] = []
+    for message in messages:
+        if message.get("role") != "user":
+            continue
+        for block in _content_blocks(message):
+            if block.get("type") != "tool_result" or not block.get("is_error"):
+                continue
+            call_id = str(block.get("tool_use_id") or "")
+            use = uses.get(call_id, {})
+            out.append(
+                {
+                    "tool": str(use.get("name") or ""),
+                    "input": use.get("input") if isinstance(use.get("input"), dict) else {},
+                    "content": str(block.get("content") or ""),
+                    "tool_use_id": call_id,
+                }
+            )
+    return out
+
+
+def _tool_uses(messages: list[dict]) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    for message in messages:
+        if message.get("role") != "assistant":
+            continue
+        for block in _content_blocks(message):
+            if block.get("type") == "tool_use":
+                out[str(block.get("id") or "")] = block
+    return out
+
+
+def _content_blocks(message: dict) -> list[dict[str, Any]]:
+    content = message.get("content")
+    if not isinstance(content, list):
+        return []
+    return [block for block in content if isinstance(block, dict)]
+
+
+def _has_tool_use(message: dict) -> bool:
+    return any(block.get("type") == "tool_use" for block in _content_blocks(message))
+
+
+def _assistant_text(message: dict) -> str:
+    parts: list[str] = []
     content = message.get("content")
     if isinstance(content, str):
-        return content
-    if not isinstance(content, list):
-        return ""
-    return "\n".join(
-        str(block.get("text", ""))
-        for block in content
-        if isinstance(block, dict) and block.get("type") == "text"
-    ).strip()
+        parts.append(content)
+    for block in _content_blocks(message):
+        if block.get("type") == "text":
+            parts.append(str(block.get("text") or ""))
+    return " ".join(parts)
 
 
-def _one_line(text: str, limit: int) -> str:
-    text = str(text or "").replace("\n", " | ").strip()
-    return text if len(text) <= limit else text[: limit - 3] + "..."
+def _is_recoverable_failure(content: str) -> bool:
+    lower = content.lower()
+    return any(
+        marker in lower
+        for marker in (
+            "schema validation failed",
+            "expected a non-empty array",
+            "read-before-edit",
+            "file changed since",
+            "no match",
+            "[hint:",
+            "not recognized",
+            "was not found",
+            "timed out",
+        )
+    )

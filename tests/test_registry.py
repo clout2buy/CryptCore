@@ -362,6 +362,20 @@ def test_run_exception_surfaces_as_failure(monkeypatch):
     assert "boom" in msg
 
 
+def test_run_exception_compacts_large_failure(monkeypatch):
+    def bad_run(args):
+        raise RuntimeError("x" * 2000)
+
+    tool = _stub_tool(permission="auto", runner=bad_run)
+    monkeypatch.setitem(registry.REGISTRY._tools, tool.name, tool)
+
+    ok, msg = registry.dispatch(tool.name, {"x": "hi"}, render=False)
+
+    assert ok is False
+    assert "tool error truncated" in msg
+    assert len(msg) < 1200
+
+
 def test_edit_failure_includes_specific_recovery_hint(monkeypatch):
     def bad_run(args):
         raise ValueError("edit 1: no match for 'old text'")

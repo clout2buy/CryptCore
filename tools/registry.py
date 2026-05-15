@@ -4,7 +4,7 @@ import importlib
 import sys
 from pathlib import Path
 
-from core import redact, ui
+from core import redact, tool_recovery, ui
 
 from .types import Tool
 
@@ -370,7 +370,7 @@ def dispatch(
         with runtime.tool_render(render):
             out = tool.run(args)
     except Exception as e:
-        msg = f"{type(e).__name__}: {e}"
+        msg = tool_recovery.compact_failure(f"{type(e).__name__}: {e}")
         msg += _tool_failure_recovery_hint(tool.name, args, msg)
         _emit_failure(msg)
         evidence.record_tool_result(
@@ -521,7 +521,7 @@ def _tool_failure_recovery_hint(tool_name: str, args: dict, message: str) -> str
         if "no such file" in lower or "filenotfounderror" in lower:
             hint = "Recovery: list the parent directory first, then retry with an existing path or broader glob."
     if not hint:
-        return ""
+        return tool_recovery.format_hint(tool_name, args, message)
     return f"\n{hint}"
 
 
