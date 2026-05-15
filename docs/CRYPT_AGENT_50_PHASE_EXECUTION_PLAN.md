@@ -162,12 +162,20 @@ Progress:
 - Autonomy cycles now run the mission brain and record selected mission steps;
   prompt context includes a compact Mission Brain section.
 
-## Phase 11 - Passive Memory V2
+## Phase 11 - Passive Memory V2 [started]
 
 Capture durable user preferences, project facts, recurring tasks, tool quirks,
 and lessons from normal conversation without requiring "remember this" prompts.
 
 Verification: memory extraction fixtures with keep/drop decisions.
+
+Progress:
+
+- Added explicit passive-memory keep/drop classification with category,
+  confidence, and reason fields.
+- Passive lessons now distinguish persona, preference, project facts, tool
+  quirks, recurring instructions, business context, agent signals, and UI
+  preferences without requiring a manual "remember this" prompt.
 
 ## Phase 12 - Memory Types And Confidence
 
