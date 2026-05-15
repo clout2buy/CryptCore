@@ -57,6 +57,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "autonomyContracts" in web_snapshot
         assert "externalDrafts" in web_snapshot
         assert "businessEntities" in web_snapshot
+        assert "businessLaunch" in web_snapshot
         assert "websitePipelines" in web_snapshot
         assert "revenueOps" in web_snapshot
         assert "browserRecordings" in web_snapshot
@@ -246,6 +247,8 @@ def test_webui_static_is_chat_first():
     assert "externalDraftCreated" in script
     assert "businessEntitiesUpdated" in script
     assert "Business registry" in script
+    assert "businessLaunchUpdated" in script
+    assert "Business launch" in script
     assert "websitePipelineUpdated" in script
     assert "Site pipelines" in script
     assert "Revenue Ops" in script

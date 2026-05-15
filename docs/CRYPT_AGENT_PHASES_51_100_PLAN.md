@@ -245,6 +245,11 @@ Files plus runtime prompt context.
 Create a full business launch mission with offer, site, content, channels,
 analytics, revenue tracking, and approval gates.
 
+Progress: added `core.business_launch`, which turns launch/business requests
+into connected mission threads, website pipelines, revenue targets, office
+briefs, launch stages, and explicit approval gates. The WebUI now shows launch
+autopilot state in Missions and emits live launch updates from normal chat.
+
 ## Phase 77 - Content Operations Planner
 
 Plan posts, scripts, videos, thumbnails, channels, drafts, approvals, and

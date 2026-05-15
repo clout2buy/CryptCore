@@ -26,6 +26,7 @@ from . import (
     artifact_studio,
     browser_recorder,
     business_entities,
+    business_launch,
     business_mission,
     capability_matrix,
     clarification_policy,
@@ -322,6 +323,22 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                         }
                     )
             try:
+                launch_decision = business_launch.ensure_for_prompt(self.server.cwd, text)
+            except Exception as exc:
+                self.server.emit_event({"event": "businessLaunchError", "error": f"{type(exc).__name__}: {exc}"})
+            else:
+                if launch_decision.launch:
+                    self.server.emit_event(
+                        {
+                            "event": "businessLaunchUpdated",
+                            "id": request_id,
+                            "sessionKey": session_key,
+                            "text": launch_decision.launch.title,
+                            "created": launch_decision.created,
+                            "launch": launch_decision.launch.to_dict(),
+                        }
+                    )
+            try:
                 pipeline_decision = website_pipeline.ensure_for_prompt(self.server.cwd, text)
             except Exception as exc:
                 self.server.emit_event({"event": "websitePipelineError", "error": f"{type(exc).__name__}: {exc}"})
@@ -585,6 +602,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["memoryJournal"] = memory_journal.snapshot(self.server.cwd)
         snapshot["entitiesPreview"] = entities.snapshot(self.server.cwd)
         snapshot["businessEntities"] = business_entities.snapshot(self.server.cwd)
+        snapshot["businessLaunch"] = business_launch.snapshot(self.server.cwd)
         snapshot["externalDrafts"] = external_drafts.snapshot(self.server.cwd)
         snapshot["knowledgeGraph"] = knowledge_graph.snapshot(self.server.cwd)
         snapshot["contextPackPreview"] = context_packs.preview(self.server.cwd)
@@ -1080,8 +1098,8 @@ def _prompt_with_context(
         contract = autonomy_contracts.select(text, intent)
     if contract:
         hints.append(autonomy_contracts.prompt_hint(contract))
-    if business_mission.is_business_text(text):
-        hints.append(business_mission.prompt_section().replace("\n", " | "))
+        if business_mission.is_business_text(text):
+            hints.append(business_mission.prompt_section().replace("\n", " | "))
     if workspace:
         section = mission_brain.prompt_section(workspace)
         if section:
@@ -1101,6 +1119,9 @@ def _prompt_with_context(
         business_entity_section = business_entities.prompt_section(workspace)
         if business_entity_section:
             hints.append(business_entity_section.replace("\n", " | "))
+        business_launch_section = business_launch.prompt_section(workspace)
+        if business_launch_section:
+            hints.append(business_launch_section.replace("\n", " | "))
         entity_section = entities.prompt_section(workspace)
         if entity_section:
             hints.append(entity_section.replace("\n", " | "))

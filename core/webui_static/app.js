@@ -774,6 +774,8 @@ function missionsView(snapshot) {
   const blockedThreads = threads.filter((thread) => (thread.state || "active") === "blocked");
   const scheduler = snapshot.missionScheduler || {};
   const jobs = scheduler.jobs || snapshot.schedulesPreview || [];
+  const businessLaunch = snapshot.businessLaunch || {};
+  const launches = businessLaunch.launches || [];
   return `
     <section class="mission-board">
       <div class="panel-card mission-hero">
@@ -788,12 +790,20 @@ function missionsView(snapshot) {
         ${statCard("Blocked", blockedThreads.length)}
         ${statCard("Due", scheduler.due ?? due.length)}
         ${statCard("Paused", scheduler.paused || 0)}
+        ${statCard("Launches", businessLaunch.active || 0)}
       </div>
     </section>
+    <section class="data-list mission-list business-launch-list">${launches.map(businessLaunchRow).join("") || ""}</section>
     <section class="data-list mission-list">${jobs.slice(0, 8).map(scheduleRow).join("") || emptyRow("No schedules yet")}</section>
     <section class="data-list mission-list thread-list">${threads.map(threadRow).join("") || emptyRow("No work threads yet")}</section>
     <section class="data-list mission-list">${goals.map(missionRow).join("") || emptyRow("No missions yet")}</section>
   `;
+}
+
+function businessLaunchRow(launch) {
+  const next = (launch.stages || []).find((stage) => stage.status !== "done") || (launch.stages || [])[0] || {};
+  const gates = (launch.approval_gates || []).length;
+  return row("Business launch", launch.title || "Launch autopilot", `${next.title || "next stage"} / ${gates} approval gate(s) / ${launch.status || "active"}`);
 }
 
 function scheduleRow(job) {
@@ -1712,6 +1722,17 @@ function handleEvent(event) {
       break;
     case "businessEntitiesError":
       addActivity("Business registry", event.error || "Could not update business registry.");
+      break;
+    case "businessLaunchUpdated":
+      addActivity(
+        event.created ? "Business launch" : "Business launch matched",
+        oneLine(event.text || "Launch autopilot updated.", 160),
+        "mission",
+      );
+      refresh({ renderView: state.currentView === "missions" || state.currentView === "files" }).catch((error) => addActivity("Business launch", error.message));
+      break;
+    case "businessLaunchError":
+      addActivity("Business launch", event.error || "Could not update launch autopilot.");
       break;
     case "websitePipelineUpdated":
       addActivity(
