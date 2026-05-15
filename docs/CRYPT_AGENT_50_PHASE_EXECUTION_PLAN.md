@@ -453,12 +453,20 @@ Progress:
 - WebUI snapshots and prompt context now include schedule state so Crypt can
   resume scheduled work without exposing more controls.
 
-## Phase 31 - Monitor Framework
+## Phase 31 - Monitor Framework [started]
 
 Add monitors for files, websites, GitHub, revenue dashboards, inboxes, calendars,
 prices, analytics, or other configured data sources.
 
 Verification: mock monitor detects a change and updates a mission.
+
+Progress:
+
+- Added `core/monitors.py` with durable read-only file and mock/value monitors
+  tied to missions and work threads.
+- Autonomy cycles now run monitors, record monitor evidence, update goal
+  results, and add thread history when changes are detected.
+- WebUI snapshots and prompt context include monitor state for follow-up work.
 
 ## Phase 32 - Business Mission Template
 

@@ -29,6 +29,7 @@ from . import (
     memory_journal,
     mission_brain,
     mission_router,
+    monitors,
     passive_memory,
     project_index,
     reflection,
@@ -429,6 +430,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["reflections"] = [asdict(item) for item in reflection.list_reflections(self.server.cwd, limit=5)]
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
         snapshot["schedulesPreview"] = [asdict(item) for item in scheduler.list_jobs(self.server.cwd, include_all=True)[:20]]
+        snapshot["monitorsPreview"] = [asdict(item) for item in monitors.list_monitors(self.server.cwd, include_all=True)[:20]]
         soul_path = soul.ensure_soul()
         soul_update = soul.evolve(self.server.cwd)
         snapshot["soul"] = {
@@ -846,6 +848,9 @@ def _prompt_with_context(
         schedule_section = scheduler.prompt_section(workspace)
         if schedule_section:
             hints.append(schedule_section.replace("\n", " | "))
+        monitor_section = monitors.prompt_section(workspace)
+        if monitor_section:
+            hints.append(monitor_section.replace("\n", " | "))
         builder_section = code_builder.prompt_section(workspace, text)
         if builder_section:
             hints.append(builder_section.replace("\n", " | "))
