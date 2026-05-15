@@ -532,8 +532,8 @@ def core_features(cwd: str | Path, snapshot: dict) -> list[dict]:
         {
             "id": "models",
             "label": "Models",
-            "value": str(snapshot.get("model") or "default"),
-            "status": str(snapshot.get("provider") or "provider"),
+            "value": _display_model_label(str(snapshot.get("model") or "default")),
+            "status": _display_provider_label(str(snapshot.get("provider") or "provider"), snapshot),
             "detail": f"{len(active_routes)} active route(s) available behind chat.",
         },
         {
@@ -669,6 +669,36 @@ def _tool_previews(limit: int = 60) -> list[dict]:
         desc = str(schema.get("description") or "")
         out.append({"name": name, "description": desc})
     return out
+
+
+def _display_model_label(model: str) -> str:
+    labels = {
+        "crypt-pro": "ChatGPT 5 Codex",
+        "crypt-max": "ChatGPT 5.5",
+        "crypt-balanced": "ChatGPT 5.4",
+        "crypt-fast": "ChatGPT 5.4 Mini",
+        "crypt-legacy": "ChatGPT 5.3 Codex",
+        "crypt-spark": "ChatGPT 5.3 Spark",
+        "crypt-mini": "Codex Mini",
+        "gpt-5-codex": "ChatGPT 5 Codex",
+        "gpt-5.3-codex": "ChatGPT 5.3 Codex",
+        "gpt-5.3-codex-spark": "ChatGPT 5.3 Spark",
+        "gpt-5.4-mini": "ChatGPT 5.4 Mini",
+        "gpt-5.4": "ChatGPT 5.4",
+        "gpt-5.5": "ChatGPT 5.5",
+    }
+    raw = str(model or "")
+    if raw in labels:
+        return labels[raw]
+    return " ".join(part.capitalize() for part in raw.replace(":", " ").replace("_", " ").replace("-", " ").split())
+
+
+def _display_provider_label(provider_id: str, snapshot: dict) -> str:
+    providers = snapshot.get("providers") if isinstance(snapshot.get("providers"), list) else []
+    for provider in providers:
+        if str(provider.get("id") or "") == provider_id:
+            return str(provider.get("label") or provider_id)
+    return provider_id
 
 
 def _session_preview(info) -> dict:

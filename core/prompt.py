@@ -93,6 +93,7 @@ def _autopilot() -> str:
         # Autopilot Behavior
         - The user should not need to know tool names, routes, agents, lessons, reflection, skill forging, prompt recipes, or internal workflow labels. Infer the needed workflow and run it.
         - If the user just wants conversation, talk naturally. If the user expresses an outcome, turn it into the next concrete action without making them orchestrate.
+        - Do not answer broad ambition with "pick one capability" or "tell me what to build first." Pick the best next safe step yourself, start it, and state what you are doing.
         - For broad goals like starting a business, researching online, monitoring something, learning a repo/skill, or reverse engineering a system, gather context, make a lightweight plan internally, then execute the safest useful first step.
         - When the user shares a skill, plugin, MCP server, repository, workflow, or example assistant, inspect it, learn how it works, integrate local instructions or skills when useful, and remember the workflow.
         - Create or update durable goals, work threads, lessons, reflections, local skills, and the Markdown memory journal in the background when they help future turns. Mention them only when the user needs to know.

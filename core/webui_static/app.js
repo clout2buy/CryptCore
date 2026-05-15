@@ -50,6 +50,7 @@ const state = {
 const CHAT_STORE_KEY = "crypt.webui.chatSessions.v2";
 const MAX_STORED_SESSIONS = 30;
 const MAX_SESSION_MESSAGES = 200;
+const STICKY_SCROLL_PX = 96;
 
 const viewMeta = {
   panel: ["Home", "Command Center"],
@@ -446,6 +447,10 @@ function setView(view) {
   renderCurrentView();
 }
 
+function engineName(snapshot = state.snapshot) {
+  return `${providerLabel(snapshot?.provider || "crypt", snapshot)} / ${modelLabel(snapshot?.model || "auto")}`;
+}
+
 function renderCurrentView() {
   const snapshot = state.snapshot || {};
   const host = $("#viewHost");
@@ -474,33 +479,50 @@ function renderCurrentView() {
 function panelView(snapshot) {
   const features = snapshot.coreFeatures || [];
   const lookup = Object.fromEntries(features.map((feature) => [feature.id, feature]));
+  const journal = snapshot.memoryJournal || {};
+  const threads = snapshot.workThreads || [];
+  const activeThreads = threads.filter((thread) => !["completed", "cancelled"].includes(thread.state || "active"));
+  const blocked = activeThreads.filter((thread) => (thread.state || "active") === "blocked");
   const active = [
-    ["Engine", `${snapshot.provider || "crypt"} / ${snapshot.model || "auto"}`],
-    ["Chats", state.sessions.length],
-    ["Memory", `${snapshot.lessons || 0} learned`],
-    ["Agents", (snapshot.agentProfiles || []).length],
+    ["Engine", engineName(snapshot), "Model and provider currently behind chat."],
+    ["Threads", activeThreads.length, blocked.length ? `${blocked.length} blocked approval item(s)` : "No blocked work."],
+    ["Memory", `${journal.longTermCount || 0} long-term`, `${journal.openLoopCount || 0} open loop(s).`],
+    ["Agents", (snapshot.agentProfiles || []).length, "Saved specialists Crypt can reuse."],
   ];
-  const calmCards = ["chat", "agents", "memory", "models"]
+  const calmCards = ["chat", "plan", "agents", "memory"]
     .map((id) => lookup[id])
     .filter(Boolean);
+  const recent = state.sessions.slice(0, 4);
+  const nextThreads = activeThreads.slice(0, 4);
   return `
-    <section class="command-center">
-      <div class="hero-card">
-        <p>Crypt is online</p>
-        <h3>Say it. I will handle the machinery.</h3>
-        <div class="hero-copy">Chat stays simple. Crypt routes work, remembers useful signals, updates persona, delegates to agents, and verifies the boring parts without making you drive every button.</div>
-        <div class="hero-meta">
-          <span>Passive memory</span>
-          <span>Saved sessions</span>
-          <span>Agent routing</span>
+    <section class="home-grid">
+      <article class="home-hero">
+        <span class="eyebrow">Crypt online</span>
+        <h3>Talk. I will move.</h3>
+        <p>One chat surface. Under it: memory, missions, agents, tools, voice, and verification. You should not have to drive the internals.</p>
+        <div class="home-orbit" aria-hidden="true">
+          <span></span><span></span><span></span>
         </div>
-        <div class="signal-strip" aria-hidden="true"><span></span></div>
+      </article>
+      <aside class="home-stack">
+        ${active.map(([label, value, detail]) => statCard(label, value, detail)).join("")}
+      </aside>
+    </section>
+    <section class="home-ledger">
+      <div class="panel-card">
+        <h3>Next Moves</h3>
+        <div class="compact-list">
+          ${nextThreads.map((thread) => compactItem(thread.state || "active", thread.title, thread.next_action || "Crypt will choose the next safe step.")).join("") || compactItem("idle", "No active work threads", "Say the outcome in chat and Crypt will create one.")}
+        </div>
       </div>
-      <div class="stat-grid">
-        ${active.map(([label, value]) => statCard(label, value)).join("")}
+      <div class="panel-card">
+        <h3>Recent Chats</h3>
+        <div class="compact-list">
+          ${recent.map((session) => compactItem(`${(session.messages || []).length} msgs`, session.title || "New conversation", relativeTime(session.updatedAt))).join("")}
+        </div>
       </div>
     </section>
-    <section class="feature-grid calm-grid">
+    <section class="feature-grid calm-grid home-capabilities">
       ${calmCards.map((feature) => featureCard(feature)).join("")}
     </section>
   `;
@@ -593,32 +615,18 @@ function missionsView(snapshot) {
   const due = watched.filter((goal) => Number(goal.next_review_at || 0) * 1000 <= Date.now());
   const blockedThreads = threads.filter((thread) => (thread.state || "active") === "blocked");
   return `
-    <section class="two-col">
+    <section class="mission-board">
       <div class="panel-card mission-hero">
-        <span class="eyebrow">Autonomous Mission Control</span>
-        <h3>Say the outcome. Crypt makes the mission.</h3>
-        <p>No forms, no ritual. When a normal chat needs follow-through, Crypt saves the mission, creates a work thread, tracks blockers, and keeps the next move in context.</p>
-        <div class="mission-stats">
-          ${statCard("Active", active.length)}
-          ${statCard("Threads", threads.length)}
-          ${statCard("Blocked", blockedThreads.length || due.length)}
-        </div>
-        <div class="mission-actions">
-          <span class="mission-state">Auto-routing enabled</span>
-          <button class="small-action" id="runAutonomyButton" type="button">Force review</button>
-        </div>
+        <span class="eyebrow">Mission brain</span>
+        <h3>Saved goals become work threads.</h3>
+        <p>Crypt creates these from normal chat when something needs follow-through. Each thread keeps the state, next action, blockers, cadence, and due date.</p>
+        <button class="small-action" id="runAutonomyButton" type="button">Review now</button>
       </div>
-      <div class="panel-card mission-principles">
-        <h3>How Crypt Decides</h3>
-        <p>Mission creation is passive. Chat stays simple; durable work gets state, due dates, next actions, and approval blockers underneath it.</p>
-        <div class="pill-row compact">
-          <span>Build</span>
-          <span>Launch</span>
-          <span>Monitor</span>
-          <span>Track income</span>
-          <span>Learn skill</span>
-          <span>Delegate agents</span>
-        </div>
+      <div class="mission-metrics">
+        ${statCard("Goals", active.length)}
+        ${statCard("Threads", threads.length)}
+        ${statCard("Blocked", blockedThreads.length)}
+        ${statCard("Due", due.length)}
       </div>
     </section>
     <section class="data-list mission-list thread-list">${threads.map(threadRow).join("") || emptyRow("No work threads yet")}</section>
@@ -733,15 +741,18 @@ function memorySignalRow(item) {
 
 function skillsView(snapshot) {
   const skills = snapshot.skillsPreview || [];
+  const frontendSkill = skills.find((skill) => skill.name === "frontend-design");
   return `
     <section class="two-col">
       <form id="forgeForm" class="panel-card form-card">
-        <h3>Create Skill</h3>
+        <h3>Autoforge Skill</h3>
+        <p>Crypt can promote repeated lessons into local SKILL.md files. The UI updates as soon as the skill appears.</p>
         <input name="topic" placeholder="Topic from repeated lessons">
         <button type="submit">Create</button>
       </form>
       <div class="panel-card">
-        <h3>Skill Actions</h3>
+        <h3>Built-In Craft</h3>
+        <p>${frontendSkill ? "Frontend design is installed for high-end UI work." : "Frontend design skill is not visible yet."}</p>
         <button class="ask-button" data-ask="Find useful skills for what I am trying to do, learn them, and integrate the ones that fit.">Find skills</button>
         <button class="ask-button" data-ask="Inspect my current skills and suggest what Crypt should learn next.">Audit skills</button>
       </div>
@@ -821,20 +832,39 @@ function gatewayView(snapshot) {
 }
 
 function settingsView(snapshot) {
+  const providers = snapshot.providers || [];
+  const routes = snapshot.routes || [];
+  const tools = snapshot.toolsPreview || [];
   return `
     <section class="feature-grid">
+      ${featureCard({ label: "Engine", value: modelLabel(snapshot.model), status: providerLabel(snapshot.provider, snapshot), detail: "Current model used by chat." })}
       ${featureCard({ label: "Approval", value: snapshot.approval, status: snapshot.approvalMode, detail: "Controls when Crypt asks before tools run." })}
       ${featureCard({ label: "Thinking", value: snapshot.thinkingMode, status: snapshot.reasoningEffort, detail: "Provider reasoning mode." })}
       ${featureCard({ label: "Auth", value: snapshot.authOk ? "ready" : "missing", status: snapshot.auth, detail: snapshot.authMessage || "Provider is usable." })}
+      ${featureCard({ label: "Gateway", value: "local", status: "webui", detail: snapshot.webui?.url || "local" })}
       ${featureCard({ label: "Workspace", value: "open", status: "local", detail: snapshot.workspace })}
+    </section>
+    <section class="settings-grid">
+      <div class="panel-card">
+        <h3>Routes</h3>
+        <div class="compact-list">${routes.map((route) => compactItem(route.status || "route", routeLabel(route.role), `${providerLabel(route.provider, snapshot)} / ${modelLabel(route.model)}`)).join("") || compactItem("none", "No routes configured", "Chat falls back to the main engine.")}</div>
+      </div>
+      <div class="panel-card">
+        <h3>Providers</h3>
+        <div class="compact-list">${providers.map((provider) => compactItem(provider.status || "provider", provider.label || provider.id, (provider.models || []).slice(0, 3).map(modelLabel).join(", "))).join("")}</div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Tool Surface</h3>
+        <div class="compact-list">${tools.slice(0, 8).map((tool) => compactItem("tool", tool.name, tool.description)).join("")}</div>
+      </div>
     </section>
   `;
 }
 
-function statCard(label, value) {
+function statCard(label, value, detail = "") {
   const text = String(value ?? "");
   const lengthClass = text.length > 14 ? " long" : "";
-  return `<article class="stat-card${lengthClass}"><span>${escapeHtml(label)}</span><b>${escapeHtml(text)}</b></article>`;
+  return `<article class="stat-card${lengthClass}"><span>${escapeHtml(label)}</span><b>${escapeHtml(text)}</b>${detail ? `<p>${escapeHtml(oneLine(detail, 90))}</p>` : ""}</article>`;
 }
 
 function featureCard(feature) {
@@ -853,6 +883,16 @@ function row(kind, title, detail = "") {
       <span>${escapeHtml(kind)}</span>
       <b>${escapeHtml(oneLine(title, 110))}</b>
       <p>${escapeHtml(oneLine(detail, 220))}</p>
+    </article>
+  `;
+}
+
+function compactItem(kicker, title, detail = "") {
+  return `
+    <article class="compact-item">
+      <span>${escapeHtml(kicker)}</span>
+      <b>${escapeHtml(oneLine(title, 88))}</b>
+      <p>${escapeHtml(oneLine(detail, 150))}</p>
     </article>
   `;
 }
@@ -984,6 +1024,7 @@ function appendMessageNode(message) {
 function updateMessageNode(message) {
   const feed = $("#feed");
   if (!feed) return;
+  const shouldStick = isFeedNearBottom(feed);
   const uiId = ensureMessageId(message);
   const node = feed.querySelector(`[data-message-id="${uiId}"]`);
   if (!node) {
@@ -994,7 +1035,7 @@ function updateMessageNode(message) {
   if (bubble) bubble.textContent = message.text || (message.typing ? "Working on it." : "");
   renderLiveTimeline(node, message.live);
   node.className = `message ${message.role}${message.typing ? " typing" : ""}`;
-  scrollFeed();
+  if (shouldStick) scrollFeed();
 }
 
 function renderLiveTimeline(node, items = []) {
@@ -1107,7 +1148,7 @@ function currentAssistantText(id) {
 }
 
 function startLivePulse(id) {
-  stopLivePulse(id);
+  if (state.liveTimers[id]) return;
   const started = Date.now();
   const lines = [
     "Thinking through the request.",
@@ -1140,7 +1181,7 @@ function stopLivePulse(id) {
 function addActivity(title, body = "") {
   const item = document.createElement("article");
   item.className = "activity-item";
-  item.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(body)}</span>`;
+  item.innerHTML = `<strong>${escapeHtml(oneLine(title, 80))}</strong><span>${escapeHtml(oneLine(body, 220))}</span>`;
   const feed = $("#activityFeed");
   feed.prepend(item);
   while (feed.children.length > 80) feed.lastElementChild?.remove();
@@ -1416,6 +1457,8 @@ async function sendPrompt(text) {
   state.busy = true;
   setStatus("Working");
   setView("chat");
+  updateAssistantMessage(requestId, "", { typing: true });
+  startLivePulse(requestId);
   try {
     await json("/api/prompt", {
       method: "POST",
@@ -1428,6 +1471,7 @@ async function sendPrompt(text) {
       }),
     });
   } catch (error) {
+    stopLivePulse(requestId);
     delete state.taskSessions[requestId];
     state.busy = false;
     setStatus("Needs attention");
@@ -1548,6 +1592,11 @@ function toggleActivity(force) {
 function scrollFeed() {
   const feed = $("#feed");
   if (feed) feed.scrollTop = feed.scrollHeight;
+}
+
+function isFeedNearBottom(feed = $("#feed")) {
+  if (!feed) return true;
+  return feed.scrollHeight - feed.scrollTop - feed.clientHeight < STICKY_SCROLL_PX;
 }
 
 function updateVoiceUi(text) {

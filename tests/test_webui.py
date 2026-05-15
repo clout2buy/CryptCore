@@ -83,7 +83,9 @@ def test_webui_static_is_chat_first():
     assert "CHAT_STORE_KEY" in script
     assert "currentView: \"chat\"" in script
     assert "Self-Updating Memory" in script
-    assert "Autonomous Mission Control" in script
+    assert "Mission brain" in script
+    assert "Talk. I will move." in script
+    assert "Autoforge Skill" in script
     assert "workThreadUpdated" in script
     assert "memoryJournalUpdated" in script
     assert "missionCreated" in script
@@ -115,6 +117,8 @@ def test_webui_static_is_chat_first():
     assert "data-message-id" in script
     assert "renderView = false" in script
     assert "Crypt runtime hints" not in html
+    assert "data-view=\"providers\"" not in html
+    assert "data-view=\"gateway\"" not in html
 
 
 def test_webui_core_features_include_hermes_style_sections(monkeypatch, tmp_path: Path):

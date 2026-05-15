@@ -94,3 +94,16 @@ def test_soul_evolves_from_preference_lessons(monkeypatch, tmp_path: Path):
     assert update.preference_count == 1
     assert "User prefers Crypt to sound natural" in text
     assert "Do not claim literal sentience" in text
+
+
+def test_soul_injects_no_orchestration_directives(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    path = soul.soul_path()
+    path.parent.mkdir(parents=True)
+    path.write_text("# Crypt Soul\n\n## Voice\n- Existing voice rule.\n", encoding="utf-8")
+
+    soul.ensure_soul()
+    text = soul.read_soul()
+
+    assert "Do not ask the user to pick the first capability" in text
+    assert "Existing voice rule" in text
