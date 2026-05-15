@@ -28,6 +28,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "artifactsPreview" in web_snapshot
         assert "artifactGroups" in web_snapshot
         assert "artifactSummary" in web_snapshot
+        assert "schedulesPreview" in web_snapshot
         assert "memoryJournal" in web_snapshot
         json.dumps(web_snapshot)
     finally:

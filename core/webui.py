@@ -32,6 +32,7 @@ from . import (
     passive_memory,
     project_index,
     reflection,
+    scheduler,
     session as sessions,
     settings,
     skill_forge,
@@ -427,6 +428,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["lessonsPreview"] = [asdict(lesson) for lesson in learning.list_lessons(self.server.cwd)[:8]]
         snapshot["reflections"] = [asdict(item) for item in reflection.list_reflections(self.server.cwd, limit=5)]
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
+        snapshot["schedulesPreview"] = [asdict(item) for item in scheduler.list_jobs(self.server.cwd, include_all=True)[:20]]
         soul_path = soul.ensure_soul()
         soul_update = soul.evolve(self.server.cwd)
         snapshot["soul"] = {
@@ -841,6 +843,9 @@ def _prompt_with_context(
         section = mission_brain.prompt_section(workspace)
         if section:
             hints.append(section.replace("\n", " | "))
+        schedule_section = scheduler.prompt_section(workspace)
+        if schedule_section:
+            hints.append(schedule_section.replace("\n", " | "))
         builder_section = code_builder.prompt_section(workspace, text)
         if builder_section:
             hints.append(builder_section.replace("\n", " | "))

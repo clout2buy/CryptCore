@@ -14,7 +14,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import goals, learning, memory_condenser, mission_brain, reflection, settings, skill_forge, soul, work_threads
+from . import goals, learning, memory_condenser, mission_brain, reflection, scheduler, settings, skill_forge, soul, work_threads
 
 
 SCHEMA_VERSION = 1
@@ -28,6 +28,7 @@ class AutonomyCycle:
     reflected: int = 0
     goal_reviews: int = 0
     mission_steps: int = 0
+    scheduled_jobs: int = 0
     memory_promotions: int = 0
     forged_skills: list[str] = field(default_factory=list)
     lessons_added: int = 0
@@ -63,6 +64,9 @@ def run_cycle(
     thread_reviews = work_threads.review_due(root)
     for thread in thread_reviews:
         notes.append(f"reviewed work thread {thread.thread_id}: {thread.title}")
+    scheduled = scheduler.run_due(root)
+    for result in scheduled.results[:4]:
+        notes.append(result)
     condensed = memory_condenser.condense(root)
     if condensed.promoted or condensed.discarded:
         notes.append(f"condensed memory: promoted={condensed.promoted} discarded={condensed.discarded}")
@@ -78,6 +82,7 @@ def run_cycle(
         reflected=len(reflected),
         goal_reviews=goal_reviews,
         mission_steps=len(mission_steps),
+        scheduled_jobs=scheduled.ran,
         memory_promotions=condensed.promoted,
         forged_skills=forged,
         lessons_added=max(0, len(learning.list_lessons(root)) - lessons_before),
@@ -101,6 +106,7 @@ def list_cycles(cwd: str | Path | None = None, *, limit: int = 12) -> list[Auton
                 reflected=int(item.get("reflected") or 0),
                 goal_reviews=int(item.get("goal_reviews") or 0),
                 mission_steps=int(item.get("mission_steps") or 0),
+                scheduled_jobs=int(item.get("scheduled_jobs") or 0),
                 memory_promotions=int(item.get("memory_promotions") or 0),
                 forged_skills=[str(value) for value in item.get("forged_skills", [])],
                 lessons_added=int(item.get("lessons_added") or 0),
@@ -126,6 +132,7 @@ def prompt_section(cwd: str | Path, *, limit: int = 3) -> str:
         lines.append(
             f"- {when}: {cycle.reflected} reflection(s), "
             f"{cycle.goal_reviews} goal review(s), {cycle.mission_steps} mission step(s), "
+            f"{cycle.scheduled_jobs} scheduled job(s), "
             f"{cycle.memory_promotions} memory promotion(s), {cycle.lessons_added} lesson(s)"
         )
         for note in cycle.notes[:2]:
@@ -143,6 +150,7 @@ def format_cycles(cwd: str | Path, *, limit: int = 12) -> str:
         lines.append(
             f"{cycle.cycle_id} {when} - reflected={cycle.reflected} "
             f"goals={cycle.goal_reviews} missions={cycle.mission_steps} "
+            f"schedules={cycle.scheduled_jobs} "
             f"memories={cycle.memory_promotions} lessons={cycle.lessons_added}"
         )
         for note in cycle.notes[:3]:

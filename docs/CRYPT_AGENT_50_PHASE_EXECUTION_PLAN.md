@@ -437,12 +437,21 @@ Progress:
 - Added tests for passing mission evidence, failing syntax checks, and browser
   QA planning markers.
 
-## Phase 30 - Autonomous Scheduler
+## Phase 30 - Autonomous Scheduler [started]
 
 Let Crypt wake up for mission checks, safe read-only monitoring, follow-ups, and
 scheduled work.
 
 Verification: scheduled run fixture creates evidence without user input.
+
+Progress:
+
+- Added `core/scheduler.py` for durable local scheduled jobs tied to goals and
+  work threads.
+- Autonomy cycles now run due scheduler jobs, record evidence, update thread
+  history, and reschedule cadence-based reviews.
+- WebUI snapshots and prompt context now include schedule state so Crypt can
+  resume scheduled work without exposing more controls.
 
 ## Phase 31 - Monitor Framework
 
