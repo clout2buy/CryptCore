@@ -289,12 +289,18 @@ Progress:
 - The loader parses examples/smoke tests from frontmatter or Markdown sections
   while preserving existing prompt-injection blocking.
 
-## Phase 20 - Skill Forge
+## Phase 20 - Skill Forge [started]
 
 Let Crypt create its own reusable skills from repeated workflows, then test and
 register them before use.
 
 Verification: generated skill fixture, validation, and routing test.
+
+Progress:
+
+- Forged skills now include examples and smoke-test metadata in frontmatter.
+- Forge results validate that the generated skill is discoverable and not
+  blocked by the skill safety scan.
 
 ## Phase 21 - Frontend Design Skill Integration
 

@@ -6,7 +6,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import learning, redact
+from . import learning, redact, skills
 
 
 MIN_LESSONS = 2
@@ -18,6 +18,8 @@ class ForgeResult:
     skill_name: str
     lesson_count: int
     created: bool
+    validated: bool = False
+    blocked_reason: str = ""
 
 
 def forge_skill(
@@ -38,17 +40,21 @@ def forge_skill(
     created = not target.exists()
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(_skill_text(skill_name, lessons, topic=topic), encoding="utf-8")
+    parsed = _validated_skill(root, skill_name)
     return ForgeResult(
         path=target,
         skill_name=skill_name,
         lesson_count=len(lessons),
         created=created,
+        validated=bool(parsed and parsed.enabled),
+        blocked_reason="" if parsed and parsed.enabled else (parsed.blocked_reason if parsed else "skill not discoverable"),
     )
 
 
 def format_result(result: ForgeResult) -> str:
     action = "created" if result.created else "updated"
-    return f"{action} ${result.skill_name} from {result.lesson_count} lesson(s): {result.path}"
+    validation = "validated" if result.validated else f"not validated: {result.blocked_reason}"
+    return f"{action} ${result.skill_name} from {result.lesson_count} lesson(s) ({validation}): {result.path}"
 
 
 def _skill_text(skill_name: str, lessons: list[learning.Lesson], *, topic: str) -> str:
@@ -61,6 +67,8 @@ def _skill_text(skill_name: str, lessons: list[learning.Lesson], *, topic: str) 
         "---",
         f"name: {skill_name}",
         f"description: {description}",
+        f"examples: Apply the learned {skill_name} workflow|Audit current work against ${skill_name}",
+        "smoke_tests: Load the skill with core.skills.discover|Render it when mentioned by name",
         "---",
         "",
         f"# {skill_name}",
@@ -86,6 +94,11 @@ def _skill_text(skill_name: str, lessons: list[learning.Lesson], *, topic: str) 
         ]
     )
     return "\n".join(lines)
+
+
+def _validated_skill(root: Path, skill_name: str) -> skills.Skill | None:
+    found = {skill.name: skill for skill in skills.discover(root, include_disabled=True)}
+    return found.get(skill_name)
 
 
 def _topic_from_lessons(texts: list[str]) -> str:

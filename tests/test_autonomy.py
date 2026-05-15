@@ -69,10 +69,12 @@ def test_skill_forge_creates_project_skill_from_lessons(monkeypatch, tmp_path: P
     result = skill_forge.forge_skill(workspace, topic="release", min_lessons=2)
 
     assert result.skill_name == "release"
+    assert result.validated is True
     assert result.path.exists()
     text = result.path.read_text(encoding="utf-8")
     assert "scripts/verify_core.ps1" in text
     assert "docs/REFERENCE.md" in text
+    assert "smoke_tests:" in text
 
 
 def test_soul_evolves_from_preference_lessons(monkeypatch, tmp_path: Path):
