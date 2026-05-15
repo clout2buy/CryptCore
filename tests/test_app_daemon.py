@@ -27,6 +27,7 @@ def test_app_daemon_snapshot_uses_shared_provider_inventory(monkeypatch, tmp_pat
     assert "code" in crypt["modelMetadata"][0]["capabilities"]
     assert snapshot["routes"][0]["role"] == "planner"
     assert snapshot["smartModelRouter"]["enabled"] is True
+    assert snapshot["providerHealth"]["total"] >= 5
 
 
 def test_app_daemon_set_approval_emits_snapshot(monkeypatch, tmp_path):

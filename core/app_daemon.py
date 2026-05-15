@@ -17,7 +17,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable
 
-from . import auth, autonomy, doctor, learning, live_events, loop, model_registry, redact, runtime, session as sessions, settings, skills, smart_model_router
+from . import auth, autonomy, doctor, learning, live_events, loop, model_registry, provider_health, redact, runtime, session as sessions, settings, skills, smart_model_router
 from tools import REGISTRY
 
 
@@ -171,6 +171,7 @@ class AppDaemon:
             "desktopSessionKey": self._active_session_key,
             "activeTask": self._active_task,
             "providers": _provider_inventory(saved),
+            "providerHealth": provider_health.snapshot(saved),
             "routes": _routes(saved),
             "smartModelRouter": smart_model_router.snapshot(saved),
         }
@@ -227,6 +228,7 @@ class AppDaemon:
         model_for_learning = ""
         session_id_for_learning = ""
         router_decision: smart_model_router.ModelRouteDecision | None = None
+        provider_started_at = time.perf_counter()
         try:
             saved = settings.load_config()
             provider_name = settings.provider_default(saved)
@@ -297,6 +299,11 @@ class AppDaemon:
                     subagent_provider_factory=lambda agent_type: _provider_for_route(saved, agent_type, fallback=provider),
                     event_sink=emit_live,
                 )
+            provider_health.record_result(
+                provider_name_for_learning,
+                ok=True,
+                latency_ms=int((time.perf_counter() - provider_started_at) * 1000),
+            )
             outcome = _record_outcome_learning(
                 self._cwd,
                 task_id=task_id,
@@ -329,6 +336,13 @@ class AppDaemon:
             )
         except Exception as exc:
             error_text = f"{type(exc).__name__}: {exc}"
+            if provider_name_for_learning:
+                provider_health.record_result(
+                    provider_name_for_learning,
+                    ok=False,
+                    latency_ms=int((time.perf_counter() - provider_started_at) * 1000),
+                    error=error_text,
+                )
             outcome = _record_outcome_learning(
                 self._cwd,
                 task_id=task_id,

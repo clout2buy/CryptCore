@@ -1065,12 +1065,15 @@ function settingsView(snapshot) {
   const routes = snapshot.routes || [];
   const tools = snapshot.toolsPreview || [];
   const contracts = snapshot.autonomyContracts?.profiles || [];
+  const providerHealth = snapshot.providerHealth || {};
+  const healthCards = providerHealth.cards || [];
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Engine", value: modelLabel(snapshot.model), status: providerLabel(snapshot.provider, snapshot), detail: "Current model used by chat." })}
       ${featureCard({ label: "Approval", value: snapshot.approval, status: snapshot.approvalMode, detail: "Controls when Crypt asks before tools run." })}
       ${featureCard({ label: "Thinking", value: snapshot.thinkingMode, status: snapshot.reasoningEffort, detail: "Provider reasoning mode." })}
       ${featureCard({ label: "Auth", value: snapshot.authOk ? "ready" : "missing", status: snapshot.auth, detail: snapshot.authMessage || "Provider is usable." })}
+      ${featureCard({ label: "Provider Health", value: `${providerHealth.ready || 0}/${providerHealth.total || 0}`, status: providerHealth.recommendedFallback ? `fallback ${providerHealth.recommendedFallback}` : "fallback none", detail: `${providerHealth.warnings || 0} warning(s), ${providerHealth.missing || 0} missing.` })}
       ${featureCard({ label: "Gateway", value: "local", status: "webui", detail: snapshot.webui?.url || "local" })}
       ${featureCard({ label: "Workspace", value: "open", status: "local", detail: snapshot.workspace })}
     </section>
@@ -1082,6 +1085,10 @@ function settingsView(snapshot) {
       <div class="panel-card">
         <h3>Providers</h3>
         <div class="compact-list">${providers.map((provider) => compactItem(provider.status || "provider", provider.label || provider.id, (provider.models || []).slice(0, 3).map(modelLabel).join(", "))).join("")}</div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Provider Health</h3>
+        <div class="compact-list">${healthCards.map((card) => compactItem(card.status || "provider", card.label || card.provider, `${card.authState} / ${card.modelLabel} / failures ${card.failures || 0}`)).join("")}</div>
       </div>
       <div class="panel-card wide">
         <h3>Tool Surface</h3>

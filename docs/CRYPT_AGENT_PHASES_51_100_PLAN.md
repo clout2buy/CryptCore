@@ -157,6 +157,11 @@ prompt context.
 Track provider readiness, auth expiration, latency, errors, and recommended
 fallbacks.
 
+Progress: added `core.provider_health`, persists provider successes/failures
+and latency, reports auth readiness and OAuth expiry windows, recommends a
+fallback provider, records health after app turns, and surfaces provider health
+in snapshots, settings UI, and runtime prompt context.
+
 ## Phase 68 - Mission Scheduler V2
 
 Schedule durable missions with recurrence, due dates, pause/resume, results,
