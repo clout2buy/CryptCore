@@ -804,6 +804,7 @@ function memoryView(snapshot) {
   const lessons = snapshot.lessonsPreview || [];
   const journal = snapshot.memoryJournal || {};
   const entities = snapshot.entitiesPreview || {};
+  const graph = snapshot.knowledgeGraph || {};
   const entityRows = entities.preview || [];
   const longTerm = journal.longTermPreview || [];
   const working = journal.workingPreview || [];
@@ -820,6 +821,7 @@ function memoryView(snapshot) {
         ${statCard("Long-term", journal.longTermCount || 0)}
         ${statCard("Open loops", journal.openLoopCount || 0)}
         ${statCard("Entities", entities.count || 0)}
+        ${statCard("Graph", `${graph.nodeCount || 0}/${graph.edgeCount || 0}`)}
         ${statCard("Lessons", snapshot.lessons || 0)}
       </div>
     </section>

@@ -550,12 +550,21 @@ Progress:
 - WebUI snapshots and the Memory view now surface entity counts and previews
   without making the user manually maintain contacts.
 
-## Phase 37 - Knowledge Graph
+## Phase 37 - Knowledge Graph [started]
 
 Link missions, memories, files, skills, tools, contacts, artifacts, and facts so
 Crypt can retrieve compact relevant context.
 
 Verification: graph queries return useful scoped context.
+
+Progress:
+
+- Added a computed workspace knowledge graph that links goals, work threads,
+  memory signals, typed entities, artifacts, skills, tools, and top-level files.
+- Query retrieval scores node overlap plus graph connectivity so prompt context
+  can pull the most relevant mission/entity/artifact/tool state automatically.
+- WebUI snapshots now include graph counts and previews, and runtime prompts get
+  a compact graph context pack for each user message.
 
 ## Phase 38 - Context Pack Builder
 
