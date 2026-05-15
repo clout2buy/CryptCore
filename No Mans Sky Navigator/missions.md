@@ -21,6 +21,7 @@
 - You usually do **not** need to jump directly to the final Atlas system.
 - The Galaxy Map path may require multiple jumps.
 - If the path gets weird, summon the Space Anomaly and talk to Polo/Nada, then reselect the mission.
+- New side landmark: **Oishio-Bame** has a big black hole. Do not use it casually if you are trying to stay on the Atlas route.
 
 ## Mission Log
 
@@ -29,3 +30,4 @@
 - Started tracker while objective says: **Locating Atlas Interface**.
 - First logged Atlas Interface location: **Asbarhet**.
 - Blocker: **Atlas destination may be out of jump range**.
+- Side discovery logged: **Oishio-Bame** black hole system with 6 visible planets.

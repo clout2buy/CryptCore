@@ -32,3 +32,4 @@ Notes:
 - Systems with Atlas Stations are marked with a special icon in the Galaxy Map.
 - First tracked Atlas Interface location: **Asbarhet**.
 - If Asbarhet says "out of jump range," follow the route one jump at a time or upgrade/fuel the hyperdrive.
+- Major side discovery: **Oishio-Bame** has a big black hole and 6 visible planets.

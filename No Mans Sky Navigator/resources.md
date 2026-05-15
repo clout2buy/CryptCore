@@ -21,3 +21,9 @@ Track useful materials, shops, modules, planets, and trade opportunities here.
 ## Trade / Economy Notes
 
 Nothing logged yet.
+
+## Space Anomalies & Navigation Landmarks
+
+| Landmark | System | Why it matters | Notes |
+|---|---|---|---|
+| Big black hole | Oishio-Bame | Major travel landmark | Use when you intentionally want black hole travel; record the destination after entering. |
