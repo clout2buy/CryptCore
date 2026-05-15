@@ -37,6 +37,7 @@ from . import (
     mission_brain,
     mission_router,
     monitors,
+    multi_agent_threads,
     passive_memory,
     project_index,
     reflection,
@@ -509,6 +510,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["sessionsPreview"] = [_session_preview(item) for item in sessions.list_sessions(self.server.cwd)[:12]]
         snapshot["agentProfiles"] = [profile.to_dict() for profile in agent_profiles.list_profiles(self.server.cwd)]
         snapshot["agentDelegation"] = agent_delegation.snapshot(self.server.cwd)
+        snapshot["multiAgentThreads"] = multi_agent_threads.snapshot(self.server.cwd)
         snapshot["agentDefinitions"] = _agent_definition_previews()
         snapshot["skillsPreview"] = [skill.as_dict() for skill in skills.discover(self.server.cwd, include_disabled=True)[:40]]
         snapshot["toolsPreview"] = _tool_previews()
@@ -957,6 +959,9 @@ def _prompt_with_context(
         delegation_section = agent_delegation.prompt_section(workspace, text)
         if delegation_section:
             hints.append(delegation_section.replace("\n", " | "))
+        multi_agent_section = multi_agent_threads.prompt_section(workspace)
+        if multi_agent_section:
+            hints.append(multi_agent_section.replace("\n", " | "))
         builder_section = code_builder.prompt_section(workspace, text)
         if builder_section:
             hints.append(builder_section.replace("\n", " | "))

@@ -682,12 +682,21 @@ Progress:
 - WebUI live events, snapshots, and runtime prompt context now show the
   delegation decision without requiring the user to pick the right route.
 
-## Phase 45 - Multi-Agent Work Threads
+## Phase 45 - Multi-Agent Work Threads [started]
 
 Run independent work threads with task state, artifacts, blockers, review, and
 merge summaries.
 
 Verification: two independent fixture threads complete without clobbering files.
+
+Progress:
+
+- Added durable multi-agent work threads with separate specialist assignments,
+  write scopes, task states, blockers, artifacts, review notes, and results.
+- Write scopes are checked for conflicts before a thread is created, preventing
+  parallel assignments from silently owning the same files.
+- Completed assignments now produce a merge summary, and WebUI/runtime context
+  exposes active multi-agent coordination state.
 
 ## Phase 46 - UI Reconstruction Pass
 
