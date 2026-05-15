@@ -80,6 +80,7 @@ from . import (
     webui_access,
     webui_backup,
     website_pipeline,
+    workspace_map,
     work_threads,
     live_events,
     live_replay,
@@ -670,6 +671,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["researchSources"] = research_sources.snapshot(self.server.cwd)
         snapshot["contextPackPreview"] = context_packs.preview(self.server.cwd)
         snapshot["localSearch"] = local_search_index.snapshot(self.server.cwd)
+        snapshot["workspaceMap"] = workspace_map.snapshot(self.server.cwd)
         snapshot["selfUpgradeQueue"] = upgrade_queue.snapshot(self.server.cwd)
         snapshot["selfUpgradeSandbox"] = self_upgrade_sandbox.snapshot(self.server.cwd)
         snapshot["runtimeRebuild"] = runtime_rebuild.snapshot(self.server.cwd)
@@ -1219,6 +1221,9 @@ def _prompt_with_context(
         local_search_section = local_search_index.prompt_section(workspace, text)
         if local_search_section:
             hints.append(local_search_section.replace("\n", " | "))
+        workspace_map_section = workspace_map.prompt_section(workspace)
+        if workspace_map_section:
+            hints.append(workspace_map_section.replace("\n", " | "))
         upgrade_section = upgrade_queue.prompt_section(workspace)
         if upgrade_section:
             hints.append(upgrade_section.replace("\n", " | "))

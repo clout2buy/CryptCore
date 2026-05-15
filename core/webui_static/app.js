@@ -632,6 +632,10 @@ function filesView(snapshot) {
   const graphSummary = graph.summary || {};
   const office = snapshot.officeLayer || {};
   const officeArtifacts = office.artifacts || [];
+  const workspaceMap = snapshot.workspaceMap || {};
+  const mapSummary = workspaceMap.summary || {};
+  const safeZones = workspaceMap.safeZones || [];
+  const riskyZones = workspaceMap.riskyZones || [];
   const pipelines = snapshot.websitePipelines?.pipelines || [];
   const latest = artifacts[0];
   return `
@@ -653,7 +657,14 @@ function filesView(snapshot) {
         ${statCard("Office", office.total || 0)}
         ${statCard("Site pipelines", snapshot.websitePipelines?.active || 0)}
         ${statCard("Graph", `${graphSummary.nodes || 0}/${graphSummary.edges || 0}`, "nodes / links")}
+        ${statCard("Safe zones", mapSummary.safeZones || 0)}
+        ${statCard("Avoid", mapSummary.riskyZones || 0)}
       </div>
+    </section>
+    <section class="data-list workspace-map-list">
+      ${row("Workspace Map", `${mapSummary.safeZones || 0} safe zones`, `${mapSummary.generatedZones || 0} generated zones / ${mapSummary.ignoredPatterns || 0} ignored patterns`)}
+      ${safeZones.filter((zone) => zone.exists).slice(0, 7).map((zone) => row("Safe zone", zone.relPath, zone.reason || zone.role)).join("") || emptyRow("Workspace map has no safe zones yet")}
+      ${riskyZones.slice(0, 5).map((zone) => row("Avoid", zone.rel_path, zone.reason || "Ignored or protected local path")).join("")}
     </section>
     <section class="data-list office-artifact-list">
       ${officeArtifacts.map((item) => row(item.kind || "office", item.title || item.rel_path, `${item.status || "ready"} / ${oneLine(item.preview || item.purpose || "", 140)}`)).join("") || ""}

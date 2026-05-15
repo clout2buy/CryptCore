@@ -331,6 +331,12 @@ public post previews in the WebUI Jobs panel and runtime prompt context.
 Map important project folders, generated artifacts, ignored files, and safe edit
 zones.
 
+Progress: added `core.workspace_map`, which classifies top-level workspace
+items, source-safe edit zones, generated/local-only areas, ignored patterns, and
+protected risky paths. The WebUI Files view now shows safe zones and avoid
+zones, and runtime prompt context tells Crypt where to edit and what not to
+commit.
+
 ## Phase 86 - Data Import Layer
 
 Import CSV, JSON, Markdown, notes, screenshots, and browser exports into
