@@ -648,12 +648,21 @@ Progress:
 - WebUI snapshots and runtime prompt context now expose gateway server/tool
   visibility without requiring the user to know MCP internals.
 
-## Phase 43 - Agent Profile System V2
+## Phase 43 - Agent Profile System V2 [started]
 
 Create durable specialist agents with provider/model, tools, memory scope,
 personality constraints, and routing hints.
 
 Verification: agent creation, edit, persistence, and invocation tests.
+
+Progress:
+
+- Agent profiles now persist v2 metadata: provider/model, allowed tool scope,
+  memory scope, persona constraints, and routing hints.
+- Added profile editing plus compact prompt sections so selected or saved
+  specialists can steer delegation without exposing orchestration chores.
+- WebUI agent creation accepts the new v2 fields while preserving existing
+  simple agent forms and route updates.
 
 ## Phase 44 - Agent Delegation Brain
 

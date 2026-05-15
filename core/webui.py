@@ -354,6 +354,10 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                 agent_type=str(body.get("agentType") or ""),
                 provider=str(body.get("provider") or ""),
                 model=str(body.get("model") or ""),
+                tools=_string_list(body.get("tools")),
+                memory_scope=str(body.get("memoryScope") or "workspace"),
+                persona_constraints=_string_list(body.get("personaConstraints")),
+                routing_hints=_string_list(body.get("routingHints")),
             )
             if profile.provider and profile.model:
                 self.server.daemon.handle_command(
@@ -853,6 +857,14 @@ def _intent_hints(value: object) -> list[str]:
     return out
 
 
+def _string_list(value: object) -> list[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value if str(item).strip()]
+    if isinstance(value, str):
+        return [part.strip() for part in value.split(",") if part.strip()]
+    return []
+
+
 def _prompt_with_context(
     text: str,
     intents: list[str],
@@ -878,6 +890,7 @@ def _prompt_with_context(
                 "delegate with the matching built-in agent type when that helps"
             )
         )
+        hints.append(agent_profiles.profile_prompt(profile).replace("\n", " | "))
     if mission and mission.prompt_hint:
         hints.append(mission.prompt_hint)
     if intent:
@@ -919,6 +932,9 @@ def _prompt_with_context(
         gateway_section = mcp_gateway.prompt_section(workspace)
         if gateway_section:
             hints.append(gateway_section.replace("\n", " | "))
+        agent_section = agent_profiles.prompt_section(workspace)
+        if agent_section:
+            hints.append(agent_section.replace("\n", " | "))
         builder_section = code_builder.prompt_section(workspace, text)
         if builder_section:
             hints.append(builder_section.replace("\n", " | "))

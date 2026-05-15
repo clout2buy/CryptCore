@@ -39,9 +39,18 @@ class AgentProfile:
     status: str
     created_at: str
     updated_at: str
+    schema_version: int = 2
+    tools: list[str] | None = None
+    memory_scope: str = "workspace"
+    persona_constraints: list[str] | None = None
+    routing_hints: list[str] | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        data = asdict(self)
+        data["tools"] = list(self.tools or [])
+        data["persona_constraints"] = list(self.persona_constraints or [])
+        data["routing_hints"] = list(self.routing_hints or [])
+        return data
 
 
 def route_role_for_agent(agent_type: str) -> str:
@@ -78,6 +87,10 @@ def create_profile(
     agent_type: str,
     provider: str,
     model: str,
+    tools: list[str] | None = None,
+    memory_scope: str = "workspace",
+    persona_constraints: list[str] | None = None,
+    routing_hints: list[str] | None = None,
 ) -> AgentProfile:
     agent_type = _clean_agent_type(agent_type)
     default_provider = settings.provider_default({})
@@ -95,6 +108,10 @@ def create_profile(
         status="active",
         created_at=now,
         updated_at=now,
+        tools=_clean_list(tools or [], max_items=16, max_len=80),
+        memory_scope=_memory_scope(memory_scope),
+        persona_constraints=_clean_list(persona_constraints or [], max_items=10, max_len=180),
+        routing_hints=_clean_list(routing_hints or [], max_items=10, max_len=180),
     )
 
     path = store_path(cwd)
@@ -102,6 +119,75 @@ def create_profile(
     existing.insert(0, profile.to_dict())
     _write_store(path, existing)
     return profile
+
+
+def update_profile(cwd: str | Path, profile_id: str, **values: Any) -> AgentProfile:
+    profiles = list_profiles(cwd)
+    out: list[dict[str, Any]] = []
+    updated: AgentProfile | None = None
+    now = _now()
+    for profile in profiles:
+        data = profile.to_dict()
+        if profile.id != profile_id:
+            out.append(data)
+            continue
+        if "name" in values and values["name"] is not None:
+            data["name"] = _clean_text(str(values["name"]), fallback=profile.name, max_len=80)
+        if "purpose" in values and values["purpose"] is not None:
+            data["purpose"] = _clean_text(str(values["purpose"]), fallback=profile.purpose, max_len=600)
+        if "agent_type" in values and values["agent_type"] is not None:
+            data["agent_type"] = _clean_agent_type(str(values["agent_type"]))
+            data["route_role"] = route_role_for_agent(data["agent_type"])
+        if "provider" in values and values["provider"] is not None:
+            provider = str(values["provider"])
+            data["provider"] = provider if provider in settings.PROVIDERS else profile.provider
+        if "model" in values and values["model"] is not None:
+            data["model"] = str(values["model"]).strip() or profile.model
+        if "status" in values and values["status"] is not None:
+            data["status"] = _status(str(values["status"]))
+        if "tools" in values and values["tools"] is not None:
+            data["tools"] = _clean_list(values["tools"], max_items=16, max_len=80)
+        if "memory_scope" in values and values["memory_scope"] is not None:
+            data["memory_scope"] = _memory_scope(str(values["memory_scope"]))
+        if "persona_constraints" in values and values["persona_constraints"] is not None:
+            data["persona_constraints"] = _clean_list(values["persona_constraints"], max_items=10, max_len=180)
+        if "routing_hints" in values and values["routing_hints"] is not None:
+            data["routing_hints"] = _clean_list(values["routing_hints"], max_items=10, max_len=180)
+        data["updated_at"] = now
+        data["schema_version"] = 2
+        updated = _profile_from_raw(data)
+        out.append(updated.to_dict())
+    if updated is None:
+        raise KeyError(f"agent profile not found: {profile_id}")
+    _write_store(store_path(cwd), out)
+    return updated
+
+
+def profile_prompt(profile: AgentProfile) -> str:
+    lines = [
+        f"# Agent Profile: {profile.name}",
+        f"- Type: {profile.agent_type}; route: {profile.route_role}; model: {profile.provider}/{profile.model}.",
+        f"- Purpose: {profile.purpose}",
+        f"- Memory scope: {profile.memory_scope}",
+    ]
+    if profile.tools:
+        lines.append(f"- Tool scope: {', '.join(profile.tools[:8])}")
+    if profile.persona_constraints:
+        lines.append("- Persona constraints: " + "; ".join(profile.persona_constraints[:5]))
+    if profile.routing_hints:
+        lines.append("- Routing hints: " + "; ".join(profile.routing_hints[:5]))
+    return "\n".join(lines)
+
+
+def prompt_section(cwd: str | Path, *, limit: int = 6) -> str:
+    profiles = [profile for profile in list_profiles(cwd) if profile.status == "active"][: max(1, limit)]
+    if not profiles:
+        return ""
+    lines = ["# Saved Agent Profiles"]
+    for profile in profiles:
+        tools = f" tools={', '.join(profile.tools[:4])}" if profile.tools else ""
+        lines.append(f"- {profile.name}: {profile.agent_type}/{profile.route_role}; memory={profile.memory_scope};{tools} purpose={profile.purpose}")
+    return "\n".join(lines)
 
 
 def _profile_from_raw(raw: dict[str, Any]) -> AgentProfile:
@@ -123,6 +209,11 @@ def _profile_from_raw(raw: dict[str, Any]) -> AgentProfile:
         status=str(raw.get("status") or "active"),
         created_at=created_at,
         updated_at=updated_at,
+        schema_version=int(raw.get("schema_version") or 1),
+        tools=_clean_list(raw.get("tools", []), max_items=16, max_len=80),
+        memory_scope=_memory_scope(str(raw.get("memory_scope") or "workspace")),
+        persona_constraints=_clean_list(raw.get("persona_constraints", []), max_items=10, max_len=180),
+        routing_hints=_clean_list(raw.get("routing_hints", []), max_items=10, max_len=180),
     )
 
 
@@ -136,6 +227,33 @@ def _clean_text(value: str, *, fallback: str, max_len: int) -> str:
     if not value:
         return fallback
     return value[:max_len]
+
+
+def _clean_list(values: object, *, max_items: int, max_len: int) -> list[str]:
+    if not isinstance(values, list):
+        return []
+    seen: set[str] = set()
+    out: list[str] = []
+    for value in values:
+        clean = _clean_text(str(value), fallback="", max_len=max_len)
+        key = clean.lower()
+        if not clean or key in seen:
+            continue
+        seen.add(key)
+        out.append(clean)
+        if len(out) >= max_items:
+            break
+    return out
+
+
+def _memory_scope(value: str) -> str:
+    clean = str(value or "").strip().lower()
+    return clean if clean in {"workspace", "project", "session", "global"} else "workspace"
+
+
+def _status(value: str) -> str:
+    clean = str(value or "").strip().lower()
+    return clean if clean in {"active", "paused", "archived"} else "active"
 
 
 def _profile_id(name: str) -> str:
