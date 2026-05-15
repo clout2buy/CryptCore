@@ -246,7 +246,8 @@ def test_tool_recovery_stops_repeated_edit_spiral():
 
     assert tool_recovery.should_stop_after_failure_spiral(messages) is True
     stop = tool_recovery.spiral_stop_message(messages)
-    assert "I stopped before retrying" in stop["content"][0]["text"]
+    assert "repeated invalid edit arguments" in stop["content"][0]["text"]
+    assert "read the full target file" in stop["content"][0]["text"]
 
 
 def test_loop_stops_after_repeated_recoverable_edit_failures(tmp_path):
@@ -288,7 +289,7 @@ def test_loop_stops_after_repeated_recoverable_edit_failures(tmp_path):
         runtime.set_approval_mode(previous)
 
     assert provider.calls == 3
-    assert "I stopped before retrying" in messages[-1]["content"][0]["text"]
+    assert "repeated invalid edit arguments" in messages[-1]["content"][0]["text"]
 
 
 def test_loop_retries_after_recoverable_tool_validation_failure(tmp_path):

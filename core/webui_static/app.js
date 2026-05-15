@@ -94,6 +94,17 @@ function textFrom(event) {
   return JSON.stringify(event, null, 2);
 }
 
+function toolResultSummary(event) {
+  if (event.ok === false) {
+    return oneLine(event.error || event.text || textFrom(event), 140);
+  }
+  const tool = friendlyToolName(event.tool);
+  if (event.text && /schema validation failed|read-before-edit|PermissionError|Traceback|failed/i.test(event.text)) {
+    return oneLine(event.text, 140);
+  }
+  return `${tool} completed.`;
+}
+
 function stableJson(value) {
   return JSON.stringify(value ?? null);
 }
@@ -1290,10 +1301,10 @@ function handleEvent(event) {
         key: `tool:${event.callId || event.tool || "result"}`,
         kind: "tool",
         title: event.ok === false ? "Tool failed" : "Tool finished",
-        body: textFrom(event),
+        body: toolResultSummary(event),
         status: event.ok === false ? "failed" : "done",
       });
-      addActivity(event.ok === false ? "Tool failed" : "Tool finished", textFrom(event));
+      addActivity(event.ok === false ? "Tool failed" : "Tool finished", toolResultSummary(event));
       break;
     case "approvalRequested":
       showApproval(event);

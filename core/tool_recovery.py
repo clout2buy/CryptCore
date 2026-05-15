@@ -93,22 +93,16 @@ def should_stop_after_failure_spiral(messages: list[dict]) -> bool:
 
 def spiral_stop_message(messages: list[dict]) -> dict:
     failures = recent_recoverable_failures(messages, tools=_SPIRAL_STOP_TOOLS)
-    lines = []
-    for item in failures[-_SPIRAL_STOP_THRESHOLD:]:
-        name = item.get("tool_name") or "tool"
-        content = str(item.get("content") or "")
-        lines.append(f"- {name}: {_one_line(content, 180)}")
-    detail = "\n".join(lines) if lines else "- repeated edit/write tool failures"
+    tools = sorted({str(item.get("tool_name") or "tool") for item in failures[-_SPIRAL_STOP_THRESHOLD:]})
+    detail = ", ".join(tools) if tools else "edit/write"
     return {
         "role": "assistant",
         "content": [{
             "type": "text",
             "text": (
-                "I stopped before retrying the same failing tool path again.\n\n"
-                "The recent edit/write attempts are failing validation or read-before-edit checks, "
-                "so another blind call would likely waste more turns. The right next move is to read "
-                "the full target file once, make one concrete non-empty edit, and then verify the result.\n\n"
-                f"Recent failures:\n{detail}"
+                "I hit repeated invalid edit arguments, so I paused that tool path before making a messy change. "
+                f"The failing surface was {detail}. The recovery is straightforward: read the full target file, "
+                "make one concrete non-empty edit, then verify it. I will use that route on the next pass."
             ),
         }],
     }
