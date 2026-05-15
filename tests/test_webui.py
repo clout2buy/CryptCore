@@ -57,6 +57,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "autonomyContracts" in web_snapshot
         assert "approvalPolicy" in web_snapshot
         assert "liveReplay" in web_snapshot
+        assert "jobQueue" in web_snapshot
         assert "externalDrafts" in web_snapshot
         assert "businessEntities" in web_snapshot
         assert "businessLaunch" in web_snapshot
@@ -264,6 +265,7 @@ def test_webui_static_is_chat_first():
     assert "Revenue Ops" in script
     assert "Browser Recordings" in script
     assert "Desktop Recordings" in script
+    assert "Persistent Jobs" in script
     assert "renderCurrentView" in script
     assert "syncEngineControls" in script
     assert "toggleComposerAdvanced" in script

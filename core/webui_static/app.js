@@ -745,6 +745,8 @@ function jobsView(snapshot) {
   const drafts = snapshot.externalDrafts?.drafts || [];
   const recordings = snapshot.browserRecordings?.recordings || [];
   const desktopRecordings = snapshot.desktopRecordings?.recordings || [];
+  const queue = snapshot.jobQueue || {};
+  const queueJobs = queue.jobs || [];
   return `
     <section class="two-col">
       <div class="panel-card">
@@ -756,6 +758,10 @@ function jobsView(snapshot) {
         <h3>Autonomy</h3>
         ${statCard("Cycles", snapshot.autonomyCycles || 0)}
         <button class="small-action" id="runAutonomyButton" type="button">Run cycle</button>
+      </div>
+      <div class="panel-card wide">
+        <h3>Persistent Jobs</h3>
+        <div class="compact-list">${queueJobs.slice(0, 6).map((job) => compactItem(job.status || "queued", job.title || job.kind, `${(job.logs || []).slice(-1)[0]?.text || job.result || "waiting"} / attempts ${job.attempts || 0}`)).join("") || compactItem("empty", "No queued jobs", "Background work will survive restart with logs and cancellation state.")}</div>
       </div>
       <div class="panel-card wide">
         <h3>External Draft Queue</h3>

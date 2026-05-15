@@ -292,6 +292,11 @@ recent replay items on the home panel and prompt context.
 
 Persist background jobs with restart recovery, status, logs, and cancellation.
 
+Progress: added `core.job_queue`, which persists queued/running/completed/
+failed/cancelled/interrupted jobs with logs, attempts, cancellation requests,
+and restart recovery. WebUI startup now marks stale running jobs interrupted and
+the Jobs panel shows persistent queue state.
+
 ## Phase 82 - Agent Cost And Latency Ledger
 
 Track model/provider usage, latency, success, and rough cost where available.

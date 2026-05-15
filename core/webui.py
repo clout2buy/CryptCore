@@ -41,6 +41,7 @@ from . import (
     goals,
     integrations,
     intent_router,
+    job_queue,
     knowledge_graph,
     learning,
     local_search_index,
@@ -104,6 +105,7 @@ class CryptWebServer(ThreadingHTTPServer):
         self.events: list[dict] = []
         self._event_seq = 0
         self.event_lock = threading.Lock()
+        job_queue.recover(self.cwd)
         self.daemon = app_daemon.AppDaemon(emit=self.emit_event, cwd=str(self.cwd))
         self._autonomy_interval = max(0, int(autonomy_interval))
         self._autonomy_stop = threading.Event()
@@ -659,6 +661,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["autonomyContracts"] = autonomy_contracts.snapshot()
         snapshot["approvalPolicy"] = approval_policy.snapshot(self.server.cwd)
         snapshot["liveReplay"] = live_replay.snapshot(self.server.cwd)
+        snapshot["jobQueue"] = job_queue.snapshot(self.server.cwd)
         snapshot["schedulesPreview"] = [asdict(item) for item in scheduler.list_jobs(self.server.cwd, include_all=True)[:20]]
         snapshot["missionScheduler"] = scheduler.snapshot(self.server.cwd)
         snapshot["monitorsPreview"] = [asdict(item) for item in monitors.list_monitors(self.server.cwd, include_all=True)[:20]]
@@ -1235,6 +1238,9 @@ def _prompt_with_context(
         replay_section = live_replay.prompt_section(workspace)
         if replay_section:
             hints.append(replay_section.replace("\n", " | "))
+        job_section = job_queue.prompt_section(workspace)
+        if job_section:
+            hints.append(job_section.replace("\n", " | "))
         persona_governance_section = persona_governance.prompt_section(workspace)
         if persona_governance_section:
             hints.append(persona_governance_section.replace("\n", " | "))
