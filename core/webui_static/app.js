@@ -273,7 +273,7 @@ function reviewTime(ts) {
 
 function renderShell(snapshot = state.snapshot) {
   if (!snapshot) return;
-  const engineText = `${snapshot.provider || "crypt"} / ${snapshot.model || "auto"}`;
+  const engineText = `${providerLabel(snapshot.provider || "crypt", snapshot)} / ${modelLabel(snapshot.model || "auto", snapshot)}`;
   setText("#enginePill", engineText);
   renderSessionList();
   syncEngineControls(snapshot);
@@ -535,11 +535,11 @@ function panelView(snapshot) {
   return `
     <section class="home-grid">
       <article class="home-hero">
-        <span class="eyebrow">Crypt online</span>
-        <h3>Talk. I will move.</h3>
-        <p>One chat surface. Under it: memory, missions, agents, tools, voice, and verification. You should not have to drive the internals.</p>
-        <div class="home-orbit" aria-hidden="true">
-          <span></span><span></span><span></span>
+        <span class="eyebrow">Crypt is live</span>
+        <h3>No dashboard homework.</h3>
+        <p>Talk normally. Crypt keeps the memory, missions, tools, agents, and follow-through under the hood.</p>
+        <div class="home-signal" aria-hidden="true">
+          <i></i><i></i><i></i>
         </div>
       </article>
       <aside class="home-stack">
@@ -1015,10 +1015,17 @@ function messageMarkup(message) {
   return `
     <article class="message ${escapeHtml(message.role)}${message.typing ? " typing" : ""}" data-message-id="${uiId}">
       <span class="message-label">${escapeHtml(message.label || (message.role === "user" ? "You" : "Crypt"))}</span>
-      <div class="bubble">${escapeHtml(message.text || (message.typing ? "Working on it." : ""))}</div>
+      <div class="bubble">${messageTextMarkup(message.text, message.typing)}</div>
       ${liveTimelineMarkup(message.live)}
     </article>
   `;
+}
+
+function messageTextMarkup(text, typing = false) {
+  const safe = escapeHtml(text || (typing ? "Working on it." : ""));
+  return safe
+    .replace(/\*\*([^*\n][^*]*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`\n]+?)`/g, "<code>$1</code>");
 }
 
 function liveTimelineMarkup(items = []) {
@@ -1026,13 +1033,17 @@ function liveTimelineMarkup(items = []) {
   if (!live.length) return "";
   return `
     <div class="live-timeline">
-      ${live.map((item) => `
-        <div class="live-line ${escapeHtml(item.status || "")}">
-          <span>${escapeHtml(item.kind || "live")}</span>
-          <b>${escapeHtml(item.title || "")}</b>
-          <em>${escapeHtml(item.body || "")}</em>
-        </div>
-      `).join("")}
+      ${live.map(liveLineMarkup).join("")}
+    </div>
+  `;
+}
+
+function liveLineMarkup(item, index = 0) {
+  return `
+    <div class="live-line ${escapeHtml(item.status || "")}" data-live-key="${escapeHtml(item.key || `${item.kind || "live"}:${index}`)}">
+      <span>${escapeHtml(item.kind || "live")}</span>
+      <b>${escapeHtml(item.title || "")}</b>
+      <em>${escapeHtml(item.body || "")}</em>
     </div>
   `;
 }
@@ -1142,7 +1153,7 @@ function updateMessageNode(message) {
     return;
   }
   const bubble = node.querySelector(".bubble");
-  if (bubble) bubble.textContent = message.text || (message.typing ? "Working on it." : "");
+  if (bubble) bubble.innerHTML = messageTextMarkup(message.text, message.typing);
   renderLiveTimeline(node, message.live);
   node.className = `message ${message.role}${message.typing ? " typing" : ""}`;
   if (shouldStick) scrollFeed();
@@ -1150,19 +1161,35 @@ function updateMessageNode(message) {
 
 function renderLiveTimeline(node, items = []) {
   const existingLive = node.querySelector(".live-timeline");
-  const nextLive = liveTimelineMarkup(items);
-  if (!nextLive) {
+  const live = (items || []).slice(-10);
+  if (!live.length) {
     if (existingLive) existingLive.remove();
     return;
   }
   if (!existingLive) {
-    node.insertAdjacentHTML("beforeend", nextLive);
+    node.insertAdjacentHTML("beforeend", liveTimelineMarkup(live));
     return;
   }
-  const template = document.createElement("template");
-  template.innerHTML = nextLive.trim();
-  const next = template.content.firstElementChild;
-  if (next) existingLive.innerHTML = next.innerHTML;
+  const seen = new Set();
+  live.forEach((item, index) => {
+    const key = String(item.key || `${item.kind || "live"}:${index}`);
+    seen.add(key);
+    let line = Array.from(existingLive.querySelectorAll(".live-line"))
+      .find((candidate) => candidate.dataset.liveKey === key);
+    if (!line) {
+      existingLive.insertAdjacentHTML("beforeend", liveLineMarkup(item, index));
+      line = existingLive.lastElementChild;
+      if (line) line.dataset.liveKey = key;
+    }
+    if (!line) return;
+    line.className = `live-line ${item.status || ""}`;
+    line.querySelector("span").textContent = item.kind || "live";
+    line.querySelector("b").textContent = item.title || "";
+    line.querySelector("em").textContent = item.body || "";
+  });
+  existingLive.querySelectorAll(".live-line").forEach((line) => {
+    if (!seen.has(line.dataset.liveKey || "")) line.remove();
+  });
 }
 
 function appendLiveEvent(id, item) {
@@ -1599,7 +1626,7 @@ async function setEngine(provider, model) {
   if (!provider || !model) return;
   state.engine.provider = provider;
   state.engine.model = model;
-  setText("#enginePill", `${provider} / ${model}`);
+  setText("#enginePill", `${providerLabel(provider, state.snapshot)} / ${modelLabel(model, state.snapshot)}`);
   try {
     await json("/api/engine", {
       method: "POST",

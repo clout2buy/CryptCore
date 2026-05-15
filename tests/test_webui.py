@@ -96,7 +96,7 @@ def test_webui_static_is_chat_first():
     assert "Artifact Studio" in script
     assert "artifactGroups" in script
     assert "artifactSummary" in script
-    assert "Talk. I will move." in script
+    assert "No dashboard homework." in script
     assert "Autoforge Skill" in script
     assert "workThreadUpdated" in script
     assert "memoryJournalUpdated" in script

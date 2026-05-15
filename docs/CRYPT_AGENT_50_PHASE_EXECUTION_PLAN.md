@@ -705,6 +705,15 @@ a cleaner rounded interface with fewer panels and stronger motion.
 
 Verification: desktop/mobile screenshots and console check.
 
+Progress:
+
+- Reworked the chat-first shell with cleaner glass surfaces, calmer side
+  navigation, tighter home/status panels, and a less cluttered composer.
+- Engine labels now use readable provider/model names in the composer instead
+  of raw internal ids.
+- Live thinking/tool rows now patch existing DOM nodes instead of replacing the
+  whole live timeline, reducing chat jolts while a response is streaming.
+
 ## Phase 47 - Voice Pipeline V2
 
 Improve speech-to-text toggle behavior, TTS voice options, emoji stripping,

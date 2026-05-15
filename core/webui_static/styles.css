@@ -16,6 +16,7 @@
   --orange: #ff6b35;
   --orange-hot: #ff9b54;
   --teal: #4de6c4;
+  --mint: #7ff6dc;
   --blue: #88a7ff;
   --violet: #5c4cff;
   --danger: #ff6f7d;
@@ -1880,6 +1881,403 @@ select option {
   box-shadow: 0 0 18px rgba(255, 154, 174, .35);
 }
 
+/* Phase 46: rebuilt the app shell around chat-first autonomy. */
+.workspace-shell {
+  gap: 16px;
+  padding: 20px;
+}
+
+.sidebar,
+.main-stage,
+.activity-panel {
+  border-color: rgba(255, 255, 255, .11);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .012)),
+    rgba(10, 10, 12, .88);
+}
+
+.sidebar {
+  gap: 18px;
+  padding: 18px 16px;
+}
+
+.side-actions {
+  grid-template-columns: 1fr 1fr;
+}
+
+.nav-groups {
+  gap: 16px;
+}
+
+.nav-item {
+  min-height: 40px;
+  border-radius: 8px;
+  color: rgba(251, 250, 247, .66);
+}
+
+.nav-item::before {
+  border-radius: 4px;
+}
+
+.nav-item.active {
+  background:
+    linear-gradient(90deg, rgba(255, 107, 53, .20), rgba(255, 255, 255, .045)),
+    rgba(255, 255, 255, .035);
+}
+
+.session-strip {
+  max-height: 230px;
+}
+
+.mini-list {
+  max-height: 182px;
+}
+
+.session-item.active {
+  background:
+    linear-gradient(90deg, rgba(77, 230, 196, .11), rgba(255, 255, 255, .03)),
+    rgba(255, 255, 255, .028);
+}
+
+.main-stage {
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+}
+
+.topbar {
+  min-height: 88px;
+  padding: 20px 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, .008)),
+    rgba(9, 9, 11, .62);
+}
+
+.topbar h2 {
+  font-size: clamp(30px, 3vw, 42px);
+  letter-spacing: -.04em;
+}
+
+.top-actions .quiet-button {
+  min-width: 76px;
+  background: rgba(255, 255, 255, .04);
+}
+
+.view-host {
+  padding: 24px;
+}
+
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 6px 2px 22px;
+}
+
+.message {
+  gap: 8px;
+  max-width: min(860px, 88%);
+  margin-bottom: 0;
+}
+
+.message-label {
+  padding: 0 4px;
+}
+
+.bubble {
+  border-radius: 8px;
+  padding: 16px 18px;
+  font-size: 16px;
+  line-height: 1.52;
+}
+
+.bubble strong {
+  color: #fff;
+  font-weight: 800;
+}
+
+.bubble code {
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, .24);
+  padding: 1px 5px;
+  color: var(--orange-hot);
+}
+
+.assistant .bubble,
+.system .bubble {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .026)),
+    rgba(20, 20, 22, .84);
+}
+
+.user .bubble {
+  border-color: rgba(77, 230, 196, .32);
+  background:
+    linear-gradient(180deg, rgba(77, 230, 196, .15), rgba(77, 230, 196, .07)),
+    rgba(11, 38, 32, .72);
+}
+
+.live-timeline {
+  gap: 7px;
+  width: min(720px, 100%);
+  margin-top: -4px;
+}
+
+.live-line {
+  min-height: 34px;
+  grid-template-columns: 82px minmax(86px, .42fr) minmax(0, 1fr);
+  background:
+    linear-gradient(90deg, rgba(255, 155, 84, .08), rgba(255, 255, 255, .025)),
+    rgba(14, 14, 16, .82);
+  animation: none;
+}
+
+.live-line.running {
+  position: relative;
+  overflow: hidden;
+}
+
+.live-line.running::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 155, 84, .08), transparent);
+  transform: translateX(-100%);
+  animation: liveSweep 1.8s ease-in-out infinite;
+}
+
+.live-line > * {
+  position: relative;
+  z-index: 1;
+}
+
+.typing .bubble::after {
+  width: 6px;
+  border-radius: 999px;
+}
+
+.home-grid {
+  grid-template-columns: minmax(0, 1.22fr) minmax(260px, .78fr);
+}
+
+.home-hero,
+.mission-hero,
+.artifact-studio-hero {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .015)),
+    radial-gradient(circle at 84% 22%, rgba(255, 155, 84, .18), transparent 34%),
+    radial-gradient(circle at 18% 90%, rgba(77, 230, 196, .10), transparent 30%),
+    rgba(17, 17, 20, .82);
+}
+
+.home-hero {
+  min-height: 336px;
+}
+
+.home-hero h3 {
+  max-width: 720px;
+  font-size: clamp(48px, 7.2vw, 92px);
+}
+
+.home-signal {
+  position: absolute;
+  right: 28px;
+  bottom: 26px;
+  display: grid;
+  gap: 10px;
+  width: min(320px, 44%);
+}
+
+.home-signal i {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .24);
+}
+
+.home-signal i::before {
+  content: "";
+  display: block;
+  width: 36%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--teal), var(--orange-hot));
+  animation: signalPulse 4.8s ease-in-out infinite;
+}
+
+.home-signal i:nth-child(2)::before {
+  width: 58%;
+  animation-delay: -1.2s;
+}
+
+.home-signal i:nth-child(3)::before {
+  width: 26%;
+  animation-delay: -2.4s;
+}
+
+.home-ledger,
+.settings-grid,
+.feature-grid,
+.route-board,
+.artifact-grid,
+.data-list {
+  gap: 12px;
+}
+
+.panel-card,
+.feature-card,
+.stat-card,
+.route-card,
+.data-row,
+.compact-item,
+.artifact-group,
+.artifact-item,
+.core-card,
+.mini-item {
+  border-color: rgba(255, 255, 255, .10);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .047), rgba(255, 255, 255, .018)),
+    rgba(18, 18, 21, .78);
+}
+
+.feature-card,
+.stat-card,
+.route-card,
+.panel-card,
+.data-row {
+  box-shadow: 0 18px 54px rgba(0, 0, 0, .18), inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+
+.stat-card b,
+.feature-card strong,
+.route-card h3 {
+  letter-spacing: -.03em;
+}
+
+.feature-card p,
+.panel-card p,
+.data-row p {
+  color: rgba(251, 250, 247, .66);
+}
+
+.compact-item,
+.data-row,
+.artifact-item {
+  min-height: 54px;
+}
+
+.composer {
+  padding: 12px 20px 20px;
+  background:
+    linear-gradient(180deg, transparent, rgba(0, 0, 0, .30)),
+    rgba(8, 8, 10, .54);
+}
+
+.composer-shell {
+  width: min(980px, 100%);
+  border-color: rgba(255, 255, 255, .13);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .062), rgba(255, 255, 255, .022)),
+    rgba(17, 17, 19, .96);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, .46), inset 0 1px 0 rgba(255, 255, 255, .07);
+}
+
+.composer-main {
+  gap: 9px;
+}
+
+.composer-main textarea {
+  min-height: 46px;
+  padding: 12px 4px;
+  font-size: 16px;
+}
+
+.composer-status {
+  min-height: 20px;
+  padding: 6px 4px 0 58px;
+  gap: 12px;
+}
+
+.composer-status > span:not(#enginePill) {
+  max-width: 120px;
+  opacity: .54;
+}
+
+#enginePill {
+  max-width: 380px;
+  color: rgba(251, 250, 247, .72);
+}
+
+.composer-meta {
+  margin-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, .075);
+  padding-top: 10px;
+}
+
+.engine-controls label,
+.voice-output-toggle,
+.voice-test-button,
+.voice-output-controls select {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .022)),
+    rgba(22, 22, 25, .96);
+  color-scheme: dark;
+}
+
+select {
+  color-scheme: dark;
+}
+
+.engine-controls select,
+.voice-output-controls select {
+  color-scheme: dark;
+}
+
+.voice-button,
+.composer-advanced-button,
+#sendButton {
+  min-height: 42px;
+}
+
+#sendButton {
+  min-width: 74px;
+}
+
+.activity-panel {
+  width: min(410px, calc(100vw - 36px));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .012)),
+    rgba(12, 12, 14, .96);
+}
+
+.activity-feed {
+  max-height: 250px;
+}
+
+.activity-item {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .048), rgba(255, 255, 255, .018)),
+    rgba(18, 18, 21, .82);
+}
+
+@keyframes liveSweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes signalPulse {
+  0%, 100% {
+    transform: translateX(0);
+    opacity: .72;
+  }
+  50% {
+    transform: translateX(160%);
+    opacity: 1;
+  }
+}
+
 @keyframes signalSweep {
   0% {
     transform: translateX(-60%);
@@ -2028,7 +2426,8 @@ select option {
     font-size: 54px;
   }
 
-  .home-orbit {
+  .home-orbit,
+  .home-signal {
     display: none;
   }
 
