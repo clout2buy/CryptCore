@@ -486,12 +486,21 @@ Progress:
 - WebUI prompt context includes the business template automatically when the
   user asks to start or operate a business.
 
-## Phase 33 - Revenue And Metrics Layer
+## Phase 33 - Revenue And Metrics Layer [started]
 
 Support configured income tracking, expenses, funnels, conversions, analytics,
 and weekly summaries.
 
 Verification: local fixture dashboard with trend summary.
+
+Progress:
+
+- Added `core/revenue.py` with a local ledger for revenue, expenses, visits,
+  leads, conversions, channels, and notes.
+- Added weekly summary and previous-window trend calculations for revenue,
+  profit, funnel counts, conversion rate, and top channels.
+- WebUI snapshots and prompt context now include revenue metrics when a
+  workspace has business data.
 
 ## Phase 34 - External Integration Manager
 

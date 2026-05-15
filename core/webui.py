@@ -34,6 +34,7 @@ from . import (
     passive_memory,
     project_index,
     reflection,
+    revenue,
     scheduler,
     session as sessions,
     settings,
@@ -432,6 +433,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
         snapshot["schedulesPreview"] = [asdict(item) for item in scheduler.list_jobs(self.server.cwd, include_all=True)[:20]]
         snapshot["monitorsPreview"] = [asdict(item) for item in monitors.list_monitors(self.server.cwd, include_all=True)[:20]]
+        snapshot["revenue"] = revenue.dashboard_snapshot(self.server.cwd)
         soul_path = soul.ensure_soul()
         soul_update = soul.evolve(self.server.cwd)
         snapshot["soul"] = {
@@ -854,6 +856,9 @@ def _prompt_with_context(
         monitor_section = monitors.prompt_section(workspace)
         if monitor_section:
             hints.append(monitor_section.replace("\n", " | "))
+        revenue_section = revenue.prompt_section(workspace)
+        if revenue_section:
+            hints.append(revenue_section.replace("\n", " | "))
         builder_section = code_builder.prompt_section(workspace, text)
         if builder_section:
             hints.append(builder_section.replace("\n", " | "))
