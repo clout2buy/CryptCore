@@ -375,6 +375,13 @@ snapshot.
 
 Polish mobile layout for chat, approvals, notifications, and mission status.
 
+Progress: added `core.mobile_companion`, which produces mobile status text,
+runtime badges, and compact tab metadata from Personal OS, missions, memory,
+files, approvals, and notifications. The WebUI now has a fixed mobile companion
+dock, mobile status pill, runtime badge sync, and responsive CSS that hides the
+desktop sidebar on small screens so chat, approvals, notifications, and mission
+status stay usable.
+
 ## Phase 90 - Offline Local Mode
 
 Prefer local models/tools when cloud access is down or the user requests

@@ -73,6 +73,10 @@
       </aside>
 
       <main class="main-stage">
+        <div id="mobileStatus" class="mobile-status-pill" aria-live="polite">
+          <span>Crypt</span>
+          <strong id="mobileStatusText">Ready</strong>
+        </div>
         <header class="topbar">
           <div>
             <p id="viewEyebrow">Chat</p>
@@ -162,6 +166,24 @@
         <div id="quietStats" class="quiet-stats"></div>
         <div id="activityFeed" class="activity-feed"></div>
       </aside>
+
+      <nav class="mobile-companion" aria-label="Crypt mobile companion">
+        <button class="mobile-nav-button active" type="button" data-view="chat" data-mobile-tab="chat">
+          <span>Chat</span><b data-mobile-badge="chat"></b>
+        </button>
+        <button class="mobile-nav-button" type="button" data-view="missions" data-mobile-tab="missions">
+          <span>Missions</span><b data-mobile-badge="missions"></b>
+        </button>
+        <button class="mobile-nav-button" type="button" data-view="memory" data-mobile-tab="memory">
+          <span>Memory</span><b data-mobile-badge="memory"></b>
+        </button>
+        <button class="mobile-nav-button" type="button" data-view="files" data-mobile-tab="files">
+          <span>Files</span><b data-mobile-badge="files"></b>
+        </button>
+        <button id="mobileCoreButton" class="mobile-nav-button" type="button">
+          <span>Core</span><b data-mobile-badge="core"></b>
+        </button>
+      </nav>
     </div>
 
     <script src="/app.js"></script>

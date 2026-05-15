@@ -282,6 +282,7 @@ function renderShell(snapshot = state.snapshot) {
   syncEngineControls(snapshot);
   syncAgentControl(snapshot);
   syncVoiceOutputControls(snapshot);
+  syncMobileCompanion(snapshot);
 
   const coreKey = stableJson(snapshot.coreFeatures || []);
   if (coreKey !== state.shellKeys.core) {
@@ -308,6 +309,26 @@ function renderCoreFeatures(features) {
       <p>${escapeHtml(feature.detail || "")}</p>
     `;
     container.appendChild(card);
+  }
+}
+
+function syncMobileCompanion(snapshot = state.snapshot) {
+  const mobile = snapshot?.mobileCompanion || {};
+  setText("#mobileStatusText", mobile.statusText || "Ready");
+  const tabs = Object.fromEntries((mobile.tabs || []).map((tab) => [tab.view, tab]));
+  document.querySelectorAll("[data-mobile-tab]").forEach((button) => {
+    const view = button.dataset.mobileTab || "";
+    const badge = button.querySelector("[data-mobile-badge]");
+    if (badge) {
+      const value = tabs[view]?.badge || "";
+      badge.textContent = value;
+      badge.hidden = !value;
+    }
+  });
+  const coreBadge = document.querySelector("[data-mobile-badge='core']");
+  if (coreBadge) {
+    coreBadge.textContent = mobile.coreBadge || "";
+    coreBadge.hidden = !mobile.coreBadge;
   }
 }
 
@@ -2550,6 +2571,7 @@ $("#newChatButton").addEventListener("click", () => {
 });
 $("#activityButton").addEventListener("click", () => toggleActivity());
 $("#coreButton").addEventListener("click", () => toggleActivity());
+$("#mobileCoreButton").addEventListener("click", () => toggleActivity());
 $("#closeActivityButton").addEventListener("click", () => toggleActivity(false));
 $("#approveButton").addEventListener("click", () => answerApproval(true));
 $("#denyButton").addEventListener("click", () => answerApproval(false));

@@ -73,6 +73,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "browserRecordings" in web_snapshot
         assert "desktopRecordings" in web_snapshot
         assert "personalOS" in web_snapshot
+        assert "mobileCompanion" in web_snapshot
         assert "toolCapabilityCards" in web_snapshot
         assert "smartModelRouter" in web_snapshot
         assert "providerHealth" in web_snapshot
@@ -184,6 +185,8 @@ def test_webui_static_is_chat_first():
     assert "composerAdvancedButton" in html
     assert "composerAdvanced" in html
     assert "providerSelect" in html
+    assert "mobile-companion" in html
+    assert "mobileStatusText" in html
     assert "data-view=\"missions\"" in html
     assert "data-view=\"agents\"" in html
     assert "agentTeamTemplates" in script
@@ -259,6 +262,8 @@ def test_webui_static_is_chat_first():
     assert "Notification Center" in script
     assert "Personal OS" in script
     assert "Daily Command Surface" in script
+    assert "syncMobileCompanion" in script
+    assert "mobileCompanion" in script
     assert "Live Replay" in script
     assert "Self-Upgrade Sandbox" in script
     assert "Patch Risk" in script

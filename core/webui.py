@@ -51,6 +51,7 @@ from . import (
     mcp_gateway,
     mission_brain,
     mission_router,
+    mobile_companion,
     monitors,
     multi_agent_threads,
     notification_center,
@@ -744,6 +745,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["browserRecordings"] = browser_recorder.snapshot(self.server.cwd)
         snapshot["desktopRecordings"] = desktop_recorder.snapshot(self.server.cwd)
         snapshot["personalOS"] = personal_os.snapshot(self.server.cwd, snapshot)
+        snapshot["mobileCompanion"] = mobile_companion.snapshot(self.server.cwd, snapshot)
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         snapshot["capabilityMatrix"] = capability_matrix.build(self.server.cwd, snapshot).to_dict()
         return snapshot
