@@ -50,6 +50,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "missionScheduler" in web_snapshot
         assert "monitorsPreview" in web_snapshot
         assert "memoryJournal" in web_snapshot
+        assert "researchSources" in web_snapshot
         assert "localSearch" in web_snapshot
         assert "remoteAccess" in web_snapshot
         assert "capabilityMatrix" in web_snapshot
@@ -262,6 +263,7 @@ def test_webui_static_is_chat_first():
     assert "Content ops" in script
     assert "credentialVaultUpdated" in script
     assert "Credential Vault" in script
+    assert "researchSourcesUpdated" in script
     assert "websitePipelineUpdated" in script
     assert "Site pipelines" in script
     assert "Revenue Ops" in script

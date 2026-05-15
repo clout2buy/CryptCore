@@ -311,6 +311,11 @@ usage totals, cost estimates, and latency in Home/Settings plus prompt context.
 Save web sources, summaries, quotes, dates, and trust notes as reusable
 research artifacts.
 
+Progress: added `core.research_sources`, which saves/dedupes URL sources,
+summaries, short quote excerpts, published dates, tags, and trust notes. Chat
+URL observations now create reusable source records, Memory shows source counts,
+and prompt context can recall relevant research sources.
+
 ## Phase 84 - Safer Public Posting Flow
 
 Draft, preview, cite, approval-check, and log public posts without accidental

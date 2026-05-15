@@ -59,6 +59,7 @@ from . import (
     persona_governance,
     provider_health,
     project_index,
+    research_sources,
     reflection,
     revenue,
     revenue_ops,
@@ -347,6 +348,21 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                             "text": launch_decision.launch.title,
                             "created": launch_decision.created,
                             "launch": launch_decision.launch.to_dict(),
+                        }
+                    )
+            try:
+                source_rows = research_sources.observe_text(self.server.cwd, text)
+            except Exception as exc:
+                self.server.emit_event({"event": "researchSourcesError", "error": f"{type(exc).__name__}: {exc}"})
+            else:
+                if source_rows:
+                    self.server.emit_event(
+                        {
+                            "event": "researchSourcesUpdated",
+                            "id": request_id,
+                            "sessionKey": session_key,
+                            "text": f"{len(source_rows)} source(s) saved.",
+                            "sources": [row.to_dict() for row in source_rows],
                         }
                     )
             try:
@@ -649,6 +665,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["credentialVault"] = credential_vault.snapshot(self.server.cwd)
         snapshot["externalDrafts"] = external_drafts.snapshot(self.server.cwd)
         snapshot["knowledgeGraph"] = knowledge_graph.snapshot(self.server.cwd)
+        snapshot["researchSources"] = research_sources.snapshot(self.server.cwd)
         snapshot["contextPackPreview"] = context_packs.preview(self.server.cwd)
         snapshot["localSearch"] = local_search_index.snapshot(self.server.cwd)
         snapshot["selfUpgradeQueue"] = upgrade_queue.snapshot(self.server.cwd)
@@ -1188,6 +1205,9 @@ def _prompt_with_context(
         graph_section = knowledge_graph.prompt_section(workspace, text=text)
         if graph_section:
             hints.append(graph_section.replace("\n", " | "))
+        research_section = research_sources.prompt_section(workspace, text)
+        if research_section:
+            hints.append(research_section.replace("\n", " | "))
         context_section = context_packs.prompt_section(workspace, text, budget_tokens=1_400)
         if context_section:
             hints.append(context_section.replace("\n", " | "))

@@ -925,6 +925,7 @@ function memoryView(snapshot) {
   const businessEntities = snapshot.businessEntities || {};
   const graph = snapshot.knowledgeGraph || {};
   const localSearch = snapshot.localSearch || {};
+  const research = snapshot.researchSources || {};
   const entityRows = entities.preview || [];
   const businessRows = businessEntities.preview || [];
   const longTerm = journal.longTermPreview || [];
@@ -944,6 +945,7 @@ function memoryView(snapshot) {
         ${statCard("Entities", entities.count || 0)}
         ${statCard("Business", businessEntities.count || 0)}
         ${statCard("Graph", `${graph.nodeCount || 0}/${graph.edgeCount || 0}`)}
+        ${statCard("Sources", research.total || 0)}
         ${statCard("Local search", localSearch.documents || 0)}
         ${statCard("Lessons", snapshot.lessons || 0)}
       </div>
@@ -1784,6 +1786,13 @@ function handleEvent(event) {
       break;
     case "credentialVaultError":
       addActivity("Credential vault", event.error || "Could not update credential references.");
+      break;
+    case "researchSourcesUpdated":
+      addActivity("Research sources", oneLine(event.text || "Saved source.", 160), "memory");
+      refresh({ renderView: state.currentView === "memory" }).catch((error) => addActivity("Research sources", error.message));
+      break;
+    case "researchSourcesError":
+      addActivity("Research sources", event.error || "Could not save source.");
       break;
     case "websitePipelineUpdated":
       addActivity(
