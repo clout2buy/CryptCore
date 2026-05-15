@@ -344,12 +344,18 @@ Progress:
   and dashboard checks.
 - Added approval-boundary tests for mocked form/post workflows.
 
-## Phase 24 - Desktop Operator V1
+## Phase 24 - Desktop Operator V1 [started]
 
 Create a visual desktop operation layer that can move, click, type, inspect
 screen state, and narrate visible actions.
 
 Verification: local safe desktop task smoke test.
+
+Progress:
+
+- Added `core/desktop_operator.py` for visual desktop plans with inspect, move,
+  click, type, screenshot, narration, and approval-gated sensitive actions.
+- Added safe desktop planner tests for visible actions and password/login gates.
 
 ## Phase 25 - Visual Activity Feed
 
