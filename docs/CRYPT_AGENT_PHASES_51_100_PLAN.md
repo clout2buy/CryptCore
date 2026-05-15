@@ -207,6 +207,10 @@ state in the WebUI settings panel and runtime prompt context.
 Classify code changes by blast radius, security, UI, data, and test coverage
 before commit.
 
+Progress: added `core.patch_risk`, which inspects changed paths, grades blast
+radius plus security/UI/data/test surfaces, recommends focused checks, and
+injects the current patch risk into WebUI settings and runtime prompt context.
+
 ## Phase 73 - Release Screenshot Pipeline
 
 Capture desktop/mobile screenshots for UI-heavy releases and attach them to the

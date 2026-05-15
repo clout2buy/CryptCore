@@ -48,6 +48,7 @@ from . import (
     multi_agent_threads,
     notification_center,
     passive_memory,
+    patch_risk,
     persona_governance,
     provider_health,
     project_index,
@@ -588,6 +589,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["selfUpgradeQueue"] = upgrade_queue.snapshot(self.server.cwd)
         snapshot["selfUpgradeSandbox"] = self_upgrade_sandbox.snapshot(self.server.cwd)
         snapshot["runtimeRebuild"] = runtime_rebuild.snapshot(self.server.cwd)
+        snapshot["patchRisk"] = patch_risk.snapshot(self.server.cwd)
         snapshot["mcpGateway"] = mcp_gateway.snapshot(self.server.cwd)
         snapshot["lessonsPreview"] = [asdict(lesson) for lesson in learning.list_lessons(self.server.cwd)[:8]]
         snapshot["reflections"] = [asdict(item) for item in reflection.list_reflections(self.server.cwd, limit=5)]
@@ -1116,6 +1118,9 @@ def _prompt_with_context(
         rebuild_section = runtime_rebuild.prompt_section(workspace)
         if rebuild_section:
             hints.append(rebuild_section.replace("\n", " | "))
+        patch_risk_section = patch_risk.prompt_section(workspace)
+        if patch_risk_section:
+            hints.append(patch_risk_section.replace("\n", " | "))
         gateway_section = mcp_gateway.prompt_section(workspace)
         if gateway_section:
             hints.append(gateway_section.replace("\n", " | "))

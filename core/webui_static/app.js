@@ -1093,6 +1093,7 @@ function settingsView(snapshot) {
   const providerHealth = snapshot.providerHealth || {};
   const healthCards = providerHealth.cards || [];
   const sandbox = snapshot.selfUpgradeSandbox || {};
+  const patchRisk = snapshot.patchRisk || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Engine", value: modelLabel(snapshot.model), status: providerLabel(snapshot.provider, snapshot), detail: "Current model used by chat." })}
@@ -1101,6 +1102,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Auth", value: snapshot.authOk ? "ready" : "missing", status: snapshot.auth, detail: snapshot.authMessage || "Provider is usable." })}
       ${featureCard({ label: "Provider Health", value: `${providerHealth.ready || 0}/${providerHealth.total || 0}`, status: providerHealth.recommendedFallback ? `fallback ${providerHealth.recommendedFallback}` : "fallback none", detail: `${providerHealth.warnings || 0} warning(s), ${providerHealth.missing || 0} missing.` })}
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
+      ${featureCard({ label: "Patch Risk", value: patchRisk.risk || "low", status: patchRisk.blast_radius || "blast", detail: (patchRisk.reasons || []).join(" / ") || "No patch risk detected." })}
       ${featureCard({ label: "Gateway", value: "local", status: "webui", detail: snapshot.webui?.url || "local" })}
       ${featureCard({ label: "Workspace", value: "open", status: "local", detail: snapshot.workspace })}
     </section>
