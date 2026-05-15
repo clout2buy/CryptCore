@@ -262,12 +262,18 @@ Progress:
 - Runtime policy now warns on sensitive external reads while destructive command
   labels remain visible for the existing danger approval layer.
 
-## Phase 18 - Audit Log V2
+## Phase 18 - Audit Log V2 [started]
 
 Record what Crypt saw, decided, did, changed, verified, and still needs in a
 clean audit trail.
 
 Verification: log redaction tests and mission evidence checks.
+
+Progress:
+
+- Evidence entries now append a persistent redacted audit JSONL under Crypt app
+  data with saw/decided/did/changed/verified/needs phases.
+- Added audit retrieval and summary helpers for task-scoped review.
 
 ## Phase 19 - Skill Loader
 
