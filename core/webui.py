@@ -31,6 +31,7 @@ from . import (
     capability_matrix,
     clarification_policy,
     code_builder,
+    content_ops,
     context_packs,
     desktop_recorder,
     entities,
@@ -339,6 +340,22 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                         }
                     )
             try:
+                content_decision = content_ops.ensure_for_prompt(self.server.cwd, text)
+            except Exception as exc:
+                self.server.emit_event({"event": "contentOpsError", "error": f"{type(exc).__name__}: {exc}"})
+            else:
+                if content_decision.campaign:
+                    self.server.emit_event(
+                        {
+                            "event": "contentOpsUpdated",
+                            "id": request_id,
+                            "sessionKey": session_key,
+                            "text": content_decision.campaign.title,
+                            "created": content_decision.created,
+                            "campaign": content_decision.campaign.to_dict(),
+                        }
+                    )
+            try:
                 pipeline_decision = website_pipeline.ensure_for_prompt(self.server.cwd, text)
             except Exception as exc:
                 self.server.emit_event({"event": "websitePipelineError", "error": f"{type(exc).__name__}: {exc}"})
@@ -603,6 +620,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["entitiesPreview"] = entities.snapshot(self.server.cwd)
         snapshot["businessEntities"] = business_entities.snapshot(self.server.cwd)
         snapshot["businessLaunch"] = business_launch.snapshot(self.server.cwd)
+        snapshot["contentOps"] = content_ops.snapshot(self.server.cwd)
         snapshot["externalDrafts"] = external_drafts.snapshot(self.server.cwd)
         snapshot["knowledgeGraph"] = knowledge_graph.snapshot(self.server.cwd)
         snapshot["contextPackPreview"] = context_packs.preview(self.server.cwd)
@@ -1122,6 +1140,9 @@ def _prompt_with_context(
         business_launch_section = business_launch.prompt_section(workspace)
         if business_launch_section:
             hints.append(business_launch_section.replace("\n", " | "))
+        content_ops_section = content_ops.prompt_section(workspace)
+        if content_ops_section:
+            hints.append(content_ops_section.replace("\n", " | "))
         entity_section = entities.prompt_section(workspace)
         if entity_section:
             hints.append(entity_section.replace("\n", " | "))

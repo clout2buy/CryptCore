@@ -776,6 +776,8 @@ function missionsView(snapshot) {
   const jobs = scheduler.jobs || snapshot.schedulesPreview || [];
   const businessLaunch = snapshot.businessLaunch || {};
   const launches = businessLaunch.launches || [];
+  const contentOps = snapshot.contentOps || {};
+  const campaigns = contentOps.campaigns || [];
   return `
     <section class="mission-board">
       <div class="panel-card mission-hero">
@@ -791,9 +793,11 @@ function missionsView(snapshot) {
         ${statCard("Due", scheduler.due ?? due.length)}
         ${statCard("Paused", scheduler.paused || 0)}
         ${statCard("Launches", businessLaunch.active || 0)}
+        ${statCard("Content", contentOps.pieces || 0)}
       </div>
     </section>
     <section class="data-list mission-list business-launch-list">${launches.map(businessLaunchRow).join("") || ""}</section>
+    <section class="data-list mission-list content-ops-list">${campaigns.map(contentCampaignRow).join("") || ""}</section>
     <section class="data-list mission-list">${jobs.slice(0, 8).map(scheduleRow).join("") || emptyRow("No schedules yet")}</section>
     <section class="data-list mission-list thread-list">${threads.map(threadRow).join("") || emptyRow("No work threads yet")}</section>
     <section class="data-list mission-list">${goals.map(missionRow).join("") || emptyRow("No missions yet")}</section>
@@ -804,6 +808,12 @@ function businessLaunchRow(launch) {
   const next = (launch.stages || []).find((stage) => stage.status !== "done") || (launch.stages || [])[0] || {};
   const gates = (launch.approval_gates || []).length;
   return row("Business launch", launch.title || "Launch autopilot", `${next.title || "next stage"} / ${gates} approval gate(s) / ${launch.status || "active"}`);
+}
+
+function contentCampaignRow(campaign) {
+  const pieces = campaign.pieces || [];
+  const approvals = pieces.filter((piece) => piece.approval_required).length;
+  return row("Content ops", campaign.title || "Content campaign", `${(campaign.channels || []).join(", ") || "channels"} / ${pieces.length} piece(s) / ${approvals} approval(s)`);
 }
 
 function scheduleRow(job) {
@@ -1733,6 +1743,17 @@ function handleEvent(event) {
       break;
     case "businessLaunchError":
       addActivity("Business launch", event.error || "Could not update launch autopilot.");
+      break;
+    case "contentOpsUpdated":
+      addActivity(
+        event.created ? "Content ops" : "Content ops matched",
+        oneLine(event.text || "Content plan updated.", 160),
+        "mission",
+      );
+      refresh({ renderView: state.currentView === "missions" }).catch((error) => addActivity("Content ops", error.message));
+      break;
+    case "contentOpsError":
+      addActivity("Content ops", event.error || "Could not update content plan.");
       break;
     case "websitePipelineUpdated":
       addActivity(

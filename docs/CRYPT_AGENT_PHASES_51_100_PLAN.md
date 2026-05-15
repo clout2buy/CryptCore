@@ -255,6 +255,11 @@ autopilot state in Missions and emits live launch updates from normal chat.
 Plan posts, scripts, videos, thumbnails, channels, drafts, approvals, and
 performance tracking.
 
+Progress: added `core.content_ops`, which creates durable content campaigns,
+channel-specific posts/scripts/video/thumbnail/email pieces, queues each
+external-facing piece into the approval draft system, records performance
+metrics, and exposes content ops in Missions plus runtime prompt context.
+
 ## Phase 78 - Account And Credential Vault Interface
 
 Track credential needs without exposing secrets; store references, not raw
