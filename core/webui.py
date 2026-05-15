@@ -57,6 +57,7 @@ from . import (
     settings,
     skill_lifecycle,
     skill_forge,
+    skill_outcome_autoforge,
     skills,
     soul,
     upgrade_queue,
@@ -608,6 +609,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["agentDefinitions"] = _agent_definition_previews()
         snapshot["skillsPreview"] = [skill.as_dict() for skill in skills.discover(self.server.cwd, include_disabled=True)[:40]]
         snapshot["skillLifecycle"] = skill_lifecycle.snapshot(self.server.cwd)
+        snapshot["skillOutcomeAutoforge"] = skill_outcome_autoforge.snapshot(self.server.cwd)
         snapshot["toolsPreview"] = _tool_previews()
         snapshot["filesPreview"] = _workspace_files(self.server.cwd)
         studio = artifact_studio.snapshot(self.server.cwd)
@@ -1118,6 +1120,9 @@ def _prompt_with_context(
         skill_lifecycle_section = skill_lifecycle.prompt_section(workspace)
         if skill_lifecycle_section:
             hints.append(skill_lifecycle_section.replace("\n", " | "))
+        skill_outcome_section = skill_outcome_autoforge.prompt_section(workspace)
+        if skill_outcome_section:
+            hints.append(skill_outcome_section.replace("\n", " | "))
         persona_governance_section = persona_governance.prompt_section(workspace)
         if persona_governance_section:
             hints.append(persona_governance_section.replace("\n", " | "))

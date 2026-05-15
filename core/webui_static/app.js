@@ -911,6 +911,8 @@ function entityRow(item) {
 function skillsView(snapshot) {
   const skills = snapshot.skillsPreview || [];
   const lifecycle = snapshot.skillLifecycle || {};
+  const outcomeForge = snapshot.skillOutcomeAutoforge || {};
+  const candidates = outcomeForge.candidates || [];
   const frontendSkill = skills.find((skill) => skill.name === "frontend-design");
   return `
     <section class="two-col">
@@ -925,10 +927,12 @@ function skillsView(snapshot) {
         <p>${frontendSkill ? "Frontend design is installed for high-end UI work." : "Frontend design skill is not visible yet."}</p>
         ${statCard("Enabled", lifecycle.enabled || skills.filter((skill) => skill.enabled).length)}
         ${statCard("Blocked", lifecycle.blocked || 0)}
+        ${statCard("Autoforge", candidates.length)}
         <button class="ask-button" data-ask="Find useful skills for what I am trying to do, learn them, and integrate the ones that fit.">Find skills</button>
         <button class="ask-button" data-ask="Inspect my current skills and suggest what Crypt should learn next.">Audit skills</button>
       </div>
     </section>
+    <section class="data-list">${candidates.slice(0, 6).map((candidate) => row("Outcome", candidate.topic, `${candidate.episode_count || 0} wins / ${candidate.lesson_count || 0} lessons / ${(candidate.confidence || 0).toFixed ? candidate.confidence.toFixed(2) : candidate.confidence}`)).join("") || emptyRow("No outcome patterns ready to promote")}</section>
     <section class="feature-grid">${skills.map((skill) => featureCard({ label: skill.name, value: skill.enabled ? "on" : "blocked", status: skill.title || "skill", detail: skill.description || skill.path })).join("") || emptyRow("No skills discovered")}</section>
   `;
 }

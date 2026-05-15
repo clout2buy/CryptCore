@@ -126,6 +126,11 @@ state, and injects persona rules into prompt context.
 Create/update SKILL.md files from repeated successful task episodes, not just
 manual forge requests.
 
+Progress: added `core.skill_outcome_autoforge`, detects repeated successful
+task patterns, scores confidence from lessons/checks/changed areas, promotes
+ready patterns into project-local SKILL.md files during autonomy cycles, and
+surfaces outcome candidates in the WebUI skills panel and runtime hints.
+
 ## Phase 65 - Tool Capability Cards
 
 Expose every tool with scope, risk, permission needs, examples, and live usage

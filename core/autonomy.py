@@ -14,7 +14,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import goals, learning, memory_condenser, mission_brain, monitors, reflection, scheduler, settings, skill_forge, soul, upgrade_queue, work_threads
+from . import goals, learning, memory_condenser, mission_brain, monitors, reflection, scheduler, settings, skill_forge, skill_outcome_autoforge, soul, upgrade_queue, work_threads
 
 
 SCHEMA_VERSION = 1
@@ -80,6 +80,19 @@ def run_cycle(
     if upgrades:
         notes.append(f"queued {len(upgrades)} self-upgrade idea(s)")
     forged = _forge_from_repeated_lessons(root, notes, force=force_forge)
+    outcome_forge = skill_outcome_autoforge.autoforge(
+        root,
+        min_episodes=2 if force_forge else 3,
+        min_lessons=1 if force_forge else 2,
+        force=force_forge,
+    )
+    for item in outcome_forge.forged:
+        skill_name = str(item.get("skill") or item.get("topic") or "")
+        if skill_name:
+            forged.append(skill_name)
+            notes.append(f"autoforged skill ${skill_name} from repeated successful {item.get('topic')} outcomes")
+    for item in outcome_forge.skipped[:2]:
+        notes.append(f"autoforge skipped {item.get('topic')}: {item.get('reason')}")
     soul_update = soul.evolve(root)
     if soul_update.changed:
         notes.append(f"evolved Crypt soul from {soul_update.preference_count} learned preference(s)")
