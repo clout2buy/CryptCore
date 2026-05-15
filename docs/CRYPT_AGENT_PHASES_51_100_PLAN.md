@@ -80,6 +80,10 @@ and runtime prompt context.
 Version, enable, disable, update, and audit local skills with provenance and UI
 state.
 
+Progress: added `core.skill_lifecycle`, lifecycle disable/enable markers,
+version hashes, audit cards, WebUI snapshot/skill stats, and prompt context for
+current skill state.
+
 ## Phase 60 - Agent Team Templates
 
 Define reusable teams like business launch, frontend build, bug fix, research,

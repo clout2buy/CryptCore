@@ -7,6 +7,7 @@ item with ``{"type": "skill", "name": ..., "path": ...}``.
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -218,20 +219,40 @@ def _with_runtime_metadata(skill: Skill, *, root: Path, cwd: str | Path) -> Skil
                 trust = "user"
             except ValueError:
                 trust = "unknown"
-    if not skill.enabled:
+    enabled = skill.enabled
+    blocked_reason = skill.blocked_reason
+    state = _lifecycle_state(skill.path.parent)
+    if state.get("enabled") is False and enabled:
+        enabled = False
+        blocked_reason = str(state.get("reason") or "disabled by skill lifecycle manager")
+        trust = "disabled"
+    if not enabled:
         trust = "blocked"
+        if state.get("enabled") is False:
+            trust = "disabled"
     return Skill(
         name=skill.name,
         path=skill.path,
         description=skill.description,
         title=skill.title,
-        enabled=skill.enabled,
-        blocked_reason=skill.blocked_reason,
+        enabled=enabled,
+        blocked_reason=blocked_reason,
         trust_level=trust,
         examples=skill.examples,
         smoke_tests=skill.smoke_tests,
-        metadata={"root": str(resolved_root), "source": trust},
+        metadata={"root": str(resolved_root), "source": trust, "lifecycle": state},
     )
+
+
+def _lifecycle_state(skill_dir: Path) -> dict[str, Any]:
+    path = skill_dir / ".crypt-skill-state.json"
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 def _read_skill(path: Path) -> str:

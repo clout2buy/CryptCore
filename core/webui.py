@@ -53,6 +53,7 @@ from . import (
     scheduler,
     session as sessions,
     settings,
+    skill_lifecycle,
     skill_forge,
     skills,
     soul,
@@ -602,6 +603,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["multiAgentThreads"] = multi_agent_threads.snapshot(self.server.cwd)
         snapshot["agentDefinitions"] = _agent_definition_previews()
         snapshot["skillsPreview"] = [skill.as_dict() for skill in skills.discover(self.server.cwd, include_disabled=True)[:40]]
+        snapshot["skillLifecycle"] = skill_lifecycle.snapshot(self.server.cwd)
         snapshot["toolsPreview"] = _tool_previews()
         snapshot["filesPreview"] = _workspace_files(self.server.cwd)
         studio = artifact_studio.snapshot(self.server.cwd)
@@ -1109,6 +1111,9 @@ def _prompt_with_context(
         agent_section = agent_profiles.prompt_section(workspace)
         if agent_section:
             hints.append(agent_section.replace("\n", " | "))
+        skill_lifecycle_section = skill_lifecycle.prompt_section(workspace)
+        if skill_lifecycle_section:
+            hints.append(skill_lifecycle_section.replace("\n", " | "))
         delegation_section = agent_delegation.prompt_section(workspace, text)
         if delegation_section:
             hints.append(delegation_section.replace("\n", " | "))

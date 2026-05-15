@@ -38,6 +38,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "agentDefinitions" in web_snapshot
         assert "voice" in web_snapshot
         assert "workThreads" in web_snapshot
+        assert "skillLifecycle" in web_snapshot
         assert "artifactsPreview" in web_snapshot
         assert "artifactGroups" in web_snapshot
         assert "artifactSummary" in web_snapshot
@@ -168,6 +169,7 @@ def test_webui_static_is_chat_first():
     assert "artifactSummary" in script
     assert "No dashboard homework." in script
     assert "Autoforge Skill" in script
+    assert "skillLifecycle" in script
     assert "workThreadUpdated" in script
     assert "memoryJournalUpdated" in script
     assert "missionCreated" in script

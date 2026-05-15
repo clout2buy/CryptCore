@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core import prompt, runtime, settings, skill_manager, skills
+from core import prompt, runtime, settings, skill_lifecycle, skill_manager, skills
 
 
 class _Provider:
@@ -175,3 +175,25 @@ def test_skill_manager_installs_local_skill(monkeypatch, tmp_path: Path):
     found = {skill.name: skill for skill in skills.discover(workspace)}
     assert "demo" in found
     assert (workspace / ".agents" / "skills" / "skills-lock.json").exists()
+
+
+def test_skill_lifecycle_can_disable_and_audit_project_skill(workspace: Path):
+    path = workspace / ".crypt" / "skills" / "ops" / "SKILL.md"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        "---\nname: ops\ndescription: Ops skill\n---\n# Ops\nRun operations.\n",
+        encoding="utf-8",
+    )
+
+    card = skill_lifecycle.set_enabled(workspace, "ops", False, reason="testing disable")
+    assert card.status == "disabled"
+    assert card.enabled is False
+    assert "ops" not in {skill.name for skill in skills.discover(workspace)}
+
+    audit = {item.name: item for item in skill_lifecycle.audit(workspace)}
+    assert audit["ops"].version
+    assert audit["ops"].blocked_reason == "testing disable"
+
+    enabled = skill_lifecycle.set_enabled(workspace, "ops", True)
+    assert enabled.enabled is True
+    assert "ops" in {skill.name for skill in skills.discover(workspace)}

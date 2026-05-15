@@ -906,6 +906,7 @@ function entityRow(item) {
 
 function skillsView(snapshot) {
   const skills = snapshot.skillsPreview || [];
+  const lifecycle = snapshot.skillLifecycle || {};
   const frontendSkill = skills.find((skill) => skill.name === "frontend-design");
   return `
     <section class="two-col">
@@ -918,6 +919,8 @@ function skillsView(snapshot) {
       <div class="panel-card">
         <h3>Built-In Craft</h3>
         <p>${frontendSkill ? "Frontend design is installed for high-end UI work." : "Frontend design skill is not visible yet."}</p>
+        ${statCard("Enabled", lifecycle.enabled || skills.filter((skill) => skill.enabled).length)}
+        ${statCard("Blocked", lifecycle.blocked || 0)}
         <button class="ask-button" data-ask="Find useful skills for what I am trying to do, learn them, and integrate the ones that fit.">Find skills</button>
         <button class="ask-button" data-ask="Inspect my current skills and suggest what Crypt should learn next.">Audit skills</button>
       </div>
