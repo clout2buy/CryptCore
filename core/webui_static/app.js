@@ -688,13 +688,16 @@ function missionRow(goal) {
 
 function threadRow(thread) {
   const blockers = (thread.blockers || []).join(" ");
-  const detail = blockers || thread.next_action || "Crypt will pick the next safe step.";
+  const pending = (thread.tasks || []).find((task) => task.status !== "done");
+  const metric = (thread.success_metrics || [])[0] || "";
+  const detail = blockers || pending?.title || thread.next_action || metric || "Crypt will pick the next safe step.";
+  const metricText = metric && metric !== detail ? ` metric: ${metric}` : "";
   const due = Number(thread.due_at || 0) ? `due ${reviewTime(Number(thread.due_at) * 1000)}` : "as needed";
   return `
     <article class="data-row mission-row work-thread-row">
       <span>${escapeHtml(thread.state || "active")}</span>
       <b>${escapeHtml(thread.title || "Untitled thread")}</b>
-      <p>${escapeHtml(`${due} - ${detail}`)}</p>
+      <p>${escapeHtml(`${due} - ${detail}${metricText}`)}</p>
     </article>
   `;
 }

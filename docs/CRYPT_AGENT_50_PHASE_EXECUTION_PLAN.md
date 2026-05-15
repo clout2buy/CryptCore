@@ -118,12 +118,21 @@ Progress:
 - WebUI prompt context now includes the action policy so Crypt can keep moving
   on safe work while approval-gating public/external/destructive actions.
 
-## Phase 8 - Mission Object V2
+## Phase 8 - Mission Object V2 [started]
 
 Upgrade missions into durable objects with goal, status, priority, tasks,
 blockers, due dates, artifacts, history, metrics, and next actions.
 
 Verification: migration tests and mission CRUD tests.
+
+Progress:
+
+- Extended work threads with task checklists and success metrics while keeping
+  existing thread JSON backward-compatible.
+- Mission UI rows now surface the next pending task before falling back to broad
+  next-action text.
+- Bumped work-thread storage to schema v2 and added prompt context for active
+  task and success metric so the agent has durable mission operating state.
 
 ## Phase 9 - Auto Mission Creation
 

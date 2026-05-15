@@ -15,7 +15,7 @@ from typing import Any
 from . import goals, redact, settings
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 THREAD_STATUSES = {"active", "blocked", "waiting", "paused", "completed", "cancelled"}
 APPROVAL_TERMS = {
     "email",
@@ -49,6 +49,8 @@ class WorkThread:
     blockers: list[str] = field(default_factory=list)
     due_at: int = 0
     cadence: str = ""
+    tasks: list[dict[str, Any]] = field(default_factory=list)
+    success_metrics: list[str] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
     artifacts: list[str] = field(default_factory=list)
     history: list[dict[str, Any]] = field(default_factory=list)
@@ -99,6 +101,14 @@ def ensure_for_goal(goal: goals.Goal, *, prompt_text: str = "", source: str = "m
         if due_at and due_at != existing.due_at:
             data["due_at"] = due_at
             changed = True
+        tasks = existing.tasks or _default_tasks(goal, prompt_text)
+        if tasks != existing.tasks:
+            data["tasks"] = tasks
+            changed = True
+        success_metrics = _success_metrics(goal)
+        if success_metrics and success_metrics != existing.success_metrics:
+            data["success_metrics"] = success_metrics
+            changed = True
         if changed:
             data["updated_at"] = now
             data["history"] = _trim_history(
@@ -123,6 +133,8 @@ def ensure_for_goal(goal: goals.Goal, *, prompt_text: str = "", source: str = "m
         blockers=blockers,
         due_at=_due_at(goal, now),
         cadence=goal.cadence,
+        tasks=_default_tasks(goal, prompt_text),
+        success_metrics=_success_metrics(goal),
         tags=_dedupe(["auto", "mission", *goal.tags]),
         history=[_history(source, "thread created automatically from chat", now)],
         created_at=now,
@@ -242,6 +254,11 @@ def prompt_section(workspace: str | Path, *, limit: int = 6) -> str:
         lines.append(f"- {thread.state} P{thread.priority} {thread.title}{due}")
         if thread.next_action:
             lines.append(f"  - next: {thread.next_action}")
+        pending_tasks = [task for task in thread.tasks if task.get("status") != "done"]
+        if pending_tasks:
+            lines.append(f"  - task: {pending_tasks[0].get('title', 'Next task')}")
+        if thread.success_metrics:
+            lines.append(f"  - metric: {thread.success_metrics[0]}")
         if thread.blockers:
             lines.append(f"  - blockers: {'; '.join(thread.blockers[:3])}")
     return "\n".join(lines)
@@ -277,6 +294,8 @@ def _read() -> list[WorkThread]:
                     blockers=[str(value) for value in item.get("blockers", [])],
                     due_at=int(item.get("due_at") or 0),
                     cadence=str(item.get("cadence") or ""),
+                    tasks=[value for value in item.get("tasks", []) if isinstance(value, dict)],
+                    success_metrics=[str(value) for value in item.get("success_metrics", [])],
                     tags=[str(value) for value in item.get("tags", [])],
                     artifacts=[str(value) for value in item.get("artifacts", [])],
                     history=[value for value in item.get("history", []) if isinstance(value, dict)],
@@ -316,6 +335,46 @@ def _next_action(goal: goals.Goal, prompt_text: str) -> str:
     if any(term in lower for term in ("ui", "webui", "design", "frontend")):
         return "Open the UI, inspect the current screen, make the smallest visual upgrade, then verify in browser."
     return "Choose the next safe concrete step, execute what is local, and ask only for risky external approval."
+
+
+def _default_tasks(goal: goals.Goal, prompt_text: str) -> list[dict[str, Any]]:
+    lower = " ".join([goal.title, goal.description, prompt_text, " ".join(goal.tags)]).lower()
+    if any(term in lower for term in ("business", "income", "revenue", "sales", "customer")):
+        titles = [
+            "Define the offer and target customer",
+            "Create launch artifact or landing page",
+            "Set up revenue and blocker tracking",
+        ]
+    elif any(term in lower for term in ("monitor", "track", "watch", "keep an eye")):
+        titles = [
+            "Check the latest state",
+            "Record changes and blockers",
+            "Schedule the next review",
+        ]
+    elif any(term in lower for term in ("ui", "webui", "design", "frontend")):
+        titles = [
+            "Inspect the current screen",
+            "Patch the smallest high-impact UI improvement",
+            "Run browser or static verification",
+        ]
+    else:
+        titles = [
+            "Gather the current context",
+            "Execute the next safe local step",
+            "Verify and record the result",
+        ]
+    return [{"title": title, "status": "pending"} for title in titles]
+
+
+def _success_metrics(goal: goals.Goal) -> list[str]:
+    if goal.success_metric:
+        return [goal.success_metric]
+    lower = " ".join([goal.title, goal.description, " ".join(goal.tags)]).lower()
+    if any(term in lower for term in ("business", "income", "revenue", "sales")):
+        return ["Revenue path, blockers, and next actions stay tracked."]
+    if any(term in lower for term in ("monitor", "track", "watch")):
+        return ["Latest status is checked and summarized on schedule."]
+    return ["Outcome is advanced, verified, and summarized with a next step."]
 
 
 def _blockers(text: str) -> list[str]:
