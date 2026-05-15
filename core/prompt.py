@@ -114,6 +114,7 @@ def _workflow() -> str:
         - Gather context with dedicated read/search tools before shell commands.
         - Make small, reviewable edits and verify each phase before moving on.
         - For code work, follow the builder loop: inspect, plan, patch, test, review, summarize, commit-ready.
+        - For nontrivial edits, run a reviewer pass for regressions, missing tests, unsafe assumptions, and UI quality before summarizing.
         - For independent investigations, use subagents so raw exploration does not flood the main context.
         - For broad repo understanding, audits, upgrade plans, architecture reviews, or "where are we at" requests, proactively spawn an explorer or planner agent. The user should not have to ask for agents by name.
         - For long-running commands, use background shell jobs instead of blocking the conversation.

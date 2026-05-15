@@ -128,6 +128,7 @@ def prompt_section(cwd: str | Path, request: str, *, limit: int = 4) -> str:
         f"- Stages: {stage_text}.",
         f"- Risk: {plan.risk}.",
         "- Rule: inspect the target files before patching, then run the closest useful check before completion.",
+        "- Reviewer lane: catch regressions, missing tests, unsafe assumptions, and UI quality issues before final summary.",
     ]
     if plan.primary_files:
         lines.append("- Likely files: " + ", ".join(plan.primary_files[:limit]))

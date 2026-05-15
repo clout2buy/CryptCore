@@ -403,12 +403,22 @@ Progress:
 - Added fixture tests for stage ordering, prompt context, and commit-ready
   reports.
 
-## Phase 28 - Reviewer Lane
+## Phase 28 - Reviewer Lane [started]
 
 Add a reviewer pass for nontrivial changes that catches regressions, missing
 tests, unsafe assumptions, and UI quality issues.
 
 Verification: reviewer fixture catches seeded bug.
+
+Progress:
+
+- Added `core/reviewer.py`, layering dedicated reviewer heuristics on top of
+  the target-eval review checks.
+- The reviewer flags dynamic execution, `shell=True`, swallowed broad
+  exceptions, raw `innerHTML`, viewport-scaled type, transition-all UI flicker,
+  and production changes without tests.
+- The builder and system prompts now require a reviewer pass for nontrivial
+  code edits before final summaries.
 
 ## Phase 29 - Verifier Lane
 
