@@ -8,6 +8,7 @@ from core.api import OllamaProvider
 
 
 def test_app_daemon_snapshot_uses_shared_provider_inventory(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
     monkeypatch.setattr(settings, "CONFIG_PATH", tmp_path / "config.json")
     monkeypatch.setattr(settings, "AUTH_PATH", tmp_path / "auth.json")
     monkeypatch.setattr(auth, "AUTH_PATH", tmp_path / "auth.json")
@@ -28,6 +29,7 @@ def test_app_daemon_snapshot_uses_shared_provider_inventory(monkeypatch, tmp_pat
     assert snapshot["routes"][0]["role"] == "planner"
     assert snapshot["smartModelRouter"]["enabled"] is True
     assert snapshot["providerHealth"]["total"] >= 5
+    assert "notifications" in snapshot
 
 
 def test_app_daemon_set_approval_emits_snapshot(monkeypatch, tmp_path):
@@ -49,6 +51,7 @@ def test_app_daemon_set_approval_emits_snapshot(monkeypatch, tmp_path):
 
 
 def test_app_daemon_approval_request_waits_for_response(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
     monkeypatch.setattr(settings, "CONFIG_PATH", tmp_path / "config.json")
     events: list[dict] = []
     daemon = app_daemon.AppDaemon(emit=events.append, cwd=str(tmp_path))
@@ -78,6 +81,7 @@ def test_app_daemon_approval_request_waits_for_response(monkeypatch, tmp_path):
     assert result == [(True, "")]
     assert approval["tool"] == "web_search"
     assert events[-1]["event"] == "approvalResolved"
+    assert daemon.snapshot()["notifications"]["unread"] == 1
 
 
 def test_app_daemon_sets_provider_and_model(monkeypatch, tmp_path):
@@ -261,6 +265,7 @@ def test_app_daemon_start_prompt_runs_in_background(monkeypatch, tmp_path):
 
 
 def test_app_daemon_auto_prompt_uses_smart_model_router(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
     monkeypatch.setattr(settings, "CONFIG_PATH", tmp_path / "config.json")
     events: list[dict] = []
     daemon = app_daemon.AppDaemon(emit=events.append, cwd=str(tmp_path))
@@ -297,6 +302,7 @@ def test_app_daemon_auto_prompt_uses_smart_model_router(monkeypatch, tmp_path):
 
 
 def test_app_daemon_accepts_approval_response_while_task_is_running(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
     monkeypatch.setattr(settings, "CONFIG_PATH", tmp_path / "config.json")
     events: list[dict] = []
     daemon = app_daemon.AppDaemon(emit=events.append, cwd=str(tmp_path))

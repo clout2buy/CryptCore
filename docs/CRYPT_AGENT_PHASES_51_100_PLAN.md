@@ -177,6 +177,11 @@ jobs alongside work threads and goals.
 Surface finished work, blockers, approvals, reminders, and failed background
 jobs in one clean feed.
 
+Progress: added `core.notification_center`, a persistent unread/read/archive
+feed for approvals, task completions, failures, reminders, and blockers. App
+turns and approval waits now create notifications, snapshots expose unread and
+critical counts, and the home UI shows a compact notification center.
+
 ## Phase 70 - Artifact Dependency Graph
 
 Connect generated files, missions, memories, agents, checks, and releases into

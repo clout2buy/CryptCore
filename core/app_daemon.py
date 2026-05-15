@@ -17,7 +17,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable
 
-from . import auth, autonomy, doctor, learning, live_events, loop, model_registry, provider_health, redact, runtime, session as sessions, settings, skills, smart_model_router
+from . import auth, autonomy, doctor, learning, live_events, loop, model_registry, notification_center, provider_health, redact, runtime, session as sessions, settings, skills, smart_model_router
 from tools import REGISTRY
 
 
@@ -172,6 +172,7 @@ class AppDaemon:
             "activeTask": self._active_task,
             "providers": _provider_inventory(saved),
             "providerHealth": provider_health.snapshot(saved),
+            "notifications": notification_center.snapshot(self._cwd),
             "routes": _routes(saved),
             "smartModelRouter": smart_model_router.snapshot(saved),
         }
@@ -334,6 +335,15 @@ class AppDaemon:
                 sessionTokens=result.session_tokens,
                 snapshot=self.snapshot(),
             )
+            notification_center.add(
+                self._cwd,
+                "task-finished",
+                "Task finished",
+                body=result.final_text,
+                severity="success",
+                source="app-daemon",
+                related_id=task_id,
+            )
         except Exception as exc:
             error_text = f"{type(exc).__name__}: {exc}"
             if provider_name_for_learning:
@@ -371,6 +381,15 @@ class AppDaemon:
                 error=error_text,
                 snapshot=self.snapshot(),
             )
+            notification_center.add(
+                self._cwd,
+                "task-failed",
+                "Task failed",
+                body=error_text,
+                severity="error",
+                source="app-daemon",
+                related_id=task_id,
+            )
         finally:
             with self._task_lock:
                 self._active_task = None
@@ -406,6 +425,15 @@ class AppDaemon:
             danger=bool(danger),
             reason=str(reason or ""),
             text=str(summary or ""),
+        )
+        notification_center.add(
+            self._cwd,
+            "approval",
+            f"Approval needed: {tool_name}",
+            body=str(summary or question or ""),
+            severity="approval",
+            source="approval",
+            related_id=approval_id,
         )
         if not done.wait(timeout=self._approval_timeout):
             with self._approval_lock:

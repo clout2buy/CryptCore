@@ -45,6 +45,7 @@ from . import (
     mission_router,
     monitors,
     multi_agent_threads,
+    notification_center,
     passive_memory,
     persona_governance,
     provider_health,
@@ -1135,6 +1136,9 @@ def _prompt_with_context(
         provider_health_section = provider_health.prompt_section(settings.load_config())
         if provider_health_section:
             hints.append(provider_health_section.replace("\n", " | "))
+        notification_section = notification_center.prompt_section(workspace)
+        if notification_section:
+            hints.append(notification_section.replace("\n", " | "))
         persona_governance_section = persona_governance.prompt_section(workspace)
         if persona_governance_section:
             hints.append(persona_governance_section.replace("\n", " | "))
