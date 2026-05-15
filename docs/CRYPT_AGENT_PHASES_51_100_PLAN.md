@@ -342,6 +342,12 @@ commit.
 Import CSV, JSON, Markdown, notes, screenshots, and browser exports into
 entities/memory/missions.
 
+Progress: added `core.data_importer`, which inspects CSV/TSV, JSON/JSONL,
+Markdown/notes, images, and browser exports; registers imports as artifacts;
+feeds useful summaries into memory and entity extraction; creates mission
+follow-ups for goal-like notes; and surfaces imports in WebUI Files plus runtime
+prompt context.
+
 ## Phase 87 - Personal Operating System Mode
 
 Unify chat, reminders, missions, files, browser, voice, and business work into

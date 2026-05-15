@@ -636,6 +636,8 @@ function filesView(snapshot) {
   const mapSummary = workspaceMap.summary || {};
   const safeZones = workspaceMap.safeZones || [];
   const riskyZones = workspaceMap.riskyZones || [];
+  const dataImports = snapshot.dataImports || {};
+  const importRows = dataImports.imports || [];
   const pipelines = snapshot.websitePipelines?.pipelines || [];
   const latest = artifacts[0];
   return `
@@ -659,7 +661,11 @@ function filesView(snapshot) {
         ${statCard("Graph", `${graphSummary.nodes || 0}/${graphSummary.edges || 0}`, "nodes / links")}
         ${statCard("Safe zones", mapSummary.safeZones || 0)}
         ${statCard("Avoid", mapSummary.riskyZones || 0)}
+        ${statCard("Imports", dataImports.total || 0)}
       </div>
+    </section>
+    <section class="data-list data-import-list">
+      ${importRows.slice(0, 8).map((item) => row("Data Import", `${item.kind || "file"} / ${item.rel_path || item.title}`, `${item.rows || 0} rows / ${oneLine(item.preview || "", 150)}`)).join("") || emptyRow("No imported data yet")}
     </section>
     <section class="data-list workspace-map-list">
       ${row("Workspace Map", `${mapSummary.safeZones || 0} safe zones`, `${mapSummary.generatedZones || 0} generated zones / ${mapSummary.ignoredPatterns || 0} ignored patterns`)}

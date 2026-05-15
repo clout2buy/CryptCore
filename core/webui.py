@@ -35,6 +35,7 @@ from . import (
     content_ops,
     context_packs,
     credential_vault,
+    data_importer,
     desktop_recorder,
     entities,
     external_drafts,
@@ -669,6 +670,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["publicPosting"] = public_posting.snapshot(self.server.cwd)
         snapshot["knowledgeGraph"] = knowledge_graph.snapshot(self.server.cwd)
         snapshot["researchSources"] = research_sources.snapshot(self.server.cwd)
+        snapshot["dataImports"] = data_importer.snapshot(self.server.cwd)
         snapshot["contextPackPreview"] = context_packs.preview(self.server.cwd)
         snapshot["localSearch"] = local_search_index.snapshot(self.server.cwd)
         snapshot["workspaceMap"] = workspace_map.snapshot(self.server.cwd)
@@ -1215,6 +1217,9 @@ def _prompt_with_context(
         research_section = research_sources.prompt_section(workspace, text)
         if research_section:
             hints.append(research_section.replace("\n", " | "))
+        data_import_section = data_importer.prompt_section(workspace)
+        if data_import_section:
+            hints.append(data_import_section.replace("\n", " | "))
         context_section = context_packs.prompt_section(workspace, text, budget_tokens=1_400)
         if context_section:
             hints.append(context_section.replace("\n", " | "))
