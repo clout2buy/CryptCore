@@ -170,6 +170,7 @@ def _verification() -> str:
         """
         # Verification
         - Before claiming completion, run the narrowest meaningful check: unit test, type check, smoke command, import check, or targeted script.
+        - Prefer the verifier lane when available so check commands, outputs, and reports are recorded as mission evidence.
         - If no check exists or cannot run, say exactly what was not verified.
         - Report failures truthfully with the relevant command and error. Do not imply green results from red output.
         - For large or risky changes, use an independent verification pass before final reporting.

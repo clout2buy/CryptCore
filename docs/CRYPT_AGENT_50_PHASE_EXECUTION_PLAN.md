@@ -420,12 +420,22 @@ Progress:
 - The builder and system prompts now require a reviewer pass for nontrivial
   code edits before final summaries.
 
-## Phase 29 - Verifier Lane
+## Phase 29 - Verifier Lane [started]
 
 Add a verifier pass that runs targeted checks, browser QA, screenshots, lint,
 unit tests, and repo quick checks.
 
 Verification: verification report attached to mission evidence.
+
+Progress:
+
+- Added `core/verifier_lane.py` to plan targeted syntax, unit, browser-marker,
+  diff, and repo-quick checks from changed files.
+- Verifier reports are written under the project state directory, recorded in
+  the evidence ledger, linked into work-thread history, and registered in the
+  artifact studio.
+- Added tests for passing mission evidence, failing syntax checks, and browser
+  QA planning markers.
 
 ## Phase 30 - Autonomous Scheduler
 
