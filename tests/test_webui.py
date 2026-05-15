@@ -192,8 +192,10 @@ def test_webui_prompt_context_includes_auto_mission(monkeypatch, tmp_path: Path)
     decision = webui.mission_router.observe(workspace, "Build a client outreach business and track revenue weekly.")
 
     intent = webui.intent_router.route("Build this business")
-    text = webui._prompt_with_context("Build this business", [], mission=decision, intent=intent)
+    action = webui.clarification_policy.decide(intent)
+    text = webui._prompt_with_context("Build this business", [], mission=decision, intent=intent, action=action)
 
     assert "autonomous mission" in text
     assert "intent=business" in text
+    assert "action_policy=execute" in text
     assert "do not ask the user to manage missions manually" in text

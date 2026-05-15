@@ -19,6 +19,7 @@ from . import (
     agent_profiles,
     app_daemon,
     autonomy,
+    clarification_policy,
     goals,
     intent_router,
     learning,
@@ -176,6 +177,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
             request_id = str(body.get("id") or f"web-{uuid.uuid4().hex[:10]}")
             session_key = str(body.get("sessionKey") or "web")
             intent_decision = intent_router.route(text)
+            action_decision = clarification_policy.decide(intent_decision)
             self.server.emit_event(
                 {
                     "event": "intentRouted",
@@ -253,7 +255,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                         )
             intents = _intent_hints(body.get("intents"))
             profile = agent_profiles.get_profile(self.server.cwd, str(body.get("agentId") or ""))
-            prompt_text = _prompt_with_context(text, intents, profile, mission_result, intent_decision)
+            prompt_text = _prompt_with_context(text, intents, profile, mission_result, intent_decision, action_decision)
             route_role = str(body.get("route") or "").strip() or intent_decision.route_role
             self.server.daemon.handle_command(
                 {
@@ -774,6 +776,7 @@ def _prompt_with_context(
     profile: agent_profiles.AgentProfile | None = None,
     mission: mission_router.MissionDecision | None = None,
     intent: intent_router.IntentRoute | None = None,
+    action: clarification_policy.ActionDecision | None = None,
 ) -> str:
     hints: list[str] = []
     hint_map = {
@@ -797,6 +800,8 @@ def _prompt_with_context(
         hint = intent_router.prompt_hint(intent)
         if hint:
             hints.append(hint)
+    if action:
+        hints.append(clarification_policy.prompt_hint(action))
     if not hints:
         return text
     return f"{text}\n\n[Crypt runtime hints: {'; '.join(hints)}]"

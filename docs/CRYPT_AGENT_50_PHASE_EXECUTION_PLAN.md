@@ -104,12 +104,19 @@ Progress:
   the runtime prompt, and lets Crypt choose a backend route when the user leaves
   route selection on auto.
 
-## Phase 7 - Clarification Policy
+## Phase 7 - Clarification Policy [started]
 
 Teach Crypt when to act, when to ask one concise question, and when to ask for
 approval because the next step has real-world impact.
 
 Verification: decision tests for ambiguous and high-risk prompts.
+
+Progress:
+
+- Added `core/clarification_policy.py` to convert routed prompts into execute,
+  clarify, or approval-gate decisions.
+- WebUI prompt context now includes the action policy so Crypt can keep moving
+  on safe work while approval-gating public/external/destructive actions.
 
 ## Phase 8 - Mission Object V2
 
