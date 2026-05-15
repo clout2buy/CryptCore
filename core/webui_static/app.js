@@ -528,6 +528,10 @@ function panelView(snapshot) {
   const replay = snapshot.liveReplay || {};
   const replayItems = replay.items || [];
   const usage = snapshot.modelUsageLedger || {};
+  const personalOS = snapshot.personalOS || {};
+  const osSignals = personalOS.signals || [];
+  const osLanes = personalOS.lanes || [];
+  const osActions = personalOS.next_actions || [];
   const lookup = Object.fromEntries(features.map((feature) => [feature.id, feature]));
   const journal = snapshot.memoryJournal || {};
   const threads = snapshot.workThreads || [];
@@ -543,6 +547,9 @@ function panelView(snapshot) {
     ["Replay", replay.total || 0, `${replay.tools || 0} tool event(s).`],
     ["Usage", usage.total || 0, `$${Number(usage.costEstimatedUsd || 0).toFixed(4)} est.`],
   ];
+  const statusCards = osSignals.length
+    ? osSignals.map((signal) => [signal.label, signal.value, signal.detail])
+    : active;
   const calmCards = ["chat", "plan", "agents", "memory"]
     .map((id) => lookup[id])
     .filter(Boolean);
@@ -551,18 +558,30 @@ function panelView(snapshot) {
   return `
     <section class="home-grid">
       <article class="home-hero">
-        <span class="eyebrow">Crypt is live</span>
+        <span class="eyebrow">Personal OS</span>
         <h3>No dashboard homework.</h3>
-        <p>Talk normally. Crypt keeps the memory, missions, tools, agents, and follow-through under the hood.</p>
+        <p>${escapeHtml(personalOS.command || "Talk normally. Crypt keeps the memory, missions, tools, agents, and follow-through under the hood.")}</p>
         <div class="home-signal" aria-hidden="true">
           <i></i><i></i><i></i>
         </div>
       </article>
       <aside class="home-stack">
-        ${active.map(([label, value, detail]) => statCard(label, value, detail)).join("")}
+        ${statusCards.map(([label, value, detail]) => statCard(label, value, detail)).join("")}
       </aside>
     </section>
     <section class="home-ledger">
+      <div class="panel-card wide">
+        <h3>Daily Command Surface</h3>
+        <div class="compact-list">
+          ${osActions.slice(0, 4).map((action) => compactItem(personalOS.status || "ready", action, "Crypt will route this without prompt choreography.")).join("") || compactItem("ready", "Say it normally", "Crypt will decide whether this is chat, mission work, memory, files, tools, voice, or approvals.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Operating Lanes</h3>
+        <div class="compact-list">
+          ${osLanes.slice(0, 8).map((lane) => compactItem(lane.status || "ready", lane.label || lane.lane_id, lane.action || lane.detail || "")).join("") || compactItem("ready", "No lanes loaded", "The personal OS snapshot will fill this after refresh.")}
+        </div>
+      </div>
       <div class="panel-card">
         <h3>Next Moves</h3>
         <div class="compact-list">

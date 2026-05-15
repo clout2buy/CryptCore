@@ -57,6 +57,7 @@ from . import (
     office_layer,
     passive_memory,
     patch_risk,
+    personal_os,
     persona_governance,
     provider_health,
     public_posting,
@@ -723,6 +724,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["websitePipelines"] = website_pipeline.snapshot(self.server.cwd)
         snapshot["browserRecordings"] = browser_recorder.snapshot(self.server.cwd)
         snapshot["desktopRecordings"] = desktop_recorder.snapshot(self.server.cwd)
+        snapshot["personalOS"] = personal_os.snapshot(self.server.cwd, snapshot)
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         snapshot["capabilityMatrix"] = capability_matrix.build(self.server.cwd, snapshot).to_dict()
         return snapshot
@@ -1229,6 +1231,9 @@ def _prompt_with_context(
         workspace_map_section = workspace_map.prompt_section(workspace)
         if workspace_map_section:
             hints.append(workspace_map_section.replace("\n", " | "))
+        personal_os_section = personal_os.prompt_section(workspace)
+        if personal_os_section:
+            hints.append(personal_os_section.replace("\n", " | "))
         upgrade_section = upgrade_queue.prompt_section(workspace)
         if upgrade_section:
             hints.append(upgrade_section.replace("\n", " | "))

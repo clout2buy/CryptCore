@@ -71,6 +71,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "revenueOps" in web_snapshot
         assert "browserRecordings" in web_snapshot
         assert "desktopRecordings" in web_snapshot
+        assert "personalOS" in web_snapshot
         assert "toolCapabilityCards" in web_snapshot
         assert "smartModelRouter" in web_snapshot
         assert "providerHealth" in web_snapshot
@@ -253,6 +254,8 @@ def test_webui_static_is_chat_first():
     assert "Provider Health" in script
     assert "Usage Ledger" in script
     assert "Notification Center" in script
+    assert "Personal OS" in script
+    assert "Daily Command Surface" in script
     assert "Live Replay" in script
     assert "Self-Upgrade Sandbox" in script
     assert "Patch Risk" in script

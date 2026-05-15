@@ -353,6 +353,12 @@ prompt context.
 Unify chat, reminders, missions, files, browser, voice, and business work into
 a simplified daily command surface.
 
+Progress: added `core.personal_os`, which composes missions, memory, approvals,
+notifications, files, voice, jobs, and business signals into one command
+surface. The WebUI Home panel now uses this Personal OS layer for status cards,
+daily next actions, and operating lanes, while prompt context tells Crypt to
+route plain-language asks without requiring orchestration from the user.
+
 ## Phase 88 - Voice Conversation Mode
 
 Full duplex-feeling local voice loop with interruption, short responses, and
