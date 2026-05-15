@@ -302,13 +302,20 @@ Progress:
 - Forge results validate that the generated skill is discoverable and not
   blocked by the skill safety scan.
 
-## Phase 21 - Frontend Design Skill Integration
+## Phase 21 - Frontend Design Skill Integration [started]
 
 Codify the frontend design patterns used to build polished WebUI screens:
 layout, motion, visual QA, screenshots, responsive checks, and non-generic
 styling rules.
 
 Verification: skill instructions present and runnable via a sample UI task.
+
+Progress:
+
+- Expanded the project `frontend-design` skill with examples, smoke tests,
+  chat UI rules, and a reconstruction workflow.
+- Added a repo fixture test that renders `$frontend-design` instructions from a
+  sample UI task.
 
 ## Phase 22 - Browser Operator V1
 

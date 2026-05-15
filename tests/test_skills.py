@@ -109,6 +109,20 @@ def test_skill_loader_reads_examples_smoke_tests_and_metadata(workspace: Path):
     assert data["metadata"]["source"] == "project"
 
 
+def test_frontend_design_skill_is_runnable_from_repo():
+    repo = Path(__file__).resolve().parents[1]
+    skill = {item.name: item for item in skills.discover(repo)}["frontend-design"]
+
+    assert skill.enabled
+    assert "cluttered chat UI" in skill.examples[0]
+    assert any("node --check" in item for item in skill.smoke_tests)
+    rendered = skills.render_for_messages(
+        [{"role": "user", "content": "Use $frontend-design to clean the chat UI"}],
+        repo,
+    )
+    assert "Reconstruction Workflow" in rendered
+
+
 def test_structured_skill_path_must_stay_under_skill_roots(workspace: Path, tmp_path: Path):
     external = tmp_path / "SKILL.md"
     external.write_text("# External\n\nDo not inject me.\n", encoding="utf-8")
