@@ -60,6 +60,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "liveReplay" in web_snapshot
         assert "jobQueue" in web_snapshot
         assert "externalDrafts" in web_snapshot
+        assert "publicPosting" in web_snapshot
         assert "businessEntities" in web_snapshot
         assert "businessLaunch" in web_snapshot
         assert "contentOps" in web_snapshot
@@ -254,6 +255,7 @@ def test_webui_static_is_chat_first():
     assert "Autonomy Contracts" in script
     assert "Approval Policy" in script
     assert "External Draft Queue" in script
+    assert "Public Posting" in script
     assert "externalDraftCreated" in script
     assert "businessEntitiesUpdated" in script
     assert "Business registry" in script

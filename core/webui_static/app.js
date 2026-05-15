@@ -749,6 +749,8 @@ function jobsView(snapshot) {
   const desktopRecordings = snapshot.desktopRecordings?.recordings || [];
   const queue = snapshot.jobQueue || {};
   const queueJobs = queue.jobs || [];
+  const publicPosting = snapshot.publicPosting || {};
+  const publicPosts = publicPosting.posts || [];
   return `
     <section class="two-col">
       <div class="panel-card">
@@ -768,6 +770,10 @@ function jobsView(snapshot) {
       <div class="panel-card wide">
         <h3>External Draft Queue</h3>
         <div class="compact-list">${drafts.slice(0, 5).map((draft) => compactItem(draft.status || "draft", draft.title || draft.kind, draft.target || "approval required before external effect")).join("") || compactItem("clear", "No external drafts waiting", "Posts, emails, purchases, and account actions will queue here.")}</div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Public Posting</h3>
+        <div class="compact-list">${publicPosts.slice(0, 5).map((post) => compactItem(post.status || "draft", post.title || post.platform, `${(post.citations || []).length} citation(s), draft ${post.draft_id || "none"}`)).join("") || compactItem("safe", "No public posts drafted", "Public posts will require preview, citations when needed, and approval before publishing.")}</div>
       </div>
       <div class="panel-card wide">
         <h3>Browser Recordings</h3>

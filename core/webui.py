@@ -58,6 +58,7 @@ from . import (
     patch_risk,
     persona_governance,
     provider_health,
+    public_posting,
     project_index,
     research_sources,
     reflection,
@@ -664,6 +665,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["contentOps"] = content_ops.snapshot(self.server.cwd)
         snapshot["credentialVault"] = credential_vault.snapshot(self.server.cwd)
         snapshot["externalDrafts"] = external_drafts.snapshot(self.server.cwd)
+        snapshot["publicPosting"] = public_posting.snapshot(self.server.cwd)
         snapshot["knowledgeGraph"] = knowledge_graph.snapshot(self.server.cwd)
         snapshot["researchSources"] = research_sources.snapshot(self.server.cwd)
         snapshot["contextPackPreview"] = context_packs.preview(self.server.cwd)
@@ -1199,6 +1201,9 @@ def _prompt_with_context(
         external_section = external_drafts.prompt_section(workspace)
         if external_section:
             hints.append(external_section.replace("\n", " | "))
+        posting_section = public_posting.prompt_section(workspace)
+        if posting_section:
+            hints.append(posting_section.replace("\n", " | "))
         credential_section = credential_vault.prompt_section(workspace)
         if credential_section:
             hints.append(credential_section.replace("\n", " | "))

@@ -321,6 +321,11 @@ and prompt context can recall relevant research sources.
 Draft, preview, cite, approval-check, and log public posts without accidental
 posting.
 
+Progress: added `core.public_posting`, which creates approval-gated public post
+drafts, requires citations for factual/performance claims, links citations into
+the research source manager, stores approval/published state, and surfaces
+public post previews in the WebUI Jobs panel and runtime prompt context.
+
 ## Phase 85 - File Workspace Map
 
 Map important project folders, generated artifacts, ignored files, and safe edit
