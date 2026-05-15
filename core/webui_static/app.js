@@ -619,6 +619,8 @@ function filesView(snapshot) {
   const summary = snapshot.artifactSummary || {};
   const graph = snapshot.artifactGraph || {};
   const graphSummary = graph.summary || {};
+  const office = snapshot.officeLayer || {};
+  const officeArtifacts = office.artifacts || [];
   const pipelines = snapshot.websitePipelines?.pipelines || [];
   const latest = artifacts[0];
   return `
@@ -637,9 +639,13 @@ function filesView(snapshot) {
         ${statCard("Artifacts", summary.total || artifacts.length || 0)}
         ${statCard("Mission linked", summary.missionLinked || 0)}
         ${statCard("Verified", summary.verified || 0)}
+        ${statCard("Office", office.total || 0)}
         ${statCard("Site pipelines", snapshot.websitePipelines?.active || 0)}
         ${statCard("Graph", `${graphSummary.nodes || 0}/${graphSummary.edges || 0}`, "nodes / links")}
       </div>
+    </section>
+    <section class="data-list office-artifact-list">
+      ${officeArtifacts.map((item) => row(item.kind || "office", item.title || item.rel_path, `${item.status || "ready"} / ${oneLine(item.preview || item.purpose || "", 140)}`)).join("") || ""}
     </section>
     <section class="data-list artifact-graph-list">
       ${(graph.edges || []).slice(0, 8).map((edge) => row(edge.kind || "link", edge.label || edge.source, `${edge.source} -> ${edge.target}`)).join("") || emptyRow("Artifact graph has no links yet")}

@@ -235,6 +235,11 @@ and the WebUI surfaces document/token/source counts.
 
 Turn office-style output into durable artifacts with verification and previews.
 
+Progress: added `core.office_layer`, which creates/registers office artifacts,
+validates Markdown/text/CSV/PDF/DOCX/XLSX/PPTX files, records previews and
+checks, links them into Artifact Studio, and surfaces office output in WebUI
+Files plus runtime prompt context.
+
 ## Phase 76 - Business Launch Autopilot
 
 Create a full business launch mission with offer, site, content, channels,

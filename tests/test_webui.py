@@ -45,6 +45,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "artifactGroups" in web_snapshot
         assert "artifactSummary" in web_snapshot
         assert "artifactGraph" in web_snapshot
+        assert "officeLayer" in web_snapshot
         assert "schedulesPreview" in web_snapshot
         assert "missionScheduler" in web_snapshot
         assert "monitorsPreview" in web_snapshot
@@ -181,6 +182,7 @@ def test_webui_static_is_chat_first():
     assert "No schedules yet" in script
     assert "personaGovernance" in script
     assert "Artifact Studio" in script
+    assert "officeLayer" in script
     assert "artifactGroups" in script
     assert "artifactSummary" in script
     assert "artifactGraph" in script
