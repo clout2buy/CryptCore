@@ -600,6 +600,7 @@ function filesView(snapshot) {
   const artifacts = snapshot.artifactsPreview || [];
   const groups = snapshot.artifactGroups || [];
   const summary = snapshot.artifactSummary || {};
+  const pipelines = snapshot.websitePipelines?.pipelines || [];
   const latest = artifacts[0];
   return `
     <section class="two-col">
@@ -617,7 +618,11 @@ function filesView(snapshot) {
         ${statCard("Artifacts", summary.total || artifacts.length || 0)}
         ${statCard("Mission linked", summary.missionLinked || 0)}
         ${statCard("Verified", summary.verified || 0)}
+        ${statCard("Site pipelines", snapshot.websitePipelines?.active || 0)}
       </div>
+    </section>
+    <section class="data-list website-pipeline-list">
+      ${pipelines.map(websitePipelineRow).join("") || ""}
     </section>
     <section class="artifact-grid">
       ${groups.map(artifactGroupMarkup).join("") || emptyArtifactStudio()}
@@ -626,6 +631,12 @@ function filesView(snapshot) {
       ${files.map((file) => row(file.kind === "dir" ? "Folder" : "File", file.name, file.path)).join("") || emptyRow("No files listed")}
     </section>
   `;
+}
+
+function websitePipelineRow(pipeline) {
+  const next = (pipeline.stages || []).find((stage) => stage.status !== "done") || (pipeline.stages || [])[0] || {};
+  const detail = `${next.title || "Next stage"} / ${pipeline.aesthetic_direction || "design direction"} / ${(pipeline.artifacts || []).length} artifact(s)`;
+  return row(pipeline.status || "site", pipeline.title || "Website pipeline", detail);
 }
 
 function artifactGroupMarkup(group) {
@@ -1559,6 +1570,17 @@ function handleEvent(event) {
       break;
     case "businessEntitiesError":
       addActivity("Business registry", event.error || "Could not update business registry.");
+      break;
+    case "websitePipelineUpdated":
+      addActivity(
+        event.created ? "Website pipeline" : "Website pipeline matched",
+        oneLine(event.text || "Site/app pipeline updated.", 160),
+        "mission",
+      );
+      refresh({ renderView: state.currentView === "files" || state.currentView === "jobs" }).catch((error) => addActivity("Website pipeline", error.message));
+      break;
+    case "websitePipelineError":
+      addActivity("Website pipeline", event.error || "Could not update website pipeline.");
       break;
     case "externalDraftCreated":
       appendLiveEvent(id, {

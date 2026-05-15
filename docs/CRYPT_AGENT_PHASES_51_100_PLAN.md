@@ -44,6 +44,10 @@ context into prompts, and surfaces business entities in WebUI memory.
 Package frontend-design workflows into a repeatable site/app generator with
 brief, implementation, preview, QA, and iteration stages.
 
+Progress: added `core.website_pipeline`, creates/matches site/app workflows
+from natural prompts, tracks stages and artifacts, injects website pipeline
+context into prompts, and surfaces site pipelines in WebUI files.
+
 ## Phase 56 - Revenue Operations Dashboard
 
 Upgrade revenue tracking into goals, forecasts, expenses, channel performance,

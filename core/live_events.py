@@ -92,6 +92,11 @@ LIVE_EVENT_SPECS: dict[str, EventSpec] = {
     "entitiesError": EventSpec(required=frozenset({"error"}), terminal=True),
     "businessEntitiesUpdated": EventSpec(required=frozenset({"text"}), optional=frozenset({"count"})),
     "businessEntitiesError": EventSpec(required=frozenset({"error"}), terminal=True),
+    "websitePipelineUpdated": EventSpec(
+        required=frozenset({"text", "pipeline"}),
+        optional=frozenset({"id", "sessionKey", "created"}),
+    ),
+    "websitePipelineError": EventSpec(required=frozenset({"error"}), terminal=True),
     "externalDraftCreated": EventSpec(
         required=frozenset({"text", "draft"}),
         optional=frozenset({"id", "sessionKey"}),

@@ -56,6 +56,7 @@ from . import (
     upgrade_queue,
     webui_access,
     webui_backup,
+    website_pipeline,
     work_threads,
     live_events,
 )
@@ -302,6 +303,22 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                             "event": "businessEntitiesUpdated",
                             "text": f"{len(business_entity_result.records)} business entity signal(s) captured.",
                             "count": business_entity_result.count,
+                        }
+                    )
+            try:
+                pipeline_decision = website_pipeline.ensure_for_prompt(self.server.cwd, text)
+            except Exception as exc:
+                self.server.emit_event({"event": "websitePipelineError", "error": f"{type(exc).__name__}: {exc}"})
+            else:
+                if pipeline_decision.pipeline:
+                    self.server.emit_event(
+                        {
+                            "event": "websitePipelineUpdated",
+                            "id": request_id,
+                            "sessionKey": session_key,
+                            "text": pipeline_decision.pipeline.title,
+                            "created": pipeline_decision.created,
+                            "pipeline": pipeline_decision.pipeline.to_dict(),
                         }
                     )
             queued_draft = None
@@ -587,6 +604,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["artifactsPreview"] = studio["artifacts"]
         snapshot["artifactGroups"] = studio["groups"]
         snapshot["artifactSummary"] = studio["summary"]
+        snapshot["websitePipelines"] = website_pipeline.snapshot(self.server.cwd)
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         snapshot["capabilityMatrix"] = capability_matrix.build(self.server.cwd, snapshot).to_dict()
         return snapshot
@@ -1085,6 +1103,9 @@ def _prompt_with_context(
         builder_section = code_builder.prompt_section(workspace, text)
         if builder_section:
             hints.append(builder_section.replace("\n", " | "))
+        website_section = website_pipeline.prompt_section(workspace)
+        if website_section:
+            hints.append(website_section.replace("\n", " | "))
     if not hints:
         return text
     return f"{text}\n\n[Crypt runtime hints: {'; '.join(hints)}]"
