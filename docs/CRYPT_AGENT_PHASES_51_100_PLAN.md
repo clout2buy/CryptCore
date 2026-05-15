@@ -62,6 +62,10 @@ runtime prompt context.
 Record browser navigation, screenshots, console errors, and visual QA notes into
 mission artifacts.
 
+Progress: added `core.browser_recorder`, records browser smoke sessions,
+screenshots, console errors, QA notes, artifact links, WebUI snapshot/jobs, and
+runtime prompt context.
+
 ## Phase 58 - Desktop Operation Recorder
 
 Record desktop action intent, mouse/keyboard operations, screenshots, and safety

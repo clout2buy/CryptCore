@@ -3,7 +3,7 @@ from __future__ import annotations
 import threading
 from pathlib import Path
 
-from core import browser_operator, settings, webui
+from core import browser_operator, browser_recorder, settings, webui
 
 
 def test_browser_operator_plans_local_visual_qa():
@@ -47,3 +47,32 @@ def test_browser_operator_builds_approval_gated_form_job():
     assert gated
     assert browser_operator.step_allowed(gated[0], approved=False) is False
     assert browser_operator.step_allowed(gated[0], approved=True) is True
+
+
+def test_browser_recorder_tracks_smoke_screenshots_and_console(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    screenshot = workspace / "shots" / "home.png"
+    screenshot.parent.mkdir()
+    screenshot.write_bytes(b"fakepng")
+
+    result = browser_operator.BrowserSmokeResult(
+        url="http://127.0.0.1:8765/",
+        ok=True,
+        status=200,
+        title="Crypt",
+        bytes_read=1200,
+        checks=["http", "html", "title"],
+    )
+    recording = browser_recorder.record_smoke(workspace, result)
+    recording = browser_recorder.add_screenshot(workspace, recording.recording_id, screenshot)
+    recording = browser_recorder.add_console_error(workspace, recording.recording_id, "ReferenceError: demo")
+
+    assert recording.status == "failed"
+    assert recording.screenshots == ["shots/home.png"]
+    assert recording.console_errors == ["ReferenceError: demo"]
+    snap = browser_recorder.snapshot(workspace)
+    assert snap["total"] == 1
+    assert snap["failed"] == 1
+    assert "Browser Visual Recordings" in browser_recorder.prompt_section(workspace)

@@ -22,6 +22,7 @@ from . import (
     autonomy,
     autonomy_contracts,
     artifact_studio,
+    browser_recorder,
     business_entities,
     business_mission,
     capability_matrix,
@@ -607,6 +608,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["artifactGroups"] = studio["groups"]
         snapshot["artifactSummary"] = studio["summary"]
         snapshot["websitePipelines"] = website_pipeline.snapshot(self.server.cwd)
+        snapshot["browserRecordings"] = browser_recorder.snapshot(self.server.cwd)
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         snapshot["capabilityMatrix"] = capability_matrix.build(self.server.cwd, snapshot).to_dict()
         return snapshot
@@ -1096,6 +1098,9 @@ def _prompt_with_context(
         gateway_section = mcp_gateway.prompt_section(workspace)
         if gateway_section:
             hints.append(gateway_section.replace("\n", " | "))
+        browser_recording_section = browser_recorder.prompt_section(workspace)
+        if browser_recording_section:
+            hints.append(browser_recording_section.replace("\n", " | "))
         agent_section = agent_profiles.prompt_section(workspace)
         if agent_section:
             hints.append(agent_section.replace("\n", " | "))

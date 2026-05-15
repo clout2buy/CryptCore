@@ -713,6 +713,7 @@ function terminalView(snapshot) {
 function jobsView(snapshot) {
   const events = state.events.slice(-20).reverse();
   const drafts = snapshot.externalDrafts?.drafts || [];
+  const recordings = snapshot.browserRecordings?.recordings || [];
   return `
     <section class="two-col">
       <div class="panel-card">
@@ -728,6 +729,10 @@ function jobsView(snapshot) {
       <div class="panel-card wide">
         <h3>External Draft Queue</h3>
         <div class="compact-list">${drafts.slice(0, 5).map((draft) => compactItem(draft.status || "draft", draft.title || draft.kind, draft.target || "approval required before external effect")).join("") || compactItem("clear", "No external drafts waiting", "Posts, emails, purchases, and account actions will queue here.")}</div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Browser Recordings</h3>
+        <div class="compact-list">${recordings.slice(0, 5).map((recording) => compactItem(recording.status || "browser", recording.title || recording.url, `${(recording.screenshots || []).length} screenshot(s), ${(recording.console_errors || []).length} console error(s)`)).join("") || compactItem("idle", "No browser recordings yet", "Visual browser runs will log screenshots, console errors, and QA notes here.")}</div>
       </div>
     </section>
     <section class="data-list">${events.map((event) => row(event.event || "Event", textFrom(event), new Date((event.ts || 0) * 1000).toLocaleTimeString())).join("") || emptyRow("No runtime events yet")}</section>
