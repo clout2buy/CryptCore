@@ -89,6 +89,7 @@ LIVE_EVENT_SPECS: dict[str, EventSpec] = {
     ),
     "memoryJournalError": EventSpec(required=frozenset({"error"}), terminal=True),
     "missionCreated": EventSpec(required=frozenset({"text"}), optional=frozenset({"goal", "reason"})),
+    "missionMatched": EventSpec(required=frozenset({"text"}), optional=frozenset({"goal", "reason"})),
     "missionError": EventSpec(required=frozenset({"error"}), terminal=True),
     "workThreadUpdated": EventSpec(
         required=frozenset({"text"}),

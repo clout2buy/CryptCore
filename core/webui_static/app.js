@@ -1419,6 +1419,10 @@ function handleEvent(event) {
       addActivity("Mission created", oneLine(event.text || event.goal?.title || "Autonomous mission saved.", 160));
       refresh({ renderView: state.currentView === "missions" }).catch((error) => addActivity("Missions", error.message));
       break;
+    case "missionMatched":
+      addActivity("Mission matched", oneLine(event.text || event.goal?.title || "Using the existing autonomous mission.", 160));
+      refresh({ renderView: state.currentView === "missions" }).catch((error) => addActivity("Missions", error.message));
+      break;
     case "workThreadUpdated":
       addActivity("Work thread", oneLine(event.nextAction || event.text || "Thread updated.", 160));
       refresh({ renderView: state.currentView === "missions" || state.currentView === "jobs" }).catch((error) => addActivity("Threads", error.message));

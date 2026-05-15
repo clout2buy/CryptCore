@@ -93,6 +93,7 @@ def test_webui_static_is_chat_first():
     assert "workThreadUpdated" in script
     assert "memoryJournalUpdated" in script
     assert "missionCreated" in script
+    assert "missionMatched" in script
     assert "intentRouted" in script
     assert "kokoro ready" in script
     assert "af_heart" in script

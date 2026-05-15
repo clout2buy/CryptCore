@@ -20,6 +20,8 @@ def test_live_event_contract_contains_core_streaming_events():
         "toolResult",
         "approvalRequested",
         "approvalResolved",
+        "missionCreated",
+        "missionMatched",
         "taskFinished",
         "taskFailed",
     } <= names

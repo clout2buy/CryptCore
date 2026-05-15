@@ -134,12 +134,19 @@ Progress:
 - Bumped work-thread storage to schema v2 and added prompt context for active
   task and success metric so the agent has durable mission operating state.
 
-## Phase 9 - Auto Mission Creation
+## Phase 9 - Auto Mission Creation [started]
 
 Create missions automatically when the user asks for an outcome that requires
 multi-step follow-through.
 
 Verification: prompts that create, update, or decline mission creation.
+
+Progress:
+
+- Mission routing now accepts the structured intent route, so durable intents can
+  create or reuse missions even when the mission keyword heuristic is not enough.
+- The WebUI emits `missionMatched` for duplicate mission reuse, keeping the live
+  chat transparent without asking the user to manage the mission panel.
 
 ## Phase 10 - Mission Brain Loop
 

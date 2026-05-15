@@ -5,7 +5,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import goals, redact
+from . import goals, intent_router, redact
 
 
 ACTION_TERMS = {
@@ -135,10 +135,15 @@ class MissionDecision:
         )
 
 
-def observe(workspace: str | Path, text: str) -> MissionDecision:
+def observe(
+    workspace: str | Path,
+    text: str,
+    *,
+    route: intent_router.IntentRoute | None = None,
+) -> MissionDecision:
     """Create or reuse a mission when the chat asks for durable follow-through."""
     clean = _clean(text)
-    if not _should_create(clean):
+    if not (_should_create(clean) or _route_wants_mission(route)):
         return MissionDecision(False, reason="conversation does not need a durable mission")
 
     title = _title(clean)
@@ -147,7 +152,7 @@ def observe(workspace: str | Path, text: str) -> MissionDecision:
         return MissionDecision(False, existing, reason="matching mission already exists", duplicate=True)
 
     cadence = _cadence(clean)
-    tags = _tags(clean)
+    tags = _tags(clean, route)
     goal = goals.add_goal(
         title,
         description=clean,
@@ -175,6 +180,14 @@ def _should_create(text: str) -> bool:
     multi_step = len(words) >= 8 and bool(actions) and bool(outcomes)
     complex_request = len(words) >= 14 and bool(actions)
     return explicit or cadence or multi_step or complex_request
+
+
+def _route_wants_mission(route: intent_router.IntentRoute | None) -> bool:
+    if route is None:
+        return False
+    if route.intent in {"conversation", "empty"}:
+        return False
+    return route.durable and route.confidence >= 0.50
 
 
 def _title(text: str) -> str:
@@ -249,9 +262,11 @@ def _priority(text: str) -> int:
     return 3
 
 
-def _tags(text: str) -> list[str]:
+def _tags(text: str, route: intent_router.IntentRoute | None = None) -> list[str]:
     lower = text.lower()
     tags = ["auto", "mission", "chat"]
+    if route and route.intent not in {"", "conversation", "empty"}:
+        tags.append(route.intent)
     if "business" in lower or any(term in lower for term in {"income", "revenue", "sales", "profit"}):
         tags.append("business")
     if any(term in lower for term in {"monitor", "track", "watch", "keep an eye"}):

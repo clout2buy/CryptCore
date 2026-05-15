@@ -224,7 +224,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                         }
                     )
             try:
-                mission_result = mission_router.observe(self.server.cwd, text)
+                mission_result = mission_router.observe(self.server.cwd, text, route=intent_decision)
             except Exception as exc:
                 mission_result = mission_router.MissionDecision(False)
                 self.server.emit_event({"event": "missionError", "error": f"{type(exc).__name__}: {exc}"})
@@ -233,6 +233,15 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                     self.server.emit_event(
                         {
                             "event": "missionCreated",
+                            "goal": asdict(mission_result.goal),
+                            "text": mission_result.goal.title,
+                            "reason": mission_result.reason,
+                        }
+                    )
+                elif mission_result.duplicate and mission_result.goal:
+                    self.server.emit_event(
+                        {
+                            "event": "missionMatched",
                             "goal": asdict(mission_result.goal),
                             "text": mission_result.goal.title,
                             "reason": mission_result.reason,
