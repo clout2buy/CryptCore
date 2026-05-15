@@ -39,6 +39,9 @@ class BenchTask:
     files: dict[str, str]
     checks: list[str]
     description: str = ""
+    category: str = "general"
+    cadence: str = ""
+    tags: list[str] = field(default_factory=list)
     setup: list[str] = field(default_factory=list)
     max_turns: int = 20
     timeout_seconds: int = 120
@@ -75,6 +78,8 @@ class SuiteReport:
     passed: int
     pass_rate: float
     results: list[TaskResult]
+    cadence: str = ""
+    categories: dict[str, int] = field(default_factory=dict)
 
     @property
     def success(self) -> bool:
@@ -85,6 +90,11 @@ class SuiteReport:
 
 
 def load_suite(path: str | Path = DEFAULT_SUITE) -> tuple[str, list[BenchTask]]:
+    meta = load_suite_metadata(path)
+    return meta["name"], meta["tasks"]
+
+
+def load_suite_metadata(path: str | Path = DEFAULT_SUITE) -> dict[str, Any]:
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError("benchmark suite must be a JSON object")
@@ -92,7 +102,12 @@ def load_suite(path: str | Path = DEFAULT_SUITE) -> tuple[str, list[BenchTask]]:
     if not isinstance(tasks_raw, list):
         raise ValueError("benchmark suite needs a 'tasks' array")
     tasks = [_task_from_dict(item) for item in tasks_raw]
-    return str(data.get("name") or Path(path).stem), tasks
+    return {
+        "name": str(data.get("name") or Path(path).stem),
+        "description": str(data.get("description") or ""),
+        "cadence": str(data.get("cadence") or ""),
+        "tasks": tasks,
+    }
 
 
 def list_tasks(path: str | Path = DEFAULT_SUITE) -> str:
@@ -112,7 +127,10 @@ def run_suite(
     task_ids: list[str] | None = None,
     max_tasks: int | None = None,
 ) -> SuiteReport:
-    suite_name, tasks = load_suite(suite_path)
+    metadata = load_suite_metadata(suite_path)
+    suite_name = metadata["name"]
+    cadence = metadata["cadence"]
+    tasks = list(metadata["tasks"])
     wanted = set(task_ids or [])
     if wanted:
         tasks = [task for task in tasks if task.id in wanted]
@@ -142,8 +160,11 @@ def run_suite(
         passed=passed,
         pass_rate=passed / total if total else 0.0,
         results=results,
+        cadence=cadence,
+        categories=_category_counts(tasks),
     )
     (out_dir / "report.json").write_text(report.to_json(), encoding="utf-8")
+    (out_dir / "report.md").write_text(format_report(report) + "\n", encoding="utf-8")
     return report
 
 
@@ -226,6 +247,10 @@ def format_report(report: SuiteReport) -> str:
         f"passed: {report.passed}/{report.total} ({report.pass_rate:.0%})",
         f"output: {report.output_dir}",
     ]
+    if report.cadence:
+        lines.append(f"cadence: {report.cadence}")
+    if report.categories:
+        lines.append("categories: " + ", ".join(f"{name}={count}" for name, count in sorted(report.categories.items())))
     for result in report.results:
         mark = "PASS" if result.success else "FAIL"
         detail = ""
@@ -259,6 +284,9 @@ def _task_from_dict(data: Any) -> BenchTask:
     return BenchTask(
         id=str(data["id"]),
         description=str(data.get("description") or ""),
+        category=str(data.get("category") or "general"),
+        cadence=str(data.get("cadence") or ""),
+        tags=[str(tag) for tag in data.get("tags", [])],
         prompt=str(data["prompt"]),
         files={str(path): str(content) for path, content in files.items()},
         checks=[str(command) for command in checks],
@@ -270,6 +298,13 @@ def _task_from_dict(data: Any) -> BenchTask:
         required_changed_paths=[str(path) for path in data.get("required_changed_paths", [])],
         allowed_changed_paths=[str(path) for path in data.get("allowed_changed_paths", [])],
     )
+
+
+def _category_counts(tasks: list[BenchTask]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for task in tasks:
+        counts[task.category] = counts.get(task.category, 0) + 1
+    return counts
 
 
 def _write_files(root: Path, files: dict[str, str]) -> None:

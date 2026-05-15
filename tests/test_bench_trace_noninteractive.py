@@ -171,6 +171,7 @@ def test_bench_runner_scores_passing_task(tmp_path: Path):
     assert result.changed_files == ["calc.py"]
     assert Path(result.trace_path).exists()
     assert (Path(report.output_dir) / "report.json").exists()
+    assert (Path(report.output_dir) / "report.md").exists()
 
 
 def test_bench_runner_fails_for_forbidden_file_access(tmp_path: Path):
@@ -200,3 +201,21 @@ def test_bench_runner_fails_for_forbidden_file_access(tmp_path: Path):
 
     assert report.success is False
     assert report.results[0].forbidden_accessed == [".env"]
+
+
+def test_agent_core_benchmark_suite_covers_autonomy_categories():
+    suite_path = Path("benchmarks") / "agent_core.json"
+    metadata = bench.load_suite_metadata(suite_path)
+    categories = {task.category for task in metadata["tasks"]}
+
+    assert metadata["cadence"] == "nightly"
+    assert {
+        "chat",
+        "code",
+        "research",
+        "browser",
+        "memory",
+        "missions",
+        "tools",
+        "webui",
+    } <= categories

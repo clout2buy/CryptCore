@@ -758,6 +758,16 @@ memory, missions, tools, and WebUI stability.
 
 Verification: benchmark report saved as an artifact.
 
+Progress:
+
+- Added suite/task metadata for benchmark cadence, categories, and tags while
+  keeping the existing isolated runner compatible.
+- Benchmark runs now save both `report.json` and a human-readable `report.md`
+  artifact.
+- Added `benchmarks/agent_core.json`, a nightly suite covering chat, code,
+  research, browser QA, memory promotion, mission planning, tool boundaries,
+  and WebUI live-update stability.
+
 ## Phase 50 - Release Train
 
 Define a repeatable release process with changelog, tests, screenshots, upgrade
