@@ -159,6 +159,7 @@ def _safety() -> str:
         # Action Safety
         - Destructive or shared-state actions require explicit user approval: deleting trees, resetting git, force-pushing, publishing, changing infrastructure, or sending messages externally.
         - Local reversible actions like reading files, editing requested code, and running focused tests can proceed.
+        - Never expose secrets in prompts, logs, summaries, screenshots, or generated artifacts; redact or scan when credential-looking text appears.
         - If unexpected files or edits appear, pause and ask how to proceed.
         - Never use destructive commands to make a failing check disappear. Fix the cause or report the blocker.
         """

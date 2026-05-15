@@ -518,12 +518,20 @@ Progress:
   scopes so Crypt can explain access before using anything external.
 - WebUI snapshots now include integration cards for future settings surfaces.
 
-## Phase 35 - Credential And Secret Hygiene
+## Phase 35 - Credential And Secret Hygiene [started]
 
 Store credentials safely, redact secrets from logs, and prevent accidental
 prompt/context leaks.
 
 Verification: redaction tests and secret scan.
+
+Progress:
+
+- Added `core/secret_hygiene.py` with text and workspace scanners for common
+  API keys, tokens, secret assignments, private keys, and payment-card-shaped
+  values.
+- Scanner excerpts are redacted before reporting, and prompts now explicitly
+  require secret-safe summaries, logs, screenshots, and artifacts.
 
 ## Phase 36 - Contact And Account Memory
 
