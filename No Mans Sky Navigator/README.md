@@ -33,3 +33,4 @@ Notes:
 - First tracked Atlas Interface location: **Asbarhet**.
 - If Asbarhet says "out of jump range," follow the route one jump at a time or upgrade/fuel the hyperdrive.
 - Major side discovery: **Oishio-Bame** has a big black hole and 6 visible planets.
+- New prestige goal: get a **Living Ship** by starting **Starbirth** with a Void Egg from the Space Anomaly.
