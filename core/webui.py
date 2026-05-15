@@ -50,6 +50,8 @@ from . import (
     skills,
     soul,
     upgrade_queue,
+    webui_access,
+    webui_backup,
     work_threads,
     live_events,
 )
@@ -62,9 +64,17 @@ DEFAULT_AUTONOMY_INTERVAL_SECONDS = 10 * 60
 
 
 class CryptWebServer(ThreadingHTTPServer):
-    def __init__(self, server_address, *, cwd: str | Path, autonomy_interval: int = 0):
+    def __init__(
+        self,
+        server_address,
+        *,
+        cwd: str | Path,
+        autonomy_interval: int = 0,
+        access: webui_access.AccessConfig | None = None,
+    ):
         super().__init__(server_address, CryptWebHandler)
         self.cwd = Path(cwd).expanduser().resolve()
+        self.access = access or webui_access.build(str(server_address[0]))
         self.events: list[dict] = []
         self._event_seq = 0
         self.event_lock = threading.Lock()
@@ -121,6 +131,8 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         parsed = urlsplit(self.path)
         path = parsed.path
         query = parse_qs(parsed.query)
+        if not self._authorize("GET", parsed):
+            return
         if path == "/":
             self._send_static("index.html")
             return
@@ -166,6 +178,9 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         if path == "/api/voice":
             self._json({"voice": local_voice.status().to_dict()})
             return
+        if path == "/api/backup":
+            self._json({"backup": webui_backup.export_backup(self.server.cwd)})
+            return
         if path.startswith("/api/voice/audio/"):
             try:
                 audio_path = local_voice.audio_path(path.rsplit("/", 1)[-1])
@@ -183,7 +198,10 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         self._error(HTTPStatus.NOT_FOUND, "not found")
 
     def do_POST(self) -> None:  # noqa: N802 - stdlib handler API
-        path = urlsplit(self.path).path
+        parsed = urlsplit(self.path)
+        path = parsed.path
+        if not self._authorize("POST", parsed):
+            return
         body = self._read_json()
         if path == "/api/prompt":
             text = str(body.get("text") or "").strip()
@@ -402,6 +420,15 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                 return
             self._json({"speech": result.to_dict()})
             return
+        if path == "/api/backup/restore":
+            try:
+                result = webui_backup.restore_backup(self.server.cwd, body.get("backup") if "backup" in body else body)
+            except Exception as exc:
+                self._error(HTTPStatus.BAD_REQUEST, f"{type(exc).__name__}: {exc}")
+                return
+            self.server.emit_event({"event": "snapshot", "snapshot": self._snapshot()})
+            self._json({"restore": result})
+            return
         if path == "/api/command":
             command = str(body.get("command") or "").strip()
             request_id = str(body.get("id") or f"cmd-{uuid.uuid4().hex[:10]}")
@@ -507,6 +534,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
             "preferenceCount": soul_update.preference_count,
         }
         snapshot["voice"] = local_voice.status().to_dict()
+        snapshot["remoteAccess"] = self.server.access.to_dict()
         snapshot["sessionsPreview"] = [_session_preview(item) for item in sessions.list_sessions(self.server.cwd)[:12]]
         snapshot["agentProfiles"] = [profile.to_dict() for profile in agent_profiles.list_profiles(self.server.cwd)]
         snapshot["agentDelegation"] = agent_delegation.snapshot(self.server.cwd)
@@ -522,6 +550,15 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         return snapshot
 
+    def _authorize(self, method: str, parsed) -> bool:
+        self._access_cookie = ""
+        decision = webui_access.authorize(self.server.access, method=method, parsed=parsed, headers=self.headers)
+        if decision.ok:
+            self._access_cookie = decision.set_cookie
+            return True
+        self._error(decision.status, decision.reason)
+        return False
+
     def _send_static(self, name: str) -> None:
         try:
             data = resources.files("core.webui_static").joinpath(name).read_bytes()
@@ -532,6 +569,8 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", content_type)
         self.send_header("Cache-Control", "no-store")
+        if getattr(self, "_access_cookie", ""):
+            self.send_header("Set-Cookie", self._access_cookie)
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
@@ -552,6 +591,8 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
+        if getattr(self, "_access_cookie", ""):
+            self.send_header("Set-Cookie", self._access_cookie)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -560,8 +601,17 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         self._json({"error": message}, status=status)
 
 
-def make_server(host: str, port: int, *, cwd: str | Path, autonomy_interval: int = 0) -> CryptWebServer:
-    return CryptWebServer((host, port), cwd=cwd, autonomy_interval=autonomy_interval)
+def make_server(
+    host: str,
+    port: int,
+    *,
+    cwd: str | Path,
+    autonomy_interval: int = 0,
+    access_token: str = "",
+    access_scopes: str | list[str] | None = None,
+) -> CryptWebServer:
+    access = webui_access.build(host, token=access_token, scopes=access_scopes)
+    return CryptWebServer((host, port), cwd=cwd, autonomy_interval=autonomy_interval, access=access)
 
 
 def core_features(cwd: str | Path, snapshot: dict) -> list[dict]:
@@ -722,11 +772,29 @@ def core_features(cwd: str | Path, snapshot: dict) -> list[dict]:
     ]
 
 
-def run(*, host: str, port: int, cwd: str | Path, open_browser: bool = False) -> int:
-    server = make_server(host, port, cwd=cwd, autonomy_interval=_autonomy_interval())
+def run(
+    *,
+    host: str,
+    port: int,
+    cwd: str | Path,
+    open_browser: bool = False,
+    access_token: str = "",
+    access_scopes: str | list[str] | None = None,
+) -> int:
+    server = make_server(
+        host,
+        port,
+        cwd=cwd,
+        autonomy_interval=_autonomy_interval(),
+        access_token=access_token,
+        access_scopes=access_scopes,
+    )
     url = f"http://{server.server_address[0]}:{server.server_address[1]}"
     print(f"Crypt WebUI: {url}")
     print(f"Workspace: {Path(cwd).expanduser().resolve()}")
+    if server.access.enabled:
+        print(f"Remote access: token required; scopes={','.join(sorted(server.access.scopes))}")
+        print("Mobile browser tip: open the URL once with ?access_token=<token> to set the secure session cookie.")
     if open_browser:
         threading.Thread(target=lambda: _open_later(url), daemon=True).start()
     try:

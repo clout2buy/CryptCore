@@ -3,8 +3,11 @@ from __future__ import annotations
 import json
 from importlib import resources
 from pathlib import Path
+from urllib.parse import urlsplit
 
-from core import settings, webui, work_threads
+import pytest
+
+from core import goals, settings, webui, webui_access, webui_backup, work_threads
 
 
 def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
@@ -31,9 +34,57 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "schedulesPreview" in web_snapshot
         assert "monitorsPreview" in web_snapshot
         assert "memoryJournal" in web_snapshot
+        assert "remoteAccess" in web_snapshot
         json.dumps(web_snapshot)
     finally:
         server.server_close()
+
+
+def test_webui_remote_access_requires_token(tmp_path: Path):
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+
+    with pytest.raises(ValueError, match="requires"):
+        webui.make_server("0.0.0.0", 0, cwd=workspace)
+
+
+def test_webui_access_token_cookie_and_scope_gate():
+    access = webui_access.build("0.0.0.0", token="secret", scopes="read backup")
+
+    missing = webui_access.authorize(access, method="GET", parsed=urlsplit("/"), headers={})
+    assert missing.status.value == 401
+
+    cookie = webui_access.authorize(access, method="GET", parsed=urlsplit("/?access_token=secret"), headers={})
+    assert cookie.ok
+    assert "crypt_access=secret" in cookie.set_cookie
+
+    blocked = webui_access.authorize(
+        access,
+        method="POST",
+        parsed=urlsplit("/api/prompt"),
+        headers={"Authorization": "Bearer secret"},
+    )
+    assert blocked.status.value == 403
+
+
+def test_webui_backup_restore_round_trip(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    goal = goals.add_goal("Track launch revenue", workspace=workspace, success_metric="weekly income logged")
+    work_threads.ensure_for_goal(goal, prompt_text="track this every week")
+
+    backup = webui_backup.export_backup(workspace)
+    assert backup["summary"]["goals"] == 1
+    assert not any("auth" in item["rel_path"].lower() for item in backup["files"])
+
+    goals.goals_path().unlink()
+    work_threads.threads_path().unlink()
+    result = webui_backup.restore_backup(workspace, backup)
+
+    assert result["count"] >= 2
+    assert goals.list_goals(workspace, include_all=True)[0].title == "Track launch revenue"
+    assert work_threads.list_threads(workspace, include_all=True)
 
 
 def test_webui_int_helper():

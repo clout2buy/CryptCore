@@ -740,6 +740,17 @@ and backup/restore.
 
 Verification: local auth flow and backup restore test.
 
+Progress:
+
+- Added an optional WebUI access layer: localhost remains frictionless, but
+  `--remote` / non-local binds require `--access-token` or
+  `CRYPT_WEBUI_ACCESS_TOKEN`.
+- Added read/write/voice/backup scopes and token checks through bearer headers,
+  `X-Crypt-Access`, cookies, or one-time mobile `?access_token=` cookie setup.
+- Added non-secret WebUI backup/export and restore for goals, work threads,
+  memory, soul, local agents, and project-local skills while excluding auth
+  credentials.
+
 ## Phase 49 - Benchmark Suite
 
 Create recurring benchmark tasks for chat, code, research, browser operation,

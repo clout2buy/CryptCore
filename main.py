@@ -856,9 +856,20 @@ def _do_webui(saved: dict, args: argparse.Namespace) -> int:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--open", action="store_true", help="open the browser after starting")
+    parser.add_argument("--remote", action="store_true", help="bind to 0.0.0.0 for phone/LAN access; requires an access token")
+    parser.add_argument("--access-token", default=os.getenv("CRYPT_WEBUI_ACCESS_TOKEN", ""), help="required token for remote or locked WebUI access")
+    parser.add_argument("--access-scopes", default=os.getenv("CRYPT_WEBUI_ACCESS_SCOPES", ""), help="comma/space scopes: read, write, voice, backup")
     parsed = parser.parse_args(args.command_args or [])
     cwd = settings.resolve_workspace(args.cwd, saved)
-    return webui.run(host=parsed.host, port=parsed.port, cwd=cwd, open_browser=parsed.open)
+    host = "0.0.0.0" if parsed.remote else parsed.host
+    return webui.run(
+        host=host,
+        port=parsed.port,
+        cwd=cwd,
+        open_browser=parsed.open,
+        access_token=parsed.access_token,
+        access_scopes=parsed.access_scopes,
+    )
 
 
 def _do_bench(saved: dict, args: argparse.Namespace) -> int:
