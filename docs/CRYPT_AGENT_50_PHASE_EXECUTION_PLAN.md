@@ -390,4 +390,3 @@ Each unattended run should:
 6. Record the completed slice, evidence, and next blocker in this file or the
    existing roadmap.
 7. Avoid external state-changing actions without explicit approval.
-
