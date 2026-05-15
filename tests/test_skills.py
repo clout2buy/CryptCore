@@ -24,6 +24,7 @@ def test_discovers_project_skill(workspace: Path):
     by_name = {skill.name: skill for skill in found}
     assert "release" in by_name
     assert "Audit release blockers" in by_name["release"].description
+    assert by_name["release"].trust_level == "project"
 
 
 def test_render_for_latest_skill_mention(workspace: Path):
@@ -73,6 +74,7 @@ def test_suspicious_skill_is_blocked_from_discovery_and_injection(workspace: Pat
     assert "bad" not in {skill.name for skill in skills.discover(workspace)}
     blocked = {skill.name: skill for skill in skills.discover(workspace, include_disabled=True)}
     assert blocked["bad"].enabled is False
+    assert blocked["bad"].trust_level == "blocked"
 
     rendered = skills.render_for_messages(
         [{"role": "user", "content": "use $bad"}],
@@ -80,6 +82,31 @@ def test_suspicious_skill_is_blocked_from_discovery_and_injection(workspace: Pat
     )
 
     assert rendered == ""
+
+
+def test_skill_loader_reads_examples_smoke_tests_and_metadata(workspace: Path):
+    path = workspace / ".crypt" / "skills" / "frontend" / "SKILL.md"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        "---\n"
+        "name: frontend\n"
+        "description: Frontend polish workflow\n"
+        "examples: Rebuild chat UI|Polish settings panel\n"
+        "---\n"
+        "# Frontend\n\n"
+        "Build polished UI.\n\n"
+        "## Smoke Tests\n"
+        "- Run node --check core/webui_static/app.js\n"
+        "- Open the WebUI locally\n",
+        encoding="utf-8",
+    )
+
+    skill = {item.name: item for item in skills.discover(workspace)}["frontend"]
+    data = skill.as_dict()
+
+    assert skill.examples == ("Rebuild chat UI", "Polish settings panel")
+    assert "node --check" in skill.smoke_tests[0]
+    assert data["metadata"]["source"] == "project"
 
 
 def test_structured_skill_path_must_stay_under_skill_roots(workspace: Path, tmp_path: Path):

@@ -36,6 +36,10 @@ class Skill:
     title: str = ""
     enabled: bool = True
     blocked_reason: str = ""
+    trust_level: str = "unknown"
+    examples: tuple[str, ...] = ()
+    smoke_tests: tuple[str, ...] = ()
+    metadata: dict[str, Any] | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -45,6 +49,10 @@ class Skill:
             "title": self.title,
             "enabled": self.enabled,
             "blocked_reason": self.blocked_reason,
+            "trust_level": self.trust_level,
+            "examples": list(self.examples),
+            "smoke_tests": list(self.smoke_tests),
+            "metadata": dict(self.metadata or {}),
         }
 
 
@@ -62,7 +70,7 @@ def discover(cwd: str | Path, *, include_disabled: bool = False) -> list[Skill]:
         if not root.exists() or not root.is_dir():
             continue
         for path in sorted(root.glob(f"*/{SKILL_FILE}")):
-            skill = _parse_skill(path)
+            skill = _with_runtime_metadata(_parse_skill(path), root=root, cwd=cwd)
             key = skill.name.lower()
             if key in seen:
                 continue
@@ -156,6 +164,8 @@ def _parse_skill(path: Path) -> Skill:
     name = path.parent.name
     title = ""
     description = ""
+    examples: tuple[str, ...] = ()
+    smoke_tests: tuple[str, ...] = ()
     text = _read_skill(path)
     blocked_reason = _blocked_reason(text)
     frontmatter, body = _split_frontmatter(text)
@@ -167,10 +177,18 @@ def _parse_skill(path: Path) -> Skill:
                 description = value
             elif key in {"title", "display_name"}:
                 title = value
+            elif key in {"example", "examples"}:
+                examples = tuple(_split_list(value))
+            elif key in {"smoke_test", "smoke_tests"}:
+                smoke_tests = tuple(_split_list(value))
     if not title:
         title = _first_heading(body)
     if not description:
         description = _first_paragraph(body)
+    if not examples:
+        examples = tuple(_section_bullets(body, "examples"))
+    if not smoke_tests:
+        smoke_tests = tuple(_section_bullets(body, "smoke tests"))
     return Skill(
         name=_safe_name(name),
         path=path.resolve(),
@@ -178,6 +196,41 @@ def _parse_skill(path: Path) -> Skill:
         title=title[:160],
         enabled=not blocked_reason,
         blocked_reason=blocked_reason,
+        examples=examples[:6],
+        smoke_tests=smoke_tests[:6],
+    )
+
+
+def _with_runtime_metadata(skill: Skill, *, root: Path, cwd: str | Path) -> Skill:
+    workspace = Path(cwd).expanduser().resolve()
+    resolved_root = root.resolve()
+    trust = "unknown"
+    try:
+        resolved_root.relative_to(workspace)
+        trust = "project"
+    except ValueError:
+        try:
+            resolved_root.relative_to(settings.APP_DIR.resolve())
+            trust = "app"
+        except ValueError:
+            try:
+                resolved_root.relative_to(Path.home().resolve())
+                trust = "user"
+            except ValueError:
+                trust = "unknown"
+    if not skill.enabled:
+        trust = "blocked"
+    return Skill(
+        name=skill.name,
+        path=skill.path,
+        description=skill.description,
+        title=skill.title,
+        enabled=skill.enabled,
+        blocked_reason=skill.blocked_reason,
+        trust_level=trust,
+        examples=skill.examples,
+        smoke_tests=skill.smoke_tests,
+        metadata={"root": str(resolved_root), "source": trust},
     )
 
 
@@ -238,6 +291,32 @@ def _first_paragraph(text: str) -> str:
         if len(" ".join(paragraph)) > 500:
             break
     return " ".join(paragraph)
+
+
+def _section_bullets(text: str, heading: str) -> list[str]:
+    heading_key = heading.strip().lower()
+    lines = text.replace("\r\n", "\n").split("\n")
+    in_section = False
+    out: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            current = stripped.lstrip("#").strip().lower()
+            if in_section and current != heading_key:
+                break
+            in_section = current == heading_key
+            continue
+        if not in_section:
+            continue
+        if stripped.startswith(("-", "*")):
+            item = stripped[1:].strip()
+            if item:
+                out.append(item[:240])
+    return out
+
+
+def _split_list(value: str) -> list[str]:
+    return [item.strip()[:240] for item in re.split(r"\s*[|,]\s*", value) if item.strip()]
 
 
 def _safe_name(name: str) -> str:

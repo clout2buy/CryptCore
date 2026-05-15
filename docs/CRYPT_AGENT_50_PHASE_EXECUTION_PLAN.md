@@ -275,12 +275,19 @@ Progress:
   data with saw/decided/did/changed/verified/needs phases.
 - Added audit retrieval and summary helpers for task-scoped review.
 
-## Phase 19 - Skill Loader
+## Phase 19 - Skill Loader [started]
 
 Support installing local skills, repo skills, and generated project skills with
 metadata, trust review, examples, and smoke tests.
 
 Verification: load a fixture skill and route a task to it.
+
+Progress:
+
+- Skill discovery now returns trust level, examples, smoke tests, and source
+  metadata for project, app, user, unknown, and blocked skills.
+- The loader parses examples/smoke tests from frontmatter or Markdown sections
+  while preserving existing prompt-injection blocking.
 
 ## Phase 20 - Skill Forge
 
