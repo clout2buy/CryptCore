@@ -177,12 +177,19 @@ Progress:
   quirks, recurring instructions, business context, agent signals, and UI
   preferences without requiring a manual "remember this" prompt.
 
-## Phase 12 - Memory Types And Confidence
+## Phase 12 - Memory Types And Confidence [started]
 
 Store memory by type with confidence, source, timestamps, decay, correction
 history, and privacy sensitivity.
 
 Verification: schema tests and retrieval filtering tests.
+
+Progress:
+
+- Bumped the Markdown memory journal to schema v2 with `memory_type`,
+  confidence, sensitivity, decay, timestamps, and correction history fields.
+- Added typed memory filtering so runtime code can retrieve memories by type,
+  minimum confidence, and privacy sensitivity.
 
 ## Phase 13 - Memory Condenser
 

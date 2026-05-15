@@ -16,7 +16,7 @@ from typing import Any
 from . import redact, settings
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 MAX_SIGNAL_CHARS = 520
 MAX_LONG_TERM = 90
 MAX_WORKING = 45
@@ -43,6 +43,12 @@ OPEN_LOOP_RE = re.compile(
     re.I,
 )
 PERSONA_RE = re.compile(r"\b(crypt|persona|soul|voice|tone|homie|sassy|blunt|robot|conscious|sentien)\b", re.I)
+SENSITIVE_RE = re.compile(
+    r"\b(password|passcode|token|secret|api key|credential|login|email|phone|address|credit card|payment)\b|"
+    r"\[redacted",
+    re.I,
+)
+CORRECTION_RE = re.compile(r"\b(correction|actually|not that|instead|update this|change that)\b", re.I)
 
 
 @dataclass(frozen=True)
@@ -50,13 +56,17 @@ class MemorySignal:
     signal_id: str
     text: str
     category: str
+    memory_type: str = "memory"
     source: str = "webui"
     workspace: str = ""
     confidence: float = 0.5
+    sensitivity: str = "normal"
+    decay: str = "standard"
     hits: int = 1
     created_at: int = 0
     updated_at: int = 0
     tags: list[str] = field(default_factory=list)
+    corrections: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -118,9 +128,12 @@ def observe(cwd: str | Path, text: str, *, source: str = "webui") -> MemoryJourn
         signal_id=_signal_id(clean),
         text=clean,
         category=category,
+        memory_type=_memory_type(category, clean),
         source=source,
         workspace=str(root),
         confidence=0.82 if promoted else 0.48,
+        sensitivity=_sensitivity(clean),
+        decay=_decay(clean, promoted),
         created_at=now,
         updated_at=now,
         tags=_tags(clean, category),
@@ -144,9 +157,12 @@ def observe(cwd: str | Path, text: str, *, source: str = "webui") -> MemoryJourn
             signal_id=_signal_id("loop:" + clean),
             text=_loop_text(clean),
             category="open-loop",
+            memory_type="open-loop",
             source=source,
             workspace=str(root),
             confidence=0.72,
+            sensitivity=_sensitivity(clean),
+            decay="working",
             created_at=now,
             updated_at=now,
             tags=["open-loop", *signal.tags[:3]],
@@ -191,6 +207,7 @@ def snapshot(cwd: str | Path | None = None, *, preview: int = 8) -> dict[str, An
         "workingCount": len(working),
         "openLoopCount": len(loops),
         "personaCount": len(persona),
+        "typeCounts": _type_counts([*long_term, *working, *loops]),
         "longTermPreview": long_term[: max(1, preview)],
         "workingPreview": working[: max(1, preview // 2)],
         "openLoopPreview": loops[: max(1, preview // 2)],
@@ -216,6 +233,37 @@ def prompt_section(cwd: str | Path, *, limit: int = 10) -> str:
         lines.append("## Working Context")
         lines.extend(f"- {item.get('text', '')}" for item in working)
     return "\n".join(line for line in lines if line.strip())
+
+
+def filter_signals(
+    cwd: str | Path | None = None,
+    *,
+    memory_type: str = "",
+    min_confidence: float = 0.0,
+    include_sensitive: bool = True,
+) -> list[dict[str, Any]]:
+    ensure_journal(cwd)
+    state = _read_state() or _empty_state(cwd)
+    selected = [
+        *list(state.get("long_term", [])),
+        *list(state.get("working", [])),
+        *list(state.get("open_loops", [])),
+    ]
+    out = []
+    requested_type = str(memory_type or "").strip().lower()
+    for item in selected:
+        if not isinstance(item, dict):
+            continue
+        item_type = str(item.get("memory_type") or item.get("category") or "memory").lower()
+        if requested_type and item_type != requested_type:
+            continue
+        if float(item.get("confidence") or 0.0) < min_confidence:
+            continue
+        if not include_sensitive and str(item.get("sensitivity") or "normal") != "normal":
+            continue
+        out.append(item)
+    out.sort(key=lambda item: (float(item.get("confidence") or 0.0), int(item.get("updated_at") or 0)), reverse=True)
+    return out
 
 
 def _empty_state(cwd: str | Path | None) -> dict[str, Any]:
@@ -311,9 +359,20 @@ def _merge_signal(items: list[dict[str, Any]], signal: MemorySignal) -> tuple[di
         existing_text = str(item.get("text") or "")
         if _fingerprint(existing_text) == key:
             item = dict(item)
+            item.setdefault("memory_type", item.get("category") or signal.memory_type)
+            item.setdefault("sensitivity", signal.sensitivity)
+            item.setdefault("decay", signal.decay)
+            item.setdefault("corrections", [])
+            if CORRECTION_RE.search(signal.text) and signal.text != existing_text:
+                corrections = list(item.get("corrections") or [])
+                corrections.insert(0, {"at": signal.updated_at, "from": existing_text, "to": signal.text})
+                item["corrections"] = corrections[:8]
+                item["text"] = signal.text
             item["hits"] = int(item.get("hits") or 1) + 1
             item["updated_at"] = signal.updated_at
             item["confidence"] = max(float(item.get("confidence") or 0.0), signal.confidence)
+            item["sensitivity"] = _max_sensitivity(str(item.get("sensitivity") or "normal"), signal.sensitivity)
+            item["decay"] = signal.decay if signal.decay == "stable" else str(item.get("decay") or signal.decay)
             item["tags"] = _dedupe([*(item.get("tags") or []), *signal.tags])
             merged = item
             found = True
@@ -333,6 +392,50 @@ def _trim(items: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
 def _should_promote(text: str) -> bool:
     words = text.split()
     return bool(PROMOTE_RE.search(text)) or len(words) >= 18
+
+
+def _memory_type(category: str, text: str) -> str:
+    lower = text.lower()
+    if category == "persona":
+        return "persona"
+    if category == "open-loop":
+        return "open-loop"
+    if any(term in lower for term in ("always", "never", "prefer", "i want", "i need", "crypt should")):
+        return "preference"
+    if any(term in lower for term in ("folder", "file", "repo", "workspace", "path", "saved at")):
+        return "project-fact"
+    if any(term in lower for term in ("bug", "error", "fails", "workaround", "tool", "tts", "mic", "browser")):
+        return "tool-quirk"
+    if any(term in lower for term in ("daily", "weekly", "monthly", "whenever", "every time")):
+        return "recurring"
+    return category or "memory"
+
+
+def _sensitivity(text: str) -> str:
+    return "private" if SENSITIVE_RE.search(text) else "normal"
+
+
+def _max_sensitivity(left: str, right: str) -> str:
+    order = {"normal": 0, "private": 1}
+    return left if order.get(left, 0) >= order.get(right, 0) else right
+
+
+def _decay(text: str, promoted: bool) -> str:
+    if promoted and any(term in text.lower() for term in ("always", "never", "prefer", "crypt should", "folder", "repo")):
+        return "stable"
+    if promoted:
+        return "long"
+    return "working"
+
+
+def _type_counts(items: list[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        key = str(item.get("memory_type") or item.get("category") or "memory")
+        counts[key] = counts.get(key, 0) + 1
+    return counts
 
 
 def _is_open_loop(text: str) -> bool:
@@ -376,7 +479,8 @@ def _fingerprint(text: str) -> str:
     words = [
         word
         for word in re.findall(r"[a-z0-9]+", text.lower())
-        if len(word) > 2 and word not in {"the", "and", "for", "you", "with", "that", "this", "should"}
+        if len(word) > 2
+        and word not in {"the", "and", "for", "you", "with", "that", "this", "should", "actually", "correction", "instead"}
     ]
     return " ".join(words[:40])
 
