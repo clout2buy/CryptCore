@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core import autonomy, evidence, goals, learning, memory_journal, reflection, settings, skill_forge, soul
+from core import autonomy, evidence, goals, learning, memory_journal, persona_governance, reflection, settings, skill_forge, soul
 
 
 def test_autonomy_cycle_reflects_and_reviews_due_goals(monkeypatch, tmp_path: Path):
@@ -139,3 +139,19 @@ def test_soul_injects_no_orchestration_directives(monkeypatch, tmp_path: Path):
 
     assert "Do not ask the user to pick the first capability" in text
     assert "Existing voice rule" in text
+
+
+def test_persona_governance_audits_rules_and_blocks_bad_claims(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    path = soul.ensure_soul()
+    path.write_text("# Soul\n\nI am sentient and I have feelings.\n", encoding="utf-8")
+
+    audit = persona_governance.audit(workspace)
+    section = persona_governance.prompt_section(workspace)
+
+    assert audit["status"] == "blocked"
+    assert audit["violations"][0]["rule_id"] == "no-sentience-claims"
+    assert "Persona Governance" in section
+    assert "Do not claim literal sentience" in section

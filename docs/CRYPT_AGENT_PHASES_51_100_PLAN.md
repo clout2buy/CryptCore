@@ -117,6 +117,10 @@ and report merged/discarded/promoted counts.
 Let Crypt evolve voice/persona while keeping safety constraints and user
 preferences visible and testable.
 
+Progress: added `core.persona_governance`, audits soul/persona rules, detects
+forbidden sentience/external-action claims, exposes governance in WebUI persona
+state, and injects persona rules into prompt context.
+
 ## Phase 64 - Autonomous Skill Creation From Outcomes
 
 Create/update SKILL.md files from repeated successful task episodes, not just

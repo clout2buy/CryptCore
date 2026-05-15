@@ -934,6 +934,8 @@ function skillsView(snapshot) {
 }
 
 function personaView(snapshot) {
+  const governance = snapshot.personaGovernance || {};
+  const rules = governance.rules || [];
   return `
     <section class="two-col">
       <div class="panel-card wide">
@@ -946,7 +948,11 @@ function personaView(snapshot) {
         <p>${escapeHtml(snapshot.soul?.path || "No soul file yet")}</p>
         ${statCard("Status", snapshot.soul?.active ? "active" : "new")}
         ${statCard("Preferences", snapshot.soul?.preferenceCount || 0)}
+        ${statCard("Governance", governance.status || "clear")}
       </div>
+    </section>
+    <section class="data-list">
+      ${rules.map((rule) => row(rule.severity || "rule", rule.label, rule.requirement)).join("")}
     </section>
   `;
 }

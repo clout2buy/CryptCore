@@ -48,6 +48,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "memoryJournal" in web_snapshot
         assert "remoteAccess" in web_snapshot
         assert "capabilityMatrix" in web_snapshot
+        assert "personaGovernance" in web_snapshot
         assert "autonomyContracts" in web_snapshot
         assert "externalDrafts" in web_snapshot
         assert "businessEntities" in web_snapshot
@@ -166,6 +167,7 @@ def test_webui_static_is_chat_first():
     assert "currentView: \"chat\"" in script
     assert "Self-Updating Memory" in script
     assert "Mission brain" in script
+    assert "personaGovernance" in script
     assert "Artifact Studio" in script
     assert "artifactGroups" in script
     assert "artifactSummary" in script

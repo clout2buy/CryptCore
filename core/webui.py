@@ -46,6 +46,7 @@ from . import (
     monitors,
     multi_agent_threads,
     passive_memory,
+    persona_governance,
     project_index,
     reflection,
     revenue,
@@ -596,6 +597,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
             "path": str(soul_path),
             "preferenceCount": soul_update.preference_count,
         }
+        snapshot["personaGovernance"] = persona_governance.audit(self.server.cwd)
         snapshot["voice"] = local_voice.status().to_dict()
         snapshot["remoteAccess"] = self.server.access.to_dict()
         snapshot["sessionsPreview"] = [_session_preview(item) for item in sessions.list_sessions(self.server.cwd)[:12]]
@@ -1116,6 +1118,9 @@ def _prompt_with_context(
         skill_lifecycle_section = skill_lifecycle.prompt_section(workspace)
         if skill_lifecycle_section:
             hints.append(skill_lifecycle_section.replace("\n", " | "))
+        persona_governance_section = persona_governance.prompt_section(workspace)
+        if persona_governance_section:
+            hints.append(persona_governance_section.replace("\n", " | "))
         delegation_section = agent_delegation.prompt_section(workspace, text)
         if delegation_section:
             hints.append(delegation_section.replace("\n", " | "))
