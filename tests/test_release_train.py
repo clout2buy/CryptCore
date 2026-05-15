@@ -25,6 +25,10 @@ def test_release_train_writes_markdown_and_json(monkeypatch, tmp_path: Path):
     assert "## Verification" in text
     assert "## Rollback" in text
     assert "## GitHub Flow" in text
+    assert "## Screenshots" in text
+    assert "PLANNED desktop" in text
+    assert "PLANNED mobile" in text
+    assert (Path(report.output_dir) / "screenshot-plan.json").exists()
 
 
 def test_release_train_blocks_failed_check(monkeypatch, tmp_path: Path):

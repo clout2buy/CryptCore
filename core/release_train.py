@@ -8,7 +8,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from . import settings
+from . import release_screenshots, settings
 
 
 DEFAULT_CHECKS = [
@@ -60,6 +60,7 @@ def generate(
     checks: list[str] | None = None,
     output_root: str | Path | None = None,
     run_checks: bool = True,
+    ui_url: str = release_screenshots.DEFAULT_URL,
 ) -> ReleaseReport:
     root = Path(cwd).expanduser().resolve()
     release_id = time.strftime("%Y%m%d-%H%M%S")
@@ -71,6 +72,8 @@ def generate(
         ReleaseCheck(command=command, ok=False, returncode=125, duration_ms=0, stderr="not run")
         for command in check_commands
     ]
+    release_screenshots.plan(root, release_id=release_id, output_dir=out_dir, url=ui_url)
+    screenshots = release_screenshots.checklist_items(root, output_dir=out_dir)
     report = ReleaseReport(
         release_id=release_id,
         version=_project_version(root),
@@ -82,10 +85,10 @@ def generate(
         checks=results,
         changelog=_changelog(root),
         upgrade_notes=_upgrade_notes(root),
-        known_risks=_known_risks(root, results),
+        known_risks=_known_risks(root, results, screenshot_output=out_dir),
         rollback=_rollback(root),
         github_flow=_github_flow(),
-        screenshots=_screenshots(root),
+        screenshots=screenshots or _screenshots(root),
     )
     (out_dir / "release-checklist.json").write_text(report.to_json(), encoding="utf-8")
     (out_dir / "release-checklist.md").write_text(format_report(report) + "\n", encoding="utf-8")
@@ -162,7 +165,7 @@ def _upgrade_notes(cwd: Path) -> list[str]:
     return notes
 
 
-def _known_risks(cwd: Path, checks: list[ReleaseCheck]) -> list[str]:
+def _known_risks(cwd: Path, checks: list[ReleaseCheck], *, screenshot_output: Path | None = None) -> list[str]:
     risks = []
     failed = [check.command for check in checks if not check.ok]
     if failed:
@@ -170,8 +173,9 @@ def _known_risks(cwd: Path, checks: list[ReleaseCheck]) -> list[str]:
     dirty = _git(["status", "--short"], cwd)
     if dirty:
         risks.append("Working tree has uncommitted changes; release only after staging intentional files.")
-    if not _screenshots(cwd):
-        risks.append("No screenshot artifact detected; capture one for UI-heavy releases.")
+    captured = release_screenshots.captured_count(cwd, output_dir=screenshot_output) if screenshot_output else 0
+    if captured == 0 and not _screenshots(cwd):
+        risks.append("Screenshot capture planned but no image artifact is attached yet.")
     return risks or ["No blocking risk detected by the release generator."]
 
 

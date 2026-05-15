@@ -66,6 +66,7 @@ def main() -> int:
     p.add_argument("--release-output", help="directory for release checklist artifacts")
     p.add_argument("--release-check", action="append", help="release verification command; repeatable")
     p.add_argument("--release-no-run", action="store_true", help="generate release checklist without running checks")
+    p.add_argument("--release-ui-url", help="UI URL to include in desktop/mobile release screenshot targets")
     p.add_argument(
         "command",
         nargs="?",
@@ -933,7 +934,7 @@ def _do_eval_target(saved: dict, args: argparse.Namespace) -> int:
 
 
 def _do_release(saved: dict, args: argparse.Namespace) -> int:
-    from core import release_train
+    from core import release_screenshots, release_train
 
     cwd = settings.resolve_workspace(args.cwd, saved)
     try:
@@ -942,6 +943,7 @@ def _do_release(saved: dict, args: argparse.Namespace) -> int:
             checks=args.release_check,
             output_root=args.release_output,
             run_checks=not args.release_no_run,
+            ui_url=args.release_ui_url or release_screenshots.DEFAULT_URL,
         )
     except Exception as e:
         ui.error(f"release failed: {type(e).__name__}: {e}")

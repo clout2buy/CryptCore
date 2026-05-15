@@ -216,6 +216,11 @@ injects the current patch risk into WebUI settings and runtime prompt context.
 Capture desktop/mobile screenshots for UI-heavy releases and attach them to the
 release checklist.
 
+Progress: added `core.release_screenshots`, which creates desktop/mobile
+screenshot manifests, registers captured images as verified artifacts, writes a
+Markdown capture plan beside each release checklist, and feeds those targets
+into `core.release_train` plus `python main.py release --release-ui-url`.
+
 ## Phase 74 - Local Search Index
 
 Index project docs, memories, missions, artifacts, and skills for fast context
