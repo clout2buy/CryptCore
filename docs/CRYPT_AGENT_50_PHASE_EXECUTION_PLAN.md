@@ -502,12 +502,21 @@ Progress:
 - WebUI snapshots and prompt context now include revenue metrics when a
   workspace has business data.
 
-## Phase 34 - External Integration Manager
+## Phase 34 - External Integration Manager [started]
 
 Create one settings surface for GitHub, email, calendar, storage, Slack/Discord,
 Reddit, Stripe, analytics, and databases.
 
 Verification: disabled-by-default connectors and scope display tests.
+
+Progress:
+
+- Added `core/integrations.py` with a disabled-by-default catalog for GitHub,
+  email, calendar, storage, Slack, Discord, Reddit, Stripe, analytics, and
+  databases.
+- Each integration exposes category, status, approval requirement, and readable
+  scopes so Crypt can explain access before using anything external.
+- WebUI snapshots now include integration cards for future settings surfaces.
 
 ## Phase 35 - Credential And Secret Hygiene
 

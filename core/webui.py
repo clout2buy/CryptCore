@@ -24,6 +24,7 @@ from . import (
     clarification_policy,
     code_builder,
     goals,
+    integrations,
     intent_router,
     learning,
     local_voice,
@@ -434,6 +435,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["schedulesPreview"] = [asdict(item) for item in scheduler.list_jobs(self.server.cwd, include_all=True)[:20]]
         snapshot["monitorsPreview"] = [asdict(item) for item in monitors.list_monitors(self.server.cwd, include_all=True)[:20]]
         snapshot["revenue"] = revenue.dashboard_snapshot(self.server.cwd)
+        snapshot["integrationsPreview"] = integrations.snapshot()
         soul_path = soul.ensure_soul()
         soul_update = soul.evolve(self.server.cwd)
         snapshot["soul"] = {
