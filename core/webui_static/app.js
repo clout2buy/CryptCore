@@ -1501,6 +1501,17 @@ function handleEvent(event) {
     case "outcomeLearnError":
       addActivity("Outcome learning", event.error || "Could not record outcome lesson.");
       break;
+    case "agentDelegation":
+      addActivity(
+        "Agent routing",
+        `${event.action || "local"}${event.agentName ? ` / ${event.agentName}` : ""}: ${oneLine(event.text || "", 120)}`,
+        "mission",
+      );
+      refresh({ renderView: state.currentView === "agents" }).catch((error) => addActivity("Agents", error.message));
+      break;
+    case "agentDelegationError":
+      addActivity("Agent routing", event.error || "Could not update delegation state.");
+      break;
     case "missionCreated":
       addActivity("Mission created", oneLine(event.text || event.goal?.title || "Autonomous mission saved.", 160), "mission");
       refresh({ renderView: state.currentView === "missions" }).catch((error) => addActivity("Missions", error.message));

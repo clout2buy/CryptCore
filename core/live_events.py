@@ -95,6 +95,11 @@ LIVE_EVENT_SPECS: dict[str, EventSpec] = {
         optional=frozenset({"id", "routeRole", "sessionKey", "episodeId", "lessons"}),
     ),
     "outcomeLearnError": EventSpec(required=frozenset({"error"}), terminal=True),
+    "agentDelegation": EventSpec(
+        required=frozenset({"text", "action"}),
+        optional=frozenset({"agentId", "agentName", "confidence"}),
+    ),
+    "agentDelegationError": EventSpec(required=frozenset({"error"}), terminal=True),
     "missionCreated": EventSpec(required=frozenset({"text"}), optional=frozenset({"goal", "reason"})),
     "missionMatched": EventSpec(required=frozenset({"text"}), optional=frozenset({"goal", "reason"})),
     "missionError": EventSpec(required=frozenset({"error"}), terminal=True),

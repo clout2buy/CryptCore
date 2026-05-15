@@ -664,12 +664,23 @@ Progress:
 - WebUI agent creation accepts the new v2 fields while preserving existing
   simple agent forms and route updates.
 
-## Phase 44 - Agent Delegation Brain
+## Phase 44 - Agent Delegation Brain [started]
 
 Let main Crypt decide when to use a specialist agent, create one, update one, or
 keep the task local.
 
 Verification: delegation fixtures with correct agent choices.
+
+Progress:
+
+- Added a delegation brain that scores saved specialists against the current
+  intent and chooses local handling, existing-agent use, agent creation, or
+  agent-update guidance.
+- Safe local agent creation can now happen automatically for high-confidence
+  durable work types such as business, code, research, browser, desktop, and
+  scheduled operations.
+- WebUI live events, snapshots, and runtime prompt context now show the
+  delegation decision without requiring the user to pick the right route.
 
 ## Phase 45 - Multi-Agent Work Threads
 

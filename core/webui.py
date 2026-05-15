@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from . import (
     agent_profiles,
+    agent_delegation,
     app_daemon,
     autonomy,
     artifact_studio,
@@ -265,6 +266,23 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                             "path": str(entity_result.path),
                         }
                     )
+            delegation_decision = agent_delegation.decide(self.server.cwd, text, intent_decision)
+            created_agent = None
+            if delegation_decision.action == "create-agent" and delegation_decision.confidence >= 0.8:
+                try:
+                    created_agent = agent_delegation.apply_decision(self.server.cwd, delegation_decision)
+                except Exception as exc:
+                    self.server.emit_event({"event": "agentDelegationError", "error": f"{type(exc).__name__}: {exc}"})
+            self.server.emit_event(
+                {
+                    "event": "agentDelegation",
+                    "text": delegation_decision.rationale,
+                    "action": delegation_decision.action,
+                    "agentId": created_agent.id if created_agent else delegation_decision.agent_id,
+                    "agentName": created_agent.name if created_agent else delegation_decision.agent_name,
+                    "confidence": delegation_decision.confidence,
+                }
+            )
             try:
                 mission_result = mission_router.observe(self.server.cwd, text, route=intent_decision)
             except Exception as exc:
@@ -490,6 +508,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["voice"] = local_voice.status().to_dict()
         snapshot["sessionsPreview"] = [_session_preview(item) for item in sessions.list_sessions(self.server.cwd)[:12]]
         snapshot["agentProfiles"] = [profile.to_dict() for profile in agent_profiles.list_profiles(self.server.cwd)]
+        snapshot["agentDelegation"] = agent_delegation.snapshot(self.server.cwd)
         snapshot["agentDefinitions"] = _agent_definition_previews()
         snapshot["skillsPreview"] = [skill.as_dict() for skill in skills.discover(self.server.cwd, include_disabled=True)[:40]]
         snapshot["toolsPreview"] = _tool_previews()
@@ -935,6 +954,9 @@ def _prompt_with_context(
         agent_section = agent_profiles.prompt_section(workspace)
         if agent_section:
             hints.append(agent_section.replace("\n", " | "))
+        delegation_section = agent_delegation.prompt_section(workspace, text)
+        if delegation_section:
+            hints.append(delegation_section.replace("\n", " | "))
         builder_section = code_builder.prompt_section(workspace, text)
         if builder_section:
             hints.append(builder_section.replace("\n", " | "))

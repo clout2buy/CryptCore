@@ -20,6 +20,7 @@ def test_live_event_contract_contains_core_streaming_events():
         "toolResult",
         "approvalRequested",
         "approvalResolved",
+        "agentDelegation",
         "missionCreated",
         "missionMatched",
         "browserActivity",
