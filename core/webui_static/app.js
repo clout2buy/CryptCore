@@ -693,6 +693,7 @@ function terminalView(snapshot) {
 
 function jobsView(snapshot) {
   const events = state.events.slice(-20).reverse();
+  const drafts = snapshot.externalDrafts?.drafts || [];
   return `
     <section class="two-col">
       <div class="panel-card">
@@ -704,6 +705,10 @@ function jobsView(snapshot) {
         <h3>Autonomy</h3>
         ${statCard("Cycles", snapshot.autonomyCycles || 0)}
         <button class="small-action" id="runAutonomyButton" type="button">Run cycle</button>
+      </div>
+      <div class="panel-card wide">
+        <h3>External Draft Queue</h3>
+        <div class="compact-list">${drafts.slice(0, 5).map((draft) => compactItem(draft.status || "draft", draft.title || draft.kind, draft.target || "approval required before external effect")).join("") || compactItem("clear", "No external drafts waiting", "Posts, emails, purchases, and account actions will queue here.")}</div>
       </div>
     </section>
     <section class="data-list">${events.map((event) => row(event.event || "Event", textFrom(event), new Date((event.ts || 0) * 1000).toLocaleTimeString())).join("") || emptyRow("No runtime events yet")}</section>
@@ -1537,6 +1542,20 @@ function handleEvent(event) {
       break;
     case "entitiesError":
       addActivity("Entity memory", event.error || "Could not update entity memory.");
+      break;
+    case "externalDraftCreated":
+      appendLiveEvent(id, {
+        key: `external-draft:${event.draft?.draft_id || "queued"}`,
+        kind: "approval",
+        title: "External draft queued",
+        body: event.text || "Approval required before anything external happens.",
+        status: "running",
+      });
+      addActivity("External draft", oneLine(event.text || "Approval-gated draft queued.", 160), "approval");
+      refresh({ renderView: state.currentView === "jobs" }).catch((error) => addActivity("Drafts", error.message));
+      break;
+    case "externalDraftError":
+      addActivity("External draft", event.error || "Could not queue approval draft.");
       break;
     case "outcomeLearned":
       addActivity("Outcome learned", oneLine(event.text || "Saved an outcome lesson.", 180), "mission");

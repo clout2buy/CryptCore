@@ -90,6 +90,11 @@ LIVE_EVENT_SPECS: dict[str, EventSpec] = {
     "memoryJournalError": EventSpec(required=frozenset({"error"}), terminal=True),
     "entitiesUpdated": EventSpec(required=frozenset({"text"}), optional=frozenset({"count", "path"})),
     "entitiesError": EventSpec(required=frozenset({"error"}), terminal=True),
+    "externalDraftCreated": EventSpec(
+        required=frozenset({"text", "draft"}),
+        optional=frozenset({"id", "sessionKey"}),
+    ),
+    "externalDraftError": EventSpec(required=frozenset({"error"}), terminal=True),
     "outcomeLearned": EventSpec(
         required=frozenset({"text"}),
         optional=frozenset({"id", "routeRole", "sessionKey", "episodeId", "lessons"}),

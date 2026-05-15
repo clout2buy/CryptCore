@@ -28,6 +28,7 @@ from . import (
     code_builder,
     context_packs,
     entities,
+    external_drafts,
     goals,
     integrations,
     intent_router,
@@ -289,6 +290,23 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                             "path": str(entity_result.path),
                         }
                     )
+            queued_draft = None
+            if intent_decision.intent == "external_action":
+                try:
+                    queued_draft = external_drafts.draft_from_prompt(self.server.cwd, text)
+                except Exception as exc:
+                    self.server.emit_event({"event": "externalDraftError", "error": f"{type(exc).__name__}: {exc}"})
+                else:
+                    if queued_draft:
+                        self.server.emit_event(
+                            {
+                                "event": "externalDraftCreated",
+                                "id": request_id,
+                                "sessionKey": session_key,
+                                "text": queued_draft.title,
+                                "draft": queued_draft.to_dict(),
+                            }
+                        )
             delegation_decision = agent_delegation.decide(self.server.cwd, text, intent_decision)
             created_agent = None
             if delegation_decision.action == "create-agent" and delegation_decision.confidence >= 0.8:
@@ -519,6 +537,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["workThreads"] = [asdict(thread) for thread in work_threads.list_threads(self.server.cwd, include_all=True)[:20]]
         snapshot["memoryJournal"] = memory_journal.snapshot(self.server.cwd)
         snapshot["entitiesPreview"] = entities.snapshot(self.server.cwd)
+        snapshot["externalDrafts"] = external_drafts.snapshot(self.server.cwd)
         snapshot["knowledgeGraph"] = knowledge_graph.snapshot(self.server.cwd)
         snapshot["contextPackPreview"] = context_packs.preview(self.server.cwd)
         snapshot["selfUpgradeQueue"] = upgrade_queue.snapshot(self.server.cwd)
@@ -1018,6 +1037,9 @@ def _prompt_with_context(
         entity_section = entities.prompt_section(workspace)
         if entity_section:
             hints.append(entity_section.replace("\n", " | "))
+        external_section = external_drafts.prompt_section(workspace)
+        if external_section:
+            hints.append(external_section.replace("\n", " | "))
         graph_section = knowledge_graph.prompt_section(workspace, text=text)
         if graph_section:
             hints.append(graph_section.replace("\n", " | "))

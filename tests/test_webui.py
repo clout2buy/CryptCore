@@ -7,7 +7,17 @@ from urllib.parse import urlsplit
 
 import pytest
 
-from core import autonomy_contracts, capability_matrix, goals, settings, webui, webui_access, webui_backup, work_threads
+from core import (
+    autonomy_contracts,
+    capability_matrix,
+    external_drafts,
+    goals,
+    settings,
+    webui,
+    webui_access,
+    webui_backup,
+    work_threads,
+)
 
 
 def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
@@ -37,6 +47,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "remoteAccess" in web_snapshot
         assert "capabilityMatrix" in web_snapshot
         assert "autonomyContracts" in web_snapshot
+        assert "externalDrafts" in web_snapshot
         assert web_snapshot["capabilityMatrix"]["total"] >= 10
         json.dumps(web_snapshot)
     finally:
@@ -193,6 +204,8 @@ def test_webui_static_is_chat_first():
     assert "capabilityMatrix" in script
     assert "Capability Matrix" in script
     assert "Autonomy Contracts" in script
+    assert "External Draft Queue" in script
+    assert "externalDraftCreated" in script
     assert "renderCurrentView" in script
     assert "syncEngineControls" in script
     assert "toggleComposerAdvanced" in script
@@ -244,6 +257,25 @@ def test_autonomy_contracts_select_safe_profile_for_external_actions():
     assert "all sends" in contract.approval_required
     assert "send without approval" in contract.forbidden
     assert "autonomy_contract=external-action" in autonomy_contracts.prompt_hint(contract)
+
+
+def test_external_draft_queue_records_external_action(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+
+    draft = external_drafts.draft_from_prompt(workspace, "Post this launch update on Reddit tomorrow.")
+    assert draft is not None
+    assert draft.kind == "reddit-post"
+    assert draft.status == "pending-approval"
+    assert "Reddit" in draft.title
+
+    snap = external_drafts.snapshot(workspace)
+    assert snap["pending"] == 1
+    assert snap["drafts"][0]["draft_id"] == draft.draft_id
+
+    approved = external_drafts.update_status(draft.draft_id, "approved", note="approved by user")
+    assert approved.status == "approved"
 
 
 def test_webui_core_features_include_hermes_style_sections(monkeypatch, tmp_path: Path):

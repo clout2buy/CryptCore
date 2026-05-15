@@ -26,6 +26,10 @@ selected contract into runtime hints.
 Create a queue for emails, Reddit posts, purchases, DMs, account actions, and
 other external effects that must be drafted, reviewed, and approved.
 
+Progress: added `core.external_drafts`, automatically queues external-action
+prompts into pending approval drafts, exposes them in WebUI snapshot/jobs, and
+records draft lifecycle events.
+
 ## Phase 54 - Business Entity Registry
 
 Track businesses, offers, products, customers, channels, assets, domains,
