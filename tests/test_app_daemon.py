@@ -22,6 +22,9 @@ def test_app_daemon_snapshot_uses_shared_provider_inventory(monkeypatch, tmp_pat
     assert snapshot["approval"] == runtime.approval_label()
     gemini = next(provider for provider in snapshot["providers"] if provider["id"] == settings.PROVIDER_GEMINI)
     assert gemini["status"] == "construction"
+    crypt = next(provider for provider in snapshot["providers"] if provider["id"] == settings.PROVIDER_CRYPT)
+    assert crypt["modelMetadata"][0]["label"] == "ChatGPT 5 Codex"
+    assert "code" in crypt["modelMetadata"][0]["capabilities"]
     assert snapshot["routes"][0]["role"] == "planner"
 
 

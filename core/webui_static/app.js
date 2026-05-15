@@ -325,8 +325,20 @@ function optionMarkup(options, selected) {
   }).join("");
 }
 
-function modelLabel(model) {
+function modelMetadata(model, snapshot = state.snapshot) {
   const raw = String(model || "");
+  const providers = providerRows(snapshot);
+  for (const provider of providers) {
+    const found = (provider.modelMetadata || []).find((item) => item.id === raw);
+    if (found) return found;
+  }
+  return null;
+}
+
+function modelLabel(model, snapshot = state.snapshot) {
+  const raw = String(model || "");
+  const meta = modelMetadata(raw, snapshot);
+  if (meta?.label) return meta.label;
   const labels = {
     "crypt-pro": "ChatGPT 5 Codex",
     "crypt-max": "ChatGPT 5.5",

@@ -74,13 +74,20 @@ Progress:
   the default composer stays focused on mic, message, options, and send.
 - Kept concise live status chips visible under the input for engine/voice state.
 
-## Phase 5 - Provider And Model Registry
+## Phase 5 - Provider And Model Registry [started]
 
 Replace hardcoded display names with a clean provider/model registry that shows
 simple names, capabilities, cost/latency hints, context limits, and fallback
 routes.
 
 Verification: registry unit tests and UI dropdown render test.
+
+Progress:
+
+- Added `core/model_registry.py` with clean labels, tiers, local/cloud flags, and
+  capability hints for known provider models.
+- Provider snapshots now include `modelMetadata`; the WebUI consumes it before
+  falling back to local label formatting.
 
 ## Phase 6 - Intent Router V1
 

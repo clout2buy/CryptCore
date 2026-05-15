@@ -17,7 +17,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable
 
-from . import auth, autonomy, doctor, learning, live_events, loop, redact, runtime, session as sessions, settings, skills
+from . import auth, autonomy, doctor, learning, live_events, loop, model_registry, redact, runtime, session as sessions, settings, skills
 from tools import REGISTRY
 
 
@@ -693,6 +693,7 @@ def _provider_row(
         "id": provider_id,
         "label": label,
         "models": list(models),
+        "modelMetadata": model_registry.describe_many(provider_id, list(models)),
         "modelGroups": model_groups or [{"id": "default", "label": "Models", "models": list(models)}],
         "status": status,
         "note": note,

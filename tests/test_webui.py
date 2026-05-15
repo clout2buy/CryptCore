@@ -122,6 +122,7 @@ def test_webui_static_is_chat_first():
     assert "renderCurrentView" in script
     assert "syncEngineControls" in script
     assert "toggleComposerAdvanced" in script
+    assert "modelMetadata" in script
     assert "data-message-id" in script
     assert "renderView = false" in script
     assert "Crypt runtime hints" not in html
