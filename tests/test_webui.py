@@ -24,6 +24,8 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "agentProfiles" in web_snapshot
         assert "agentDefinitions" in web_snapshot
         assert "voice" in web_snapshot
+        assert "workThreads" in web_snapshot
+        assert "memoryJournal" in web_snapshot
         json.dumps(web_snapshot)
     finally:
         server.server_close()
@@ -80,8 +82,10 @@ def test_webui_static_is_chat_first():
     assert "data-view=\"agents\"" in html
     assert "CHAT_STORE_KEY" in script
     assert "currentView: \"chat\"" in script
-    assert "Passive Memory" in script
+    assert "Self-Updating Memory" in script
     assert "Autonomous Mission Control" in script
+    assert "workThreadUpdated" in script
+    assert "memoryJournalUpdated" in script
     assert "missionCreated" in script
     assert "kokoro ready" in script
     assert "af_heart" in script

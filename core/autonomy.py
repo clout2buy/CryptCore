@@ -14,7 +14,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import goals, learning, reflection, settings, skill_forge, soul
+from . import goals, learning, reflection, settings, skill_forge, soul, work_threads
 
 
 SCHEMA_VERSION = 1
@@ -55,6 +55,9 @@ def run_cycle(
         notes.append(f"reflected on {len(reflected)} recent task episode(s)")
 
     goal_reviews = _review_goals(root, notes)
+    thread_reviews = work_threads.review_due(root)
+    for thread in thread_reviews:
+        notes.append(f"reviewed work thread {thread.thread_id}: {thread.title}")
     forged = _forge_from_repeated_lessons(root, notes, force=force_forge)
     soul_update = soul.evolve(root)
     if soul_update.changed:

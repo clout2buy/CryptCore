@@ -1047,6 +1047,22 @@ select option {
   padding: 5px 9px;
 }
 
+.thread-list {
+  margin-bottom: 8px;
+}
+
+.work-thread-row {
+  background:
+    linear-gradient(90deg, rgba(255, 107, 53, .08), transparent 38%),
+    rgba(23, 23, 26, .76);
+}
+
+.work-thread-row span {
+  border-color: rgba(255, 155, 84, .18);
+  background: rgba(255, 155, 84, .08);
+  color: var(--orange-hot);
+}
+
 .data-list {
   display: grid;
   gap: 8px;

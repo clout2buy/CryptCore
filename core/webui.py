@@ -22,6 +22,7 @@ from . import (
     goals,
     learning,
     local_voice,
+    memory_journal,
     mission_router,
     passive_memory,
     project_index,
@@ -31,6 +32,7 @@ from . import (
     skill_forge,
     skills,
     soul,
+    work_threads,
 )
 from .agents import registry as agent_registry
 from tools import REGISTRY
@@ -136,6 +138,9 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         if path == "/api/goals":
             self._json({"goals": [asdict(goal) for goal in goals.list_goals(self.server.cwd, include_all=True)]})
             return
+        if path == "/api/work-threads":
+            self._json({"threads": [asdict(thread) for thread in work_threads.list_threads(self.server.cwd, include_all=True)]})
+            return
         if path == "/api/agents":
             self._json({"agents": [profile.to_dict() for profile in agent_profiles.list_profiles(self.server.cwd)]})
             return
@@ -167,6 +172,21 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                 self._error(HTTPStatus.BAD_REQUEST, "prompt is empty")
                 return
             try:
+                journal_result = memory_journal.observe(self.server.cwd, text)
+            except Exception as exc:
+                self.server.emit_event({"event": "memoryJournalError", "error": f"{type(exc).__name__}: {exc}"})
+            else:
+                if journal_result.changed:
+                    self.server.emit_event(
+                        {
+                            "event": "memoryJournalUpdated",
+                            "text": journal_result.text,
+                            "category": journal_result.category,
+                            "promoted": journal_result.promoted,
+                            "path": str(journal_result.path),
+                        }
+                    )
+            try:
                 memory_result = passive_memory.observe(self.server.cwd, text)
             except Exception as exc:
                 self.server.emit_event({"event": "memoryError", "error": f"{type(exc).__name__}: {exc}"})
@@ -196,6 +216,21 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                             "reason": mission_result.reason,
                         }
                     )
+                if mission_result.goal:
+                    try:
+                        thread = work_threads.ensure_for_goal(mission_result.goal, prompt_text=text)
+                    except Exception as exc:
+                        self.server.emit_event({"event": "workThreadError", "error": f"{type(exc).__name__}: {exc}"})
+                    else:
+                        self.server.emit_event(
+                            {
+                                "event": "workThreadUpdated",
+                                "thread": asdict(thread),
+                                "text": thread.title,
+                                "state": thread.state,
+                                "nextAction": thread.next_action,
+                            }
+                        )
             intents = _intent_hints(body.get("intents"))
             profile = agent_profiles.get_profile(self.server.cwd, str(body.get("agentId") or ""))
             prompt_text = _prompt_with_context(text, intents, profile, mission_result)
@@ -300,7 +335,8 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                 priority=_int(body.get("priority"), 3),
                 tags=["webui"],
             )
-            self._json({"goal": asdict(goal)})
+            thread = work_threads.ensure_for_goal(goal, prompt_text=str(body.get("description") or ""), source="webui")
+            self._json({"goal": asdict(goal), "thread": asdict(thread)})
             return
         if path == "/api/reflect":
             created = reflection.reflect_recent(self.server.cwd, limit=_int(body.get("limit"), 5))
@@ -344,6 +380,8 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         }
         snapshot["project"] = asdict(project_index.get(self.server.cwd))
         snapshot["goals"] = [asdict(goal) for goal in goals.list_goals(self.server.cwd, include_all=True)[:20]]
+        snapshot["workThreads"] = [asdict(thread) for thread in work_threads.list_threads(self.server.cwd, include_all=True)[:20]]
+        snapshot["memoryJournal"] = memory_journal.snapshot(self.server.cwd)
         snapshot["lessonsPreview"] = [asdict(lesson) for lesson in learning.list_lessons(self.server.cwd)[:8]]
         snapshot["reflections"] = [asdict(item) for item in reflection.list_reflections(self.server.cwd, limit=5)]
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
@@ -426,6 +464,7 @@ def core_features(cwd: str | Path, snapshot: dict) -> list[dict]:
     frameworks = project.get("frameworks") if isinstance(project.get("frameworks"), list) else []
     git_branch = str(project.get("git_branch") or "not a git repo")
     active_goals = goals.list_goals(root)
+    thread_status = work_threads.status(root)
     custom_agents = agent_profiles.list_profiles(root)
     return [
         {
@@ -452,11 +491,14 @@ def core_features(cwd: str | Path, snapshot: dict) -> list[dict]:
         {
             "id": "plan",
             "label": "Plan",
-            "value": len(active_goals),
-            "status": "goals",
+            "value": thread_status.active + thread_status.blocked + thread_status.waiting,
+            "status": "threads",
             "detail": _first_nonempty(
-                [goal.title for goal in active_goals[:2]],
-                "Crypt auto-creates missions from chat when work needs follow-through.",
+                [thread.title for thread in work_threads.list_threads(root)[:2]],
+                _first_nonempty(
+                    [goal.title for goal in active_goals[:2]],
+                    "Crypt auto-creates missions and work threads from chat.",
+                ),
             ),
         },
         {

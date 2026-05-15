@@ -11,7 +11,7 @@ import subprocess
 import textwrap
 from pathlib import Path
 
-from . import autonomy, goals, learning, memory, project_index, reflection, runtime, skills, soul
+from . import autonomy, goals, learning, memory, memory_journal, project_index, reflection, runtime, skills, soul, work_threads
 
 
 def build_system_prompt(
@@ -39,12 +39,14 @@ def build_system_prompt(
         _project_intelligence(cwd),
         runtime.git_snapshot(cwd),
         _goals(cwd),
+        _work_threads(cwd),
         _autonomy(cwd),
         _project_instructions(cwd),
         _available_skills(cwd),
         _skill_guidance(skill_guidance),
         _learned_context(cwd, learning_query),
         _reflections(cwd),
+        _memory_journal(cwd),
         _memory(),
         _active_runtime(),
         _turn_guidance(turn_guidance),
@@ -93,7 +95,9 @@ def _autopilot() -> str:
         - If the user just wants conversation, talk naturally. If the user expresses an outcome, turn it into the next concrete action without making them orchestrate.
         - For broad goals like starting a business, researching online, monitoring something, learning a repo/skill, or reverse engineering a system, gather context, make a lightweight plan internally, then execute the safest useful first step.
         - When the user shares a skill, plugin, MCP server, repository, workflow, or example assistant, inspect it, learn how it works, integrate local instructions or skills when useful, and remember the workflow.
-        - Create or update durable goals, lessons, reflections, and local skills in the background when they help future turns. Mention them only when the user needs to know.
+        - Create or update durable goals, work threads, lessons, reflections, local skills, and the Markdown memory journal in the background when they help future turns. Mention them only when the user needs to know.
+        - Keep each autonomous mission tied to state, next action, blockers, due date, and artifacts so Crypt can resume without asking the user to run a checklist.
+        - For desktop, browser, and visual work, surface what is happening through live tool/status events and verification artifacts instead of hiding the operation.
         - Ask for permission only for credentials, spending money, external posting/messaging, destructive changes, or actions that affect accounts or shared systems.
         - Present yourself as one assistant named Crypt. Keep planner/builder/reviewer/autonomy terminology out of normal user-facing replies unless the user asks for internals.
         """
@@ -252,6 +256,13 @@ def _goals(cwd: str) -> str:
         return ""
 
 
+def _work_threads(cwd: str) -> str:
+    try:
+        return work_threads.prompt_section(cwd)
+    except Exception:
+        return ""
+
+
 def _autonomy(cwd: str) -> str:
     try:
         return autonomy.prompt_section(cwd)
@@ -295,6 +306,13 @@ def _memory() -> str:
     if not text.strip():
         return ""
     return "# Durable Memory\n" + text
+
+
+def _memory_journal(cwd: str) -> str:
+    try:
+        return memory_journal.prompt_section(cwd)
+    except Exception:
+        return ""
 
 
 def _active_runtime() -> str:

@@ -587,19 +587,21 @@ function jobsView(snapshot) {
 
 function missionsView(snapshot) {
   const goals = snapshot.goals || [];
+  const threads = snapshot.workThreads || [];
   const active = goals.filter((goal) => (goal.status || "active") === "active");
   const watched = goals.filter((goal) => goal.cadence);
   const due = watched.filter((goal) => Number(goal.next_review_at || 0) * 1000 <= Date.now());
+  const blockedThreads = threads.filter((thread) => (thread.state || "active") === "blocked");
   return `
     <section class="two-col">
       <div class="panel-card mission-hero">
         <span class="eyebrow">Autonomous Mission Control</span>
         <h3>Say the outcome. Crypt makes the mission.</h3>
-        <p>No forms, no ritual. When a normal chat needs follow-through, Crypt saves the mission, tracks review cadence, and keeps the next move in context.</p>
+        <p>No forms, no ritual. When a normal chat needs follow-through, Crypt saves the mission, creates a work thread, tracks blockers, and keeps the next move in context.</p>
         <div class="mission-stats">
           ${statCard("Active", active.length)}
-          ${statCard("Watched", watched.length)}
-          ${statCard("Due", due.length)}
+          ${statCard("Threads", threads.length)}
+          ${statCard("Blocked", blockedThreads.length || due.length)}
         </div>
         <div class="mission-actions">
           <span class="mission-state">Auto-routing enabled</span>
@@ -608,7 +610,7 @@ function missionsView(snapshot) {
       </div>
       <div class="panel-card mission-principles">
         <h3>How Crypt Decides</h3>
-        <p>Mission creation is passive. Chat stays simple; durable work gets tracked underneath it.</p>
+        <p>Mission creation is passive. Chat stays simple; durable work gets state, due dates, next actions, and approval blockers underneath it.</p>
         <div class="pill-row compact">
           <span>Build</span>
           <span>Launch</span>
@@ -619,6 +621,7 @@ function missionsView(snapshot) {
         </div>
       </div>
     </section>
+    <section class="data-list mission-list thread-list">${threads.map(threadRow).join("") || emptyRow("No work threads yet")}</section>
     <section class="data-list mission-list">${goals.map(missionRow).join("") || emptyRow("No missions yet")}</section>
   `;
 }
@@ -633,6 +636,19 @@ function missionRow(goal) {
       <span>${escapeHtml(goal.status || "active")}</span>
       <b>${escapeHtml(goal.title || "Untitled mission")}</b>
       <p>${escapeHtml(goal.success_metric || cadence)} - ${escapeHtml(next)}</p>
+    </article>
+  `;
+}
+
+function threadRow(thread) {
+  const blockers = (thread.blockers || []).join(" ");
+  const detail = blockers || thread.next_action || "Crypt will pick the next safe step.";
+  const due = Number(thread.due_at || 0) ? `due ${reviewTime(Number(thread.due_at) * 1000)}` : "as needed";
+  return `
+    <article class="data-row mission-row work-thread-row">
+      <span>${escapeHtml(thread.state || "active")}</span>
+      <b>${escapeHtml(thread.title || "Untitled thread")}</b>
+      <p>${escapeHtml(`${due} - ${detail}`)}</p>
     </article>
   `;
 }
@@ -684,21 +700,35 @@ function agentsView(snapshot) {
 
 function memoryView(snapshot) {
   const lessons = snapshot.lessonsPreview || [];
+  const journal = snapshot.memoryJournal || {};
+  const longTerm = journal.longTermPreview || [];
+  const working = journal.workingPreview || [];
+  const loops = journal.openLoopPreview || [];
   return `
     <section class="two-col">
       <div class="panel-card wide">
-        <h3>Passive Memory</h3>
-        <p>Crypt now watches normal conversation for useful preferences, product direction, persona feedback, and workflow cues. You should not have to file memories by hand.</p>
+        <h3>Self-Updating Memory</h3>
+        <p>Crypt watches normal conversation, promotes useful signals, keeps a rolling short-term scratchpad, and writes the durable version into Markdown.</p>
         <button class="ask-button primary" data-ask="Audit my current memory, remove weak assumptions, and tell me what you will remember going forward.">Audit memory</button>
       </div>
       <div class="panel-card">
         <h3>Memory</h3>
+        ${statCard("Long-term", journal.longTermCount || 0)}
+        ${statCard("Open loops", journal.openLoopCount || 0)}
         ${statCard("Lessons", snapshot.lessons || 0)}
-        ${statCard("Soul", snapshot.soul?.active ? "active" : "new")}
       </div>
     </section>
+    <section class="data-list">${longTerm.map(memorySignalRow).join("") || emptyRow("No long-term journal memory yet")}</section>
+    <section class="data-list">${loops.map(memorySignalRow).join("") || ""}</section>
+    <section class="data-list">${working.map(memorySignalRow).join("") || ""}</section>
     <section class="data-list">${lessons.map((lesson) => row("Lesson", lesson.text, `${lesson.scope} / ${lesson.confidence}`)).join("") || emptyRow("No durable memory yet")}</section>
   `;
+}
+
+function memorySignalRow(item) {
+  const label = item.category || "memory";
+  const detail = `${(item.tags || []).join(" / ") || item.source || "journal"}${item.hits > 1 ? ` / hits ${item.hits}` : ""}`;
+  return row(label, item.text || "", detail);
 }
 
 function skillsView(snapshot) {
@@ -1254,9 +1284,26 @@ function handleEvent(event) {
     case "memoryLearned":
       addActivity("Memory updated", oneLine(event.text || "Saved a useful signal.", 160));
       break;
+    case "memoryJournalUpdated":
+      addActivity(
+        event.promoted ? "Long-term memory" : "Working memory",
+        oneLine(event.text || "Updated the memory journal.", 160),
+      );
+      refresh({ renderView: state.currentView === "memory" || state.currentView === "persona" }).catch((error) => addActivity("Memory", error.message));
+      break;
+    case "memoryJournalError":
+      addActivity("Memory journal", event.error || "Could not update journal.");
+      break;
     case "missionCreated":
       addActivity("Mission created", oneLine(event.text || event.goal?.title || "Autonomous mission saved.", 160));
       refresh({ renderView: state.currentView === "missions" }).catch((error) => addActivity("Missions", error.message));
+      break;
+    case "workThreadUpdated":
+      addActivity("Work thread", oneLine(event.nextAction || event.text || "Thread updated.", 160));
+      refresh({ renderView: state.currentView === "missions" || state.currentView === "jobs" }).catch((error) => addActivity("Threads", error.message));
+      break;
+    case "workThreadError":
+      addActivity("Work thread", event.error || "Could not update thread.");
       break;
     case "missionError":
       addActivity("Mission router", event.error || "Could not inspect mission need.");
