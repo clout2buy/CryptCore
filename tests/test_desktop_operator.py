@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from core import desktop_operator
+from pathlib import Path
+
+from core import desktop_operator, desktop_recorder, settings
 
 
 def test_desktop_operator_plans_visible_actions():
@@ -20,3 +22,24 @@ def test_desktop_operator_gates_sensitive_actions():
     assert job.approval_required is True
     assert job.mode == "approval-gated-desktop"
     assert any(step.requires_approval for step in job.steps if step.action == "type")
+
+
+def test_desktop_recorder_tracks_actions_screenshots_and_approvals(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    screenshot = workspace / "shots" / "desktop.png"
+    screenshot.parent.mkdir()
+    screenshot.write_bytes(b"fake")
+
+    job = desktop_operator.plan("login, type my password, and take a screenshot")
+    recording = desktop_recorder.create_from_job(workspace, "Login flow", job)
+    recording = desktop_recorder.approve_action(workspace, recording.recording_id, "type")
+    recording = desktop_recorder.add_screenshot(workspace, recording.recording_id, screenshot, note="before typing")
+
+    assert recording.approval_required is True
+    assert any(action.action == "type" and action.approved for action in recording.actions)
+    assert recording.screenshots == ["shots/desktop.png"]
+    snap = desktop_recorder.snapshot(workspace)
+    assert snap["approvalRequired"] == 1
+    assert "Desktop Operation Recordings" in desktop_recorder.prompt_section(workspace)

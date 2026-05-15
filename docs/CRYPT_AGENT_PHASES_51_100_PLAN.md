@@ -71,6 +71,10 @@ runtime prompt context.
 Record desktop action intent, mouse/keyboard operations, screenshots, and safety
 gates into live mission timelines.
 
+Progress: added `core.desktop_recorder`, records planned desktop actions,
+approval-gated steps, screenshots as artifacts, safety notes, WebUI snapshot/jobs,
+and runtime prompt context.
+
 ## Phase 59 - Skill Lifecycle Manager
 
 Version, enable, disable, update, and audit local skills with provenance and UI

@@ -29,6 +29,7 @@ from . import (
     clarification_policy,
     code_builder,
     context_packs,
+    desktop_recorder,
     entities,
     external_drafts,
     goals,
@@ -609,6 +610,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["artifactSummary"] = studio["summary"]
         snapshot["websitePipelines"] = website_pipeline.snapshot(self.server.cwd)
         snapshot["browserRecordings"] = browser_recorder.snapshot(self.server.cwd)
+        snapshot["desktopRecordings"] = desktop_recorder.snapshot(self.server.cwd)
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         snapshot["capabilityMatrix"] = capability_matrix.build(self.server.cwd, snapshot).to_dict()
         return snapshot
@@ -1101,6 +1103,9 @@ def _prompt_with_context(
         browser_recording_section = browser_recorder.prompt_section(workspace)
         if browser_recording_section:
             hints.append(browser_recording_section.replace("\n", " | "))
+        desktop_recording_section = desktop_recorder.prompt_section(workspace)
+        if desktop_recording_section:
+            hints.append(desktop_recording_section.replace("\n", " | "))
         agent_section = agent_profiles.prompt_section(workspace)
         if agent_section:
             hints.append(agent_section.replace("\n", " | "))
