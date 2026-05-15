@@ -25,6 +25,7 @@
 4. If the target is still too far, make smaller jumps along the route.
 5. Refuel hyperdrive with Warp Cells or Warp Hypercores.
 6. Upgrade hyperdrive range if the route is still annoying.
+7. If the Atlas route crosses colored systems, unlock drives in order: **Cadmium Drive -> Emeril Drive -> Indium Drive**.
 
 ## Living Ship Checklist
 
@@ -44,6 +45,7 @@
 - If the path gets weird, summon the Space Anomaly and talk to Polo/Nada, then reselect the mission.
 - New side landmark: **Oishio-Bame** has a big black hole. Do not use it casually if you are trying to stay on the Atlas route.
 - Living Ships are organic S-class ships and use biological tech instead of normal starship modules.
+- Color-system metals are predictable: red/orange = Cadmium, green = Emeril, blue/purple = Indium.
 
 ## Mission Log
 
