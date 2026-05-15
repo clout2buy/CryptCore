@@ -17,7 +17,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable
 
-from . import auth, autonomy, doctor, learning, live_events, loop, model_registry, redact, runtime, session as sessions, settings, skills
+from . import auth, autonomy, doctor, learning, live_events, loop, model_registry, redact, runtime, session as sessions, settings, skills, smart_model_router
 from tools import REGISTRY
 
 
@@ -172,6 +172,7 @@ class AppDaemon:
             "activeTask": self._active_task,
             "providers": _provider_inventory(saved),
             "routes": _routes(saved),
+            "smartModelRouter": smart_model_router.snapshot(saved),
         }
 
     def emit(self, event: str, **payload) -> None:
@@ -225,6 +226,7 @@ class AppDaemon:
         provider_name_for_learning = ""
         model_for_learning = ""
         session_id_for_learning = ""
+        router_decision: smart_model_router.ModelRouteDecision | None = None
         try:
             saved = settings.load_config()
             provider_name = settings.provider_default(saved)
@@ -236,9 +238,24 @@ class AppDaemon:
                 provider = _provider_from_route(saved, route)
                 provider_name = provider.name
             else:
+                router_decision = smart_model_router.decide(text, saved=saved)
+                route_role = router_decision.route_role
+                provider_name = router_decision.provider
+                cred = _credential(provider_name)
                 if not _credential_is_usable(provider_name, cred):
                     raise RuntimeError(_provider_missing_auth_message(provider_name))
-                provider = _provider(saved, provider_name, cred)
+                router_saved = dict(saved)
+                if provider_name == settings.PROVIDER_OLLAMA:
+                    router_saved["ollama_host"] = _desktop_ollama_host(router_decision.model, saved)
+                provider = _provider(router_saved, provider_name, cred, model_override=router_decision.model)
+                self.emit(
+                    "modelRouted",
+                    id=task_id,
+                    routeRole=route_role,
+                    sessionKey=session_key,
+                    text=f"{router_decision.provider} / {router_decision.model}",
+                    decision=router_decision.to_dict(),
+                )
             provider_name_for_learning = provider.name
             model_for_learning = provider.model
             self.emit(

@@ -58,6 +58,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "browserRecordings" in web_snapshot
         assert "desktopRecordings" in web_snapshot
         assert "toolCapabilityCards" in web_snapshot
+        assert "smartModelRouter" in web_snapshot
         assert web_snapshot["capabilityMatrix"]["total"] >= 10
         json.dumps(web_snapshot)
     finally:
@@ -220,6 +221,8 @@ def test_webui_static_is_chat_first():
     assert "Capability Matrix" in script
     assert "toolCapabilityCards" in script
     assert "Tool Arsenal" in script
+    assert "Smart Model Router" in script
+    assert "modelRouted" in script
     assert "Autonomy Contracts" in script
     assert "External Draft Queue" in script
     assert "externalDraftCreated" in script

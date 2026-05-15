@@ -146,6 +146,12 @@ rebuilds the WebUI tools view around the live arsenal instead of a flat list.
 Route by task category, cost, latency, context length, tool use, and required
 reasoning depth.
 
+Progress: added `core.smart_model_router`, classifies prompts by intent,
+reasoning need, latency/cost bias, context size, and tool load, routes within
+the configured provider first, emits live `modelRouted` events for auto-routed
+turns, and surfaces router examples in the WebUI models panel and runtime
+prompt context.
+
 ## Phase 67 - Provider Health Monitor
 
 Track provider readiness, auth expiration, latency, errors, and recommended

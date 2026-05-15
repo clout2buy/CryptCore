@@ -59,6 +59,7 @@ from . import (
     skill_forge,
     skill_outcome_autoforge,
     skills,
+    smart_model_router,
     soul,
     tool_capability_cards,
     upgrade_queue,
@@ -1126,6 +1127,9 @@ def _prompt_with_context(
         tool_cards_section = tool_capability_cards.prompt_section()
         if tool_cards_section:
             hints.append(tool_cards_section.replace("\n", " | "))
+        model_router_section = smart_model_router.prompt_section(settings.load_config())
+        if model_router_section:
+            hints.append(model_router_section.replace("\n", " | "))
         persona_governance_section = persona_governance.prompt_section(workspace)
         if persona_governance_section:
             hints.append(persona_governance_section.replace("\n", " | "))

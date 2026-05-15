@@ -962,7 +962,20 @@ function personaView(snapshot) {
 }
 
 function modelsView(snapshot) {
+  const router = snapshot.smartModelRouter || {};
+  const examples = router.examples || [];
   return `
+    <section class="two-col">
+      <div class="panel-card wide">
+        <h3>Smart Model Router</h3>
+        <p>Crypt picks the model by task type, reasoning need, latency, context, and tool load while staying on your configured provider first.</p>
+      </div>
+      <div class="panel-card">
+        ${statCard("Policy", router.policy || "configured-provider-first")}
+        ${statCard("Provider", providerLabel(router.provider || snapshot.provider, snapshot))}
+      </div>
+    </section>
+    <section class="data-list">${examples.map((item) => row(item.task_type || "route", `${modelLabel(item.model)} / ${routeLabel(item.route_role)}`, item.rationale || "")).join("") || emptyRow("Router examples unavailable")}</section>
     <section class="route-board">
       ${(snapshot.routes || []).map((route) => `
         <article class="route-card">
@@ -1022,12 +1035,12 @@ function toolCapabilityCard(tool) {
     tool.description || "",
     (tool.permissionNeeds || []).slice(0, 1).join(""),
     (tool.recoveryHints || []).slice(0, 1).join(""),
-  ].filter(Boolean).join(" · ");
+  ].filter(Boolean).join(" / ");
   return featureCard({
     label: tool.name,
     value: tool.risk || "low",
     status: `${tool.scope || tool.capability || "tool"}${usage.total ? ` / used ${usage.total}x` : ""}`,
-    detail: `${detail}${example ? ` · inputs: ${example}` : ""}`,
+    detail: `${detail}${example ? ` / inputs: ${example}` : ""}`,
   });
 }
 
@@ -1519,6 +1532,16 @@ function handleEvent(event) {
         status: "running",
       });
       addActivity("Intent", `${event.intent || "task"} / ${(Number(event.confidence || 0) * 100).toFixed(0)}%`, "mission");
+      break;
+    case "modelRouted":
+      appendLiveEvent(id, {
+        key: "model-router",
+        kind: "route",
+        title: "Model router",
+        body: event.decision?.rationale || event.text || "Selected runtime model.",
+        status: "running",
+      });
+      addActivity("Model router", event.text || "", "mission");
       break;
     case "thinkingDelta":
       appendLiveEvent(id, {

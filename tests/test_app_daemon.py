@@ -26,6 +26,7 @@ def test_app_daemon_snapshot_uses_shared_provider_inventory(monkeypatch, tmp_pat
     assert crypt["modelMetadata"][0]["label"] == "ChatGPT 5 Codex"
     assert "code" in crypt["modelMetadata"][0]["capabilities"]
     assert snapshot["routes"][0]["role"] == "planner"
+    assert snapshot["smartModelRouter"]["enabled"] is True
 
 
 def test_app_daemon_set_approval_emits_snapshot(monkeypatch, tmp_path):
@@ -256,6 +257,42 @@ def test_app_daemon_start_prompt_runs_in_background(monkeypatch, tmp_path):
     while time.time() < deadline and not calls:
         time.sleep(0.01)
     assert calls == [("sync-1", "hi", "builder")]
+
+
+def test_app_daemon_auto_prompt_uses_smart_model_router(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "CONFIG_PATH", tmp_path / "config.json")
+    events: list[dict] = []
+    daemon = app_daemon.AppDaemon(emit=events.append, cwd=str(tmp_path))
+    monkeypatch.setattr(settings, "load_config", lambda: {"provider": settings.PROVIDER_CRYPT})
+    monkeypatch.setattr(app_daemon, "_credential", lambda provider: object())
+    monkeypatch.setattr(app_daemon, "_credential_is_usable", lambda provider, cred: True)
+    monkeypatch.setattr(
+        app_daemon,
+        "_provider",
+        lambda saved, provider_name, cred, model_override=None: type(
+            "Provider",
+            (),
+            {"name": provider_name, "model": model_override or "fallback-model"},
+        )(),
+    )
+    monkeypatch.setattr(
+        app_daemon.loop,
+        "run_prompt",
+        lambda *args, **kwargs: type(
+            "Result",
+            (),
+            {"final_text": "done", "current_tokens": 1, "session_tokens": 2},
+        )(),
+    )
+    monkeypatch.setattr(app_daemon, "_record_outcome_learning", lambda *args, **kwargs: {})
+
+    daemon._active_task = "task-smart"
+    daemon._task_session_keys["task-smart"] = "default"
+    daemon._run_prompt_task("task-smart", "fix the WebUI bug and run tests", None)
+
+    routed = next(event for event in events if event["event"] == "modelRouted")
+    assert routed["decision"]["model"] == "crypt-pro"
+    assert routed["routeRole"] == "builder"
 
 
 def test_app_daemon_accepts_approval_response_while_task_is_running(monkeypatch, tmp_path):
