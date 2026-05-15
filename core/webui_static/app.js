@@ -1208,6 +1208,7 @@ function settingsView(snapshot) {
   const credentialVault = snapshot.credentialVault || {};
   const approvalPolicy = snapshot.approvalPolicy || {};
   const usage = snapshot.modelUsageLedger || {};
+  const offline = snapshot.offlineMode || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Engine", value: modelLabel(snapshot.model), status: providerLabel(snapshot.provider, snapshot), detail: "Current model used by chat." })}
@@ -1215,6 +1216,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Thinking", value: snapshot.thinkingMode, status: snapshot.reasoningEffort, detail: "Provider reasoning mode." })}
       ${featureCard({ label: "Auth", value: snapshot.authOk ? "ready" : "missing", status: snapshot.auth, detail: snapshot.authMessage || "Provider is usable." })}
       ${featureCard({ label: "Provider Health", value: `${providerHealth.ready || 0}/${providerHealth.total || 0}`, status: providerHealth.recommendedFallback ? `fallback ${providerHealth.recommendedFallback}` : "fallback none", detail: `${providerHealth.warnings || 0} warning(s), ${providerHealth.missing || 0} missing.` })}
+      ${featureCard({ label: "Offline Local Mode", value: offline.prefer_local ? "local" : (offline.enabled ? "armed" : "standby"), status: offline.provider ? `${providerLabel(offline.provider, snapshot)} / ${modelLabel(offline.model)}` : "ollama", detail: offline.reason || "Say offline, private mode, local only, or no cloud to route local-first." })}
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
       ${featureCard({ label: "Patch Risk", value: patchRisk.risk || "low", status: patchRisk.blast_radius || "blast", detail: (patchRisk.reasons || []).join(" / ") || "No patch risk detected." })}
       ${featureCard({ label: "Local Search", value: localSearch.documents || 0, status: `${localSearch.tokenCount || 0} tokens`, detail: Object.entries(localSearch.sources || {}).map(([key, value]) => `${key}: ${value}`).join(" / ") || "Index is ready to build." })}
@@ -1236,6 +1238,13 @@ function settingsView(snapshot) {
       <div class="panel-card wide">
         <h3>Provider Health</h3>
         <div class="compact-list">${healthCards.map((card) => compactItem(card.status || "provider", card.label || card.provider, `${card.authState} / ${card.modelLabel} / failures ${card.failures || 0}`)).join("")}</div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Offline Local Mode</h3>
+        <div class="compact-list">
+          ${compactItem(offline.localReady ? "local" : "setup", offline.host || "Ollama host", offline.localReady ? "Local route is available." : "Install/start Ollama for full offline mode.")}
+          ${(offline.constraints || []).map((item) => compactItem("rule", item, "Applied when local/private mode is active.")).join("")}
+        </div>
       </div>
       <div class="panel-card wide">
         <h3>Self-Upgrade Sandbox</h3>

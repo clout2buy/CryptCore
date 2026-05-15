@@ -56,6 +56,7 @@ from . import (
     multi_agent_threads,
     notification_center,
     office_layer,
+    offline_mode,
     passive_memory,
     patch_risk,
     personal_os,
@@ -504,6 +505,28 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                 workspace=self.server.cwd,
             )
             route_role = str(body.get("route") or "").strip() or intent_decision.route_role
+            saved_config = settings.load_config()
+            offline_decision = offline_mode.decide(text, saved=saved_config)
+            if offline_decision.prefer_local:
+                self.server.daemon.handle_command(
+                    {
+                        "type": "setRoute",
+                        "id": f"{request_id}-offline-route",
+                        "role": route_role,
+                        "provider": offline_decision.provider,
+                        "model": offline_decision.model,
+                    }
+                )
+                self.server.emit_event(
+                    {
+                        "event": "offlineMode",
+                        "id": request_id,
+                        "sessionKey": session_key,
+                        "text": offline_decision.reason,
+                        "provider": offline_decision.provider,
+                        "model": offline_decision.model,
+                    }
+                )
             self.server.daemon.handle_command(
                 {
                     "type": "sendPrompt",
@@ -722,6 +745,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["personaGovernance"] = persona_governance.audit(self.server.cwd)
         snapshot["voice"] = local_voice.status().to_dict()
         snapshot["voiceConversation"] = voice_conversation.snapshot(self.server.cwd)
+        snapshot["offlineMode"] = offline_mode.snapshot(settings.load_config(), snapshot.get("providerHealth"))
         snapshot["remoteAccess"] = self.server.access.to_dict()
         snapshot["sessionsPreview"] = [_session_preview(item) for item in sessions.list_sessions(self.server.cwd)[:12]]
         snapshot["agentProfiles"] = [profile.to_dict() for profile in agent_profiles.list_profiles(self.server.cwd)]
@@ -1258,6 +1282,9 @@ def _prompt_with_context(
         voice_conversation_section = voice_conversation.prompt_section(workspace)
         if voice_conversation_section:
             hints.append(voice_conversation_section.replace("\n", " | "))
+        offline_section = offline_mode.prompt_section(text, saved=settings.load_config())
+        if offline_section:
+            hints.append(offline_section.replace("\n", " | "))
         upgrade_section = upgrade_queue.prompt_section(workspace)
         if upgrade_section:
             hints.append(upgrade_section.replace("\n", " | "))

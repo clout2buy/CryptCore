@@ -387,6 +387,13 @@ status stay usable.
 Prefer local models/tools when cloud access is down or the user requests
 private mode.
 
+Progress: added `core.offline_mode`, which detects private/offline/local-only
+requests, watches provider health for degraded cloud routes, recommends Ollama
+local routing, and injects local-first constraints into prompt context. WebUI
+prompt handling now emits an offline-mode event and sets the active route to the
+local provider/model when local mode is preferred, while Settings shows offline
+state, trigger terms, host, and constraints.
+
 ## Phase 91 - Safety Incident Log
 
 Record blocked actions, dangerous prompts, secret detections, and approval

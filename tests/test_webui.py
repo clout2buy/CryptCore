@@ -55,6 +55,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "dataImports" in web_snapshot
         assert "localSearch" in web_snapshot
         assert "workspaceMap" in web_snapshot
+        assert "offlineMode" in web_snapshot
         assert "remoteAccess" in web_snapshot
         assert "capabilityMatrix" in web_snapshot
         assert "personaGovernance" in web_snapshot
@@ -258,6 +259,8 @@ def test_webui_static_is_chat_first():
     assert "Smart Model Router" in script
     assert "modelRouted" in script
     assert "Provider Health" in script
+    assert "Offline Local Mode" in script
+    assert "offlineMode" in script
     assert "Usage Ledger" in script
     assert "Notification Center" in script
     assert "Personal OS" in script
