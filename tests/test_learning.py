@@ -50,6 +50,44 @@ def test_learning_records_episode_and_project_lessons(monkeypatch, tmp_path: Pat
         evidence.clear()
 
 
+def test_learning_records_failed_outcome_recovery(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    evidence.clear()
+    try:
+        result = learning.record_task_outcome(
+            cwd=workspace,
+            task_id="task-fail",
+            prompt="update the tracker",
+            status="failed",
+            final_text="schema validation failed: edits must be non-empty",
+        )
+        lessons = learning.search_lessons(workspace, "schema validation recovery", limit=5)
+
+        assert result["lesson_count"] >= 2
+        assert any("schema validation" in lesson.text for lesson in lessons)
+        assert any("failed tasks" in lesson.text for lesson in learning.list_lessons(workspace))
+    finally:
+        evidence.clear()
+
+
+def test_learning_records_user_correction_as_future_lesson(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+
+    result = learning.record_user_correction(
+        workspace,
+        "Nope, next time show live thinking before the final answer.",
+    )
+    section = learning.prompt_section(workspace, "live thinking")
+
+    assert result["learned"] is True
+    assert "User correction:" in result["text"]
+    assert "live thinking" in section
+
+
 def test_learning_prompt_retrieves_relevant_lessons(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
     workspace = tmp_path / "repo"

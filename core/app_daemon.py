@@ -222,6 +222,9 @@ class AppDaemon:
         session_key = self._task_session_keys.get(task_id, "default")
         self._active_session_key = session_key
         self.emit("taskStarted", id=task_id, prompt=text, routeRole=route_role, sessionKey=session_key, snapshot=self.snapshot())
+        provider_name_for_learning = ""
+        model_for_learning = ""
+        session_id_for_learning = ""
         try:
             saved = settings.load_config()
             provider_name = settings.provider_default(saved)
@@ -236,6 +239,8 @@ class AppDaemon:
                 if not _credential_is_usable(provider_name, cred):
                     raise RuntimeError(_provider_missing_auth_message(provider_name))
                 provider = _provider(saved, provider_name, cred)
+            provider_name_for_learning = provider.name
+            model_for_learning = provider.model
             self.emit(
                 "taskProgress",
                 id=task_id,
@@ -248,6 +253,7 @@ class AppDaemon:
             if session_obj is None:
                 session_obj = sessions.Session(self._cwd, provider=provider.name, model=provider.model)
                 self._sessions[session_key] = session_obj
+            session_id_for_learning = session_obj.id
             self.emit("taskProgress", id=task_id, phase="running", routeRole=route_role, sessionKey=session_key, text="engine started")
 
             def emit_live(payload: dict) -> None:
@@ -274,6 +280,26 @@ class AppDaemon:
                     subagent_provider_factory=lambda agent_type: _provider_for_route(saved, agent_type, fallback=provider),
                     event_sink=emit_live,
                 )
+            outcome = _record_outcome_learning(
+                self._cwd,
+                task_id=task_id,
+                prompt=text,
+                status="completed",
+                final_text=result.final_text,
+                provider=provider_name_for_learning,
+                model=model_for_learning,
+                session_id=session_id_for_learning,
+            )
+            if outcome.get("lesson_count"):
+                self.emit(
+                    "outcomeLearned",
+                    id=task_id,
+                    routeRole=route_role,
+                    sessionKey=session_key,
+                    text=f"Recorded {outcome['lesson_count']} outcome lesson(s).",
+                    episodeId=outcome.get("episode_id", ""),
+                    lessons=outcome.get("lessons", []),
+                )
             self.emit(
                 "taskFinished",
                 id=task_id,
@@ -285,12 +311,33 @@ class AppDaemon:
                 snapshot=self.snapshot(),
             )
         except Exception as exc:
+            error_text = f"{type(exc).__name__}: {exc}"
+            outcome = _record_outcome_learning(
+                self._cwd,
+                task_id=task_id,
+                prompt=text,
+                status="failed",
+                final_text=error_text,
+                provider=provider_name_for_learning,
+                model=model_for_learning,
+                session_id=session_id_for_learning,
+            )
+            if outcome.get("lesson_count"):
+                self.emit(
+                    "outcomeLearned",
+                    id=task_id,
+                    routeRole=route_role,
+                    sessionKey=session_key,
+                    text=f"Recorded {outcome['lesson_count']} failure lesson(s).",
+                    episodeId=outcome.get("episode_id", ""),
+                    lessons=outcome.get("lessons", []),
+                )
             self.emit(
                 "taskFailed",
                 id=task_id,
                 routeRole=route_role,
                 sessionKey=session_key,
-                error=f"{type(exc).__name__}: {exc}",
+                error=error_text,
                 snapshot=self.snapshot(),
             )
         finally:
@@ -770,6 +817,32 @@ def _help_text() -> str:
             "/thinking [fast|think|ultra] - set provider reasoning mode",
         ]
     )
+
+
+def _record_outcome_learning(
+    cwd: str | Path,
+    *,
+    task_id: str,
+    prompt: str,
+    status: str,
+    final_text: str,
+    provider: str = "",
+    model: str = "",
+    session_id: str = "",
+) -> dict:
+    try:
+        return learning.record_task_outcome(
+            cwd=cwd,
+            task_id=task_id,
+            prompt=prompt,
+            status=status,
+            final_text=final_text,
+            provider=provider,
+            model=model,
+            session_id=session_id,
+        )
+    except Exception as exc:
+        return {"episode_id": "", "lesson_count": 0, "lessons": [], "error": f"{type(exc).__name__}: {exc}"}
 
 
 def _timeline_events(messages: list[dict]) -> list[dict]:

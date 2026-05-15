@@ -25,6 +25,7 @@ def test_live_event_contract_contains_core_streaming_events():
         "browserActivity",
         "desktopActivity",
         "missionStep",
+        "outcomeLearned",
         "taskFinished",
         "taskFailed",
     } <= names

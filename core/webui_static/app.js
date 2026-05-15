@@ -1494,6 +1494,13 @@ function handleEvent(event) {
     case "entitiesError":
       addActivity("Entity memory", event.error || "Could not update entity memory.");
       break;
+    case "outcomeLearned":
+      addActivity("Outcome learned", oneLine(event.text || "Saved an outcome lesson.", 180), "mission");
+      refresh({ renderView: state.currentView === "memory" || state.currentView === "jobs" }).catch((error) => addActivity("Learning", error.message));
+      break;
+    case "outcomeLearnError":
+      addActivity("Outcome learning", event.error || "Could not record outcome lesson.");
+      break;
     case "missionCreated":
       addActivity("Mission created", oneLine(event.text || event.goal?.title || "Autonomous mission saved.", 160), "mission");
       refresh({ renderView: state.currentView === "missions" }).catch((error) => addActivity("Missions", error.message));

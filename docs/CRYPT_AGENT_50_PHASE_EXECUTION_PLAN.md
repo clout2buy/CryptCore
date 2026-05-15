@@ -583,12 +583,22 @@ Progress:
 - WebUI snapshots expose a compact pack preview, and chat prompts now receive a
   request-scoped context pack automatically.
 
-## Phase 39 - Learning From Outcomes
+## Phase 39 - Learning From Outcomes [started]
 
 After each task, record what worked, what failed, what the user corrected, and
 what should change next time.
 
 Verification: outcome lessons appear in future route/tool selection.
+
+Progress:
+
+- Task outcomes now create lessons for both completed and failed runs, including
+  concrete recovery hints for schema, read-before-edit, permission, and timeout
+  failures.
+- The desktop/WebUI daemon records outcome episodes after live turns and emits a
+  live outcome-learning event when new lessons are saved.
+- User corrections in normal chat are captured as durable feedback lessons so
+  future routing and tool behavior can adapt without manual memory commands.
 
 ## Phase 40 - Self-Upgrade Idea Queue
 

@@ -25,6 +25,11 @@ MAX_PROMPT_CHARS = 8_000
 MAX_EPISODE_TEXT = 2_000
 MAX_LESSON_TEXT = 1_000
 TOKEN_RE = re.compile(r"[A-Za-z0-9_.:/\\-]{3,}")
+CORRECTION_RE = re.compile(
+    r"\b(nope|nah|actually|correction|instead|next time|you should|you didn't|"
+    r"doesn't|does not|don't|do not|not rendering|still broken|wrong|fix that)\b",
+    re.I,
+)
 
 
 @dataclass(frozen=True)
@@ -108,23 +113,44 @@ def record_task_outcome(
     _append_jsonl(episodes_path(), {"schema": SCHEMA_VERSION, "type": "episode", **asdict(episode)})
 
     learned: list[Lesson] = []
-    if episode.status == "completed":
-        for text, tags, confidence in _infer_lessons(episode):
-            learned.append(
-                add_lesson(
-                    text,
-                    cwd=root,
-                    scope="project",
-                    tags=tags,
-                    source="runtime",
-                    source_task_id=task_id,
-                    confidence=confidence,
-                )
+    for text, tags, confidence in _infer_lessons(episode):
+        learned.append(
+            add_lesson(
+                text,
+                cwd=root,
+                scope="project",
+                tags=tags,
+                source="runtime",
+                source_task_id=task_id,
+                confidence=confidence,
             )
+        )
     return {
         "episode_id": episode.episode_id,
         "lesson_count": len(learned),
         "lessons": [lesson.text for lesson in learned],
+    }
+
+
+def record_user_correction(cwd: str | Path, text: str, *, source: str = "webui") -> dict[str, Any]:
+    """Turn explicit user corrections into future behavior lessons."""
+    clean = _one_line(redact.text(str(text or "")), 800)
+    if not clean or not CORRECTION_RE.search(clean):
+        return {"learned": False, "reason": "no correction signal"}
+    lesson = add_lesson(
+        "User correction: " + clean,
+        cwd=cwd,
+        scope="project",
+        tags=["outcome", "user-correction", "feedback"],
+        source=source,
+        confidence=0.84,
+    )
+    return {
+        "learned": True,
+        "lesson_id": lesson.lesson_id,
+        "text": lesson.text,
+        "tags": lesson.tags,
+        "confidence": lesson.confidence,
     }
 
 
@@ -307,6 +333,17 @@ def format_episodes(cwd: str | Path, *, query: str = "", limit: int = 12) -> str
 def _infer_lessons(episode: Episode) -> list[tuple[str, list[str], float]]:
     lessons: list[tuple[str, list[str], float]] = []
     project_name = Path(episode.cwd).name or "this project"
+    if episode.status != "completed":
+        lessons.append((
+            "Outcome failure pattern: for similar failed tasks, reopen the evidence, name the blocker, "
+            "and retry with one concrete recovery step before finalizing. Last failure: "
+            + _one_line(episode.outcome or episode.prompt, 220),
+            ["outcome", "failure", "recovery"],
+            0.66,
+        ))
+        recovery = _failure_recovery_lesson(episode.outcome)
+        if recovery:
+            lessons.append((recovery, ["outcome", "tool-recovery"], 0.7))
     if episode.verification_commands:
         commands = "; ".join(episode.verification_commands[:3])
         lessons.append((
@@ -330,6 +367,19 @@ def _infer_lessons(episode: Episode) -> list[tuple[str, list[str], float]]:
         if hint:
             lessons.append((f"When {tool} fails, use this recovery: {hint}", ["recovery", tool], 0.68))
     return lessons
+
+
+def _failure_recovery_lesson(text: str) -> str:
+    lower = str(text or "").lower()
+    if "schema validation failed" in lower or "non-empty" in lower:
+        return "Outcome recovery: when a tool schema validation fails, re-read the expected fields and retry with concrete non-empty values."
+    if "read-before-edit" in lower or "partial range was read" in lower:
+        return "Outcome recovery: when edit tools require read-before-edit, read the complete target file before retrying the edit."
+    if "permissionerror" in lower or "permission denied" in lower:
+        return "Outcome recovery: when a permission error blocks a write, stop and inspect the exact path and boundary before retrying."
+    if "timeout" in lower:
+        return "Outcome recovery: when a task times out, narrow the command or split the work before retrying."
+    return ""
 
 
 def _compact_evidence(entries: list[evidence.EvidenceEntry]) -> list[dict[str, Any]]:

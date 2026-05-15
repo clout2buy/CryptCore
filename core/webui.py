@@ -235,6 +235,20 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                         }
                     )
             try:
+                feedback_result = learning.record_user_correction(self.server.cwd, text, source="webui")
+            except Exception as exc:
+                self.server.emit_event({"event": "outcomeLearnError", "error": f"{type(exc).__name__}: {exc}"})
+            else:
+                if feedback_result.get("learned"):
+                    self.server.emit_event(
+                        {
+                            "event": "outcomeLearned",
+                            "text": str(feedback_result.get("text") or "User correction captured."),
+                            "lessons": [feedback_result.get("text")],
+                            "episodeId": "",
+                        }
+                    )
+            try:
                 entity_result = entities.observe_text(self.server.cwd, text)
             except Exception as exc:
                 self.server.emit_event({"event": "entitiesError", "error": f"{type(exc).__name__}: {exc}"})

@@ -3,7 +3,7 @@ from __future__ import annotations
 import threading
 import time
 
-from core import app_daemon, auth, runtime, settings
+from core import app_daemon, auth, learning, runtime, settings
 from core.api import OllamaProvider
 
 
@@ -181,6 +181,23 @@ def test_app_daemon_timeline_events_render_tool_cards():
     assert "README.md" in events[0]["text"]
     assert events[1]["event"] == "toolResult"
     assert events[1]["ok"] is True
+
+
+def test_app_daemon_outcome_learning_helper_records_failure(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+
+    result = app_daemon._record_outcome_learning(
+        workspace,
+        task_id="task-failure",
+        prompt="edit the UI",
+        status="failed",
+        final_text="read-before-edit invariant: only a partial range was read",
+    )
+
+    assert result["lesson_count"] >= 2
+    assert any("read-before-edit" in lesson.text for lesson in learning.list_lessons(workspace))
 
 
 def test_desktop_ollama_cloud_selection_uses_cloud_host():
