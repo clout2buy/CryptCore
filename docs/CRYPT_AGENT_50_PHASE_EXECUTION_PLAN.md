@@ -89,12 +89,20 @@ Progress:
 - Provider snapshots now include `modelMetadata`; the WebUI consumes it before
   falling back to local label formatting.
 
-## Phase 6 - Intent Router V1
+## Phase 6 - Intent Router V1 [started]
 
 Turn a user message into a structured route: conversation, research, code,
 business, mission, memory, browser, desktop, file, schedule, or external action.
 
 Verification: routing fixtures with confidence and rationale checks.
+
+Progress:
+
+- Added `core/intent_router.py` for deterministic prompt classification with
+  route role, confidence, durable-work signal, and approval-needed signal.
+- WebUI prompt handling now emits `intentRouted`, adds compact intent context to
+  the runtime prompt, and lets Crypt choose a backend route when the user leaves
+  route selection on auto.
 
 ## Phase 7 - Clarification Policy
 

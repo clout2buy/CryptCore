@@ -11,6 +11,7 @@ def test_live_event_contract_contains_core_streaming_events():
     assert {
         "taskStarted",
         "taskProgress",
+        "intentRouted",
         "thinkingDelta",
         "assistantDelta",
         "toolProgress",

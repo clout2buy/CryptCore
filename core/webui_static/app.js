@@ -1296,6 +1296,16 @@ function handleEvent(event) {
       });
       addActivity(event.phase || "Progress", event.text || "");
       break;
+    case "intentRouted":
+      appendLiveEvent(id, {
+        key: "intent-route",
+        kind: "route",
+        title: `Intent: ${event.intent || "task"}`,
+        body: event.rationale || event.text || "",
+        status: "running",
+      });
+      addActivity("Intent", `${event.intent || "task"} / ${(Number(event.confidence || 0) * 100).toFixed(0)}%`);
+      break;
     case "thinkingDelta":
       appendLiveEvent(id, {
         key: "thinking-stream",

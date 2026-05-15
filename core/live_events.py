@@ -31,6 +31,10 @@ LIVE_EVENT_SPECS: dict[str, EventSpec] = {
         optional=frozenset({"id", "taskId", "prompt", "routeRole", "sessionKey", "snapshot", "status"})
     ),
     "taskProgress": EventSpec(required=frozenset({"id", "phase"}), optional=frozenset({"routeRole", "sessionKey", "text"})),
+    "intentRouted": EventSpec(
+        required=frozenset({"id", "intent", "confidence", "rationale"}),
+        optional=frozenset({"routeRole", "sessionKey", "durable", "needsApproval", "needsClarification", "text"}),
+    ),
     "thinkingDelta": EventSpec(required=frozenset({"text"}), optional=frozenset({"id", "routeRole", "sessionKey"})),
     "assistantDelta": EventSpec(required=frozenset({"text"}), optional=frozenset({"id", "routeRole", "sessionKey"})),
     "taskFinished": EventSpec(

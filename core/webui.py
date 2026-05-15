@@ -20,6 +20,7 @@ from . import (
     app_daemon,
     autonomy,
     goals,
+    intent_router,
     learning,
     local_voice,
     memory_journal,
@@ -172,6 +173,24 @@ class CryptWebHandler(BaseHTTPRequestHandler):
             if not text:
                 self._error(HTTPStatus.BAD_REQUEST, "prompt is empty")
                 return
+            request_id = str(body.get("id") or f"web-{uuid.uuid4().hex[:10]}")
+            session_key = str(body.get("sessionKey") or "web")
+            intent_decision = intent_router.route(text)
+            self.server.emit_event(
+                {
+                    "event": "intentRouted",
+                    "id": request_id,
+                    "sessionKey": session_key,
+                    "intent": intent_decision.intent,
+                    "routeRole": intent_decision.route_role,
+                    "confidence": intent_decision.confidence,
+                    "rationale": intent_decision.rationale,
+                    "durable": intent_decision.durable,
+                    "needsApproval": intent_decision.needs_approval,
+                    "needsClarification": intent_decision.needs_clarification,
+                    "text": intent_router.prompt_hint(intent_decision),
+                }
+            )
             try:
                 journal_result = memory_journal.observe(self.server.cwd, text)
             except Exception as exc:
@@ -234,15 +253,15 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                         )
             intents = _intent_hints(body.get("intents"))
             profile = agent_profiles.get_profile(self.server.cwd, str(body.get("agentId") or ""))
-            prompt_text = _prompt_with_context(text, intents, profile, mission_result)
-            request_id = str(body.get("id") or f"web-{uuid.uuid4().hex[:10]}")
+            prompt_text = _prompt_with_context(text, intents, profile, mission_result, intent_decision)
+            route_role = str(body.get("route") or "").strip() or intent_decision.route_role
             self.server.daemon.handle_command(
                 {
                     "type": "sendPrompt",
                     "id": request_id,
                     "text": prompt_text,
-                    "route": str(body.get("route") or ""),
-                    "sessionKey": str(body.get("sessionKey") or "web"),
+                    "route": route_role,
+                    "sessionKey": session_key,
                 }
             )
             self._json({"id": request_id})
@@ -754,6 +773,7 @@ def _prompt_with_context(
     intents: list[str],
     profile: agent_profiles.AgentProfile | None = None,
     mission: mission_router.MissionDecision | None = None,
+    intent: intent_router.IntentRoute | None = None,
 ) -> str:
     hints: list[str] = []
     hint_map = {
@@ -773,6 +793,10 @@ def _prompt_with_context(
         )
     if mission and mission.prompt_hint:
         hints.append(mission.prompt_hint)
+    if intent:
+        hint = intent_router.prompt_hint(intent)
+        if hint:
+            hints.append(hint)
     if not hints:
         return text
     return f"{text}\n\n[Crypt runtime hints: {'; '.join(hints)}]"

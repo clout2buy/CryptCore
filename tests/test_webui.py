@@ -93,6 +93,7 @@ def test_webui_static_is_chat_first():
     assert "workThreadUpdated" in script
     assert "memoryJournalUpdated" in script
     assert "missionCreated" in script
+    assert "intentRouted" in script
     assert "kokoro ready" in script
     assert "af_heart" in script
     assert "ChatGPT 5.5" in script
@@ -190,7 +191,9 @@ def test_webui_prompt_context_includes_auto_mission(monkeypatch, tmp_path: Path)
     workspace.mkdir()
     decision = webui.mission_router.observe(workspace, "Build a client outreach business and track revenue weekly.")
 
-    text = webui._prompt_with_context("Build this business", [], mission=decision)
+    intent = webui.intent_router.route("Build this business")
+    text = webui._prompt_with_context("Build this business", [], mission=decision, intent=intent)
 
     assert "autonomous mission" in text
+    assert "intent=business" in text
     assert "do not ask the user to manage missions manually" in text
