@@ -26,10 +26,14 @@ class ScheduledJob:
     status: str = "active"
     cadence: str = ""
     due_at: int = 0
+    priority: int = 3
     goal_id: str = ""
     thread_id: str = ""
+    escalation_rules: list[str] = field(default_factory=list)
     last_result: str = ""
+    last_run_at: int = 0
     run_count: int = 0
+    missed_runs: int = 0
     created_at: int = 0
     updated_at: int = 0
     history: list[dict[str, Any]] = field(default_factory=list)
@@ -59,6 +63,8 @@ def schedule_followup(
     goal_id: str = "",
     thread_id: str = "",
     kind: str = "mission-check",
+    priority: int = 3,
+    escalation_rules: list[str] | None = None,
 ) -> ScheduledJob:
     root = Path(cwd).expanduser().resolve()
     now = _now()
@@ -71,8 +77,10 @@ def schedule_followup(
         status="active",
         cadence=_clean(cadence, 80),
         due_at=int(due_at or _next_due(cadence, now) or now),
+        priority=max(1, min(5, int(priority or 3))),
         goal_id=_clean(goal_id, 80),
         thread_id=_clean(thread_id, 80),
+        escalation_rules=_dedupe(escalation_rules or _default_escalation_rules(cadence)),
         created_at=now,
         updated_at=now,
         history=[_history("created", "scheduled follow-up created", now)],
@@ -98,11 +106,12 @@ def ensure_goal_schedule(goal: goals.Goal) -> ScheduledJob | None:
             cwd=root,
             title=goal.title,
             prompt=goal.description,
-            cadence=goal.cadence,
-            due_at=due_at,
-            thread_id=thread.thread_id if thread else existing.thread_id,
-            status="active",
-            note="synced from goal cadence",
+        cadence=goal.cadence,
+        due_at=due_at,
+        thread_id=thread.thread_id if thread else existing.thread_id,
+        priority=goal.priority,
+        status="active",
+        note="synced from goal cadence",
         )
         return updated
     return schedule_followup(
@@ -114,6 +123,8 @@ def ensure_goal_schedule(goal: goals.Goal) -> ScheduledJob | None:
         goal_id=goal.goal_id,
         thread_id=thread.thread_id if thread else "",
         kind="goal-review",
+        priority=goal.priority,
+        escalation_rules=["escalate if review is missed by 1 day", "mark blocker if goal has no next action"],
     )
 
 
@@ -144,8 +155,43 @@ def due_jobs(cwd: str | Path, *, now: int | None = None) -> list[ScheduledJob]:
     current = _now() if now is None else int(now)
     return [
         job for job in list_jobs(root)
-        if job.due_at and job.due_at <= current
+        if job.status == "active" and job.due_at and job.due_at <= current
     ]
+
+
+def pause_job(job_id: str, cwd: str | Path, *, reason: str = "") -> ScheduledJob:
+    return _replace_job(
+        job_id,
+        cwd=cwd,
+        status="paused",
+        note=f"paused schedule: {_clean(reason) or 'no reason provided'}",
+    )
+
+
+def resume_job(job_id: str, cwd: str | Path, *, due_at: int = 0) -> ScheduledJob:
+    values: dict[str, Any] = {"status": "active"}
+    if due_at:
+        values["due_at"] = int(due_at)
+    return _replace_job(job_id, cwd=cwd, note="resumed schedule", **values)
+
+
+def snapshot(cwd: str | Path) -> dict[str, Any]:
+    root = Path(cwd).expanduser().resolve()
+    now = _now()
+    jobs = list_jobs(root, include_all=True)
+    active = [job for job in jobs if job.status == "active"]
+    due = [job for job in active if job.due_at and job.due_at <= now]
+    paused = [job for job in jobs if job.status == "paused"]
+    overdue = [job for job in due if _is_overdue(job, now)]
+    return {
+        "total": len(jobs),
+        "active": len(active),
+        "paused": len(paused),
+        "due": len(due),
+        "overdue": len(overdue),
+        "nextDueAt": min([job.due_at for job in active if job.due_at] or [0]),
+        "jobs": [asdict(job) for job in jobs[:30]],
+    }
 
 
 def run_due(cwd: str | Path, *, now: int | None = None, limit: int = 10) -> SchedulerRun:
@@ -173,12 +219,19 @@ def prompt_section(cwd: str | Path, *, limit: int = 5) -> str:
     lines = ["# Scheduler"]
     for job in jobs:
         due = time.strftime("%Y-%m-%d %H:%M", time.localtime(job.due_at)) if job.due_at else "unscheduled"
-        lines.append(f"- {job.kind} {job.title} | due: {due} | cadence: {job.cadence or 'once'}")
+        escalation = f" | escalation: {', '.join(job.escalation_rules[:2])}" if job.escalation_rules else ""
+        lines.append(
+            f"- {job.kind} P{job.priority} {job.status} {job.title} | "
+            f"due: {due} | cadence: {job.cadence or 'once'}{escalation}"
+        )
     return "\n".join(lines)
 
 
 def _run_job(root: Path, job: ScheduledJob, *, now: int) -> ScheduledJob:
     summary = f"Scheduled {job.kind} reviewed: {job.title}"
+    escalation = _escalation_note(job, now)
+    if escalation:
+        summary += f" | escalation: {escalation}"
     evidence.record("schedule", "scheduler", summary, task_id=job.thread_id or job.job_id)
     if job.goal_id:
         try:
@@ -207,7 +260,9 @@ def _run_job(root: Path, job: ScheduledJob, *, now: int) -> ScheduledJob:
         status=status,
         due_at=next_due,
         last_result=summary,
+        last_run_at=now,
         run_count=job.run_count + 1,
+        missed_runs=job.missed_runs + (1 if escalation else 0),
         note=summary,
     )
 
@@ -226,6 +281,13 @@ def _replace_job(job_id: str, *, cwd: str | Path, note: str = "", **values: Any)
         for key in ("title", "prompt", "kind", "cadence", "goal_id", "thread_id", "last_result"):
             if key in values and values[key] is not None:
                 data[key] = _clean(str(values[key]), 2_000)
+        if "escalation_rules" in values and values["escalation_rules"] is not None:
+            raw_rules = values["escalation_rules"]
+            if isinstance(raw_rules, list):
+                data["escalation_rules"] = _dedupe([_clean(str(rule), 200) for rule in raw_rules])
+        for key in ("priority", "last_run_at", "missed_runs"):
+            if key in values and values[key] is not None:
+                data[key] = int(values[key])
         if "status" in values and values["status"] is not None:
             status = str(values["status"]).strip().lower()
             if status not in ACTIVE_STATUSES:
@@ -272,10 +334,14 @@ def _read() -> list[ScheduledJob]:
                     status=str(item.get("status") or "active"),
                     cadence=str(item.get("cadence") or ""),
                     due_at=int(item.get("due_at") or 0),
+                    priority=int(item.get("priority") or 3),
                     goal_id=str(item.get("goal_id") or ""),
                     thread_id=str(item.get("thread_id") or ""),
+                    escalation_rules=[str(rule) for rule in item.get("escalation_rules", []) if str(rule)],
                     last_result=str(item.get("last_result") or ""),
+                    last_run_at=int(item.get("last_run_at") or 0),
                     run_count=int(item.get("run_count") or 0),
+                    missed_runs=int(item.get("missed_runs") or 0),
                     created_at=int(item.get("created_at") or 0),
                     updated_at=int(item.get("updated_at") or 0),
                     history=[item for item in item.get("history", []) if isinstance(item, dict)],
@@ -309,6 +375,33 @@ def _next_due(cadence: str, now: int) -> int:
     return 0
 
 
+def _is_overdue(job: ScheduledJob, now: int) -> bool:
+    return bool(job.due_at and now - job.due_at >= _overdue_seconds(job))
+
+
+def _overdue_seconds(job: ScheduledJob) -> int:
+    if job.cadence in {"hourly", "hour"}:
+        return 2 * 60 * 60
+    if job.cadence in {"weekly", "week"}:
+        return 2 * 24 * 60 * 60
+    if job.cadence in {"monthly", "month"}:
+        return 5 * 24 * 60 * 60
+    return 24 * 60 * 60
+
+
+def _escalation_note(job: ScheduledJob, now: int) -> str:
+    if not _is_overdue(job, now):
+        return ""
+    rules = ", ".join(job.escalation_rules[:2]) or "schedule is overdue"
+    return f"overdue by {max(0, now - job.due_at)}s; {rules}"
+
+
+def _default_escalation_rules(cadence: str) -> list[str]:
+    if cadence:
+        return ["escalate if missed past grace window", "preserve blocker and next action in mission history"]
+    return ["complete after one run", "record result evidence"]
+
+
 def _history(source: str, text: str, now: int) -> dict[str, Any]:
     return {"source": source, "text": _clean(text, 500), "at": now}
 
@@ -316,6 +409,18 @@ def _history(source: str, text: str, now: int) -> dict[str, Any]:
 def _clean(value: str, limit: int = 500) -> str:
     clean = " ".join(str(value or "").split())
     return clean if len(clean) <= limit else clean[: limit - 3].rstrip() + "..."
+
+
+def _dedupe(values: list[str]) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        clean = _clean(str(value or ""), 200)
+        key = clean.lower()
+        if clean and key not in seen:
+            seen.add(key)
+            out.append(clean)
+    return out
 
 
 def stable_job_id(goal_id: str) -> str:

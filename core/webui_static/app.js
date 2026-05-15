@@ -751,6 +751,8 @@ function missionsView(snapshot) {
   const watched = goals.filter((goal) => goal.cadence);
   const due = watched.filter((goal) => Number(goal.next_review_at || 0) * 1000 <= Date.now());
   const blockedThreads = threads.filter((thread) => (thread.state || "active") === "blocked");
+  const scheduler = snapshot.missionScheduler || {};
+  const jobs = scheduler.jobs || snapshot.schedulesPreview || [];
   return `
     <section class="mission-board">
       <div class="panel-card mission-hero">
@@ -763,12 +765,20 @@ function missionsView(snapshot) {
         ${statCard("Goals", active.length)}
         ${statCard("Threads", threads.length)}
         ${statCard("Blocked", blockedThreads.length)}
-        ${statCard("Due", due.length)}
+        ${statCard("Due", scheduler.due ?? due.length)}
+        ${statCard("Paused", scheduler.paused || 0)}
       </div>
     </section>
+    <section class="data-list mission-list">${jobs.slice(0, 8).map(scheduleRow).join("") || emptyRow("No schedules yet")}</section>
     <section class="data-list mission-list thread-list">${threads.map(threadRow).join("") || emptyRow("No work threads yet")}</section>
     <section class="data-list mission-list">${goals.map(missionRow).join("") || emptyRow("No missions yet")}</section>
   `;
+}
+
+function scheduleRow(job) {
+  const due = Number(job.due_at || 0) ? `due ${reviewTime(Number(job.due_at) * 1000)}` : "unscheduled";
+  const result = job.last_result || (job.escalation_rules || []).slice(0, 2).join(" / ") || job.prompt || "waiting";
+  return row(job.status || "schedule", job.title || "Scheduled mission", `${job.kind || "mission"} / ${due} / ${result}`);
 }
 
 function missionRow(goal) {

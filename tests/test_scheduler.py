@@ -56,3 +56,49 @@ def test_scheduler_prompt_section_is_compact(monkeypatch, tmp_path: Path):
     assert "Scheduler" in section
     assert "Review dashboard" in section
     assert "weekly" in section
+
+
+def test_scheduler_can_pause_resume_and_snapshot(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    job = scheduler.schedule_followup(
+        workspace,
+        "Monitor launch",
+        cadence="daily",
+        priority=2,
+        escalation_rules=["tell user if missed", "keep blocker visible"],
+    )
+
+    paused = scheduler.pause_job(job.job_id, workspace, reason="waiting on setup")
+    paused_snapshot = scheduler.snapshot(workspace)
+    resumed = scheduler.resume_job(job.job_id, workspace, due_at=123)
+
+    assert paused.status == "paused"
+    assert paused_snapshot["paused"] == 1
+    assert resumed.status == "active"
+    assert resumed.due_at == 123
+    assert resumed.priority == 2
+    assert resumed.escalation_rules == ["tell user if missed", "keep blocker visible"]
+
+
+def test_scheduler_escalates_overdue_recurring_jobs(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    evidence.clear()
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    job = scheduler.schedule_followup(
+        workspace,
+        "Daily revenue check",
+        cadence="daily",
+        due_at=10,
+        escalation_rules=["alert if stale"],
+    )
+
+    run = scheduler.run_due(workspace, now=10 + 2 * 24 * 60 * 60)
+    refreshed = next(item for item in scheduler.list_jobs(workspace, include_all=True) if item.job_id == job.job_id)
+
+    assert run.ran == 1
+    assert refreshed.missed_runs == 1
+    assert "escalation" in refreshed.last_result
+    assert refreshed.last_run_at > 0

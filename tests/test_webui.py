@@ -45,6 +45,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "artifactGroups" in web_snapshot
         assert "artifactSummary" in web_snapshot
         assert "schedulesPreview" in web_snapshot
+        assert "missionScheduler" in web_snapshot
         assert "monitorsPreview" in web_snapshot
         assert "memoryJournal" in web_snapshot
         assert "remoteAccess" in web_snapshot
@@ -171,6 +172,8 @@ def test_webui_static_is_chat_first():
     assert "currentView: \"chat\"" in script
     assert "Self-Updating Memory" in script
     assert "Mission brain" in script
+    assert "missionScheduler" in script
+    assert "No schedules yet" in script
     assert "personaGovernance" in script
     assert "Artifact Studio" in script
     assert "artifactGroups" in script

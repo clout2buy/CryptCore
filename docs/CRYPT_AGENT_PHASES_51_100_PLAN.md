@@ -167,6 +167,11 @@ in snapshots, settings UI, and runtime prompt context.
 Schedule durable missions with recurrence, due dates, pause/resume, results,
 and escalation rules.
 
+Progress: upgraded `core.scheduler` with priority, escalation rules,
+pause/resume, last-run timestamps, missed-run tracking, overdue escalation
+notes, and a scheduler snapshot. The WebUI mission panel now shows scheduled
+jobs alongside work threads and goals.
+
 ## Phase 69 - Notification Center
 
 Surface finished work, blockers, approvals, reminders, and failed background

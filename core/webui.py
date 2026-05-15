@@ -590,6 +590,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
         snapshot["autonomyContracts"] = autonomy_contracts.snapshot()
         snapshot["schedulesPreview"] = [asdict(item) for item in scheduler.list_jobs(self.server.cwd, include_all=True)[:20]]
+        snapshot["missionScheduler"] = scheduler.snapshot(self.server.cwd)
         snapshot["monitorsPreview"] = [asdict(item) for item in monitors.list_monitors(self.server.cwd, include_all=True)[:20]]
         snapshot["revenue"] = revenue.dashboard_snapshot(self.server.cwd)
         snapshot["revenueOps"] = revenue_ops.dashboard(self.server.cwd)
