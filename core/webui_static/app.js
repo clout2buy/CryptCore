@@ -10,6 +10,7 @@ const state = {
   sessions: [],
   currentSessionId: "",
   taskSessions: {},
+  liveTurns: {},
   messageSeq: 0,
   animationStarted: false,
   shellKeys: {
@@ -172,7 +173,11 @@ function currentSession() {
 }
 
 function hydrateCurrentSession() {
-  state.messages = (currentSession().messages || []).map((message) => ({ ...message, typing: false }));
+  state.messages = (currentSession().messages || []).map((message) => ({
+    ...message,
+    live: Array.isArray(message.live) ? message.live.slice(-10) : [],
+    typing: false,
+  }));
 }
 
 function saveChatSessions() {
@@ -187,7 +192,14 @@ function persistCurrentSession(renderList = true) {
   const session = currentSession();
   session.messages = state.messages
     .slice(-MAX_SESSION_MESSAGES)
-    .map(({ role, label, text, id, uiId }) => ({ role, label, text, id, uiId }));
+    .map(({ role, label, text, id, uiId, live }) => ({
+      role,
+      label,
+      text,
+      id,
+      uiId,
+      live: Array.isArray(live) ? live.slice(-10) : [],
+    }));
   session.updatedAt = Date.now();
   const firstUser = session.messages.find((message) => message.role === "user" && message.text);
   if (firstUser) session.title = oneLine(firstUser.text, 54);
@@ -985,6 +997,7 @@ function pushMessage(message) {
 }
 
 function updateAssistantMessage(id, text, { append = false, typing = false } = {}) {
+  touchLiveTurn(id, { status: typing ? "running" : "idle" });
   const targetSessionId = state.taskSessions[id];
   if (targetSessionId && targetSessionId !== state.currentSessionId) {
     const session = state.sessions.find((item) => item.id === targetSessionId);
@@ -1067,6 +1080,11 @@ function renderLiveTimeline(node, items = []) {
 }
 
 function appendLiveEvent(id, item) {
+  touchLiveTurn(id, {
+    status: item.status === "failed" ? "failed" : item.status === "done" ? "done" : "running",
+    lastKind: item.kind || "live",
+    lastTitle: item.title || "",
+  });
   const targetSessionId = state.taskSessions[id];
   const entry = {
     kind: item.kind || "live",
@@ -1127,6 +1145,7 @@ function mergeLiveItems(items = [], entry) {
 }
 
 function finishLiveEvents(id) {
+  touchLiveTurn(id, { status: "done" });
   const targetSessionId = state.taskSessions[id];
   if (targetSessionId && targetSessionId !== state.currentSessionId) {
     const session = state.sessions.find((candidate) => candidate.id === targetSessionId);
@@ -1159,6 +1178,7 @@ function currentAssistantText(id) {
 }
 
 function startLivePulse(id) {
+  touchLiveTurn(id, { status: "running" });
   if (state.liveTimers[id]) return;
   const started = Date.now();
   const lines = [
@@ -1189,6 +1209,25 @@ function stopLivePulse(id) {
   delete state.liveTimers[id];
 }
 
+function touchLiveTurn(id, patch = {}) {
+  if (!id) return null;
+  const now = Date.now();
+  const existing = state.liveTurns[id] || { id, startedAt: now, updatedAt: now, status: "running" };
+  state.liveTurns[id] = {
+    ...existing,
+    ...patch,
+    id,
+    updatedAt: now,
+  };
+  return state.liveTurns[id];
+}
+
+function registerEventSession(event, id) {
+  if (!id || !event.sessionKey) return;
+  state.taskSessions[id] = String(event.sessionKey);
+  touchLiveTurn(id, { sessionKey: String(event.sessionKey) });
+}
+
 function addActivity(title, body = "") {
   const item = document.createElement("article");
   item.className = "activity-item";
@@ -1217,6 +1256,7 @@ function handleEvent(event) {
   state.events.push(event);
   if (state.events.length > 300) state.events = state.events.slice(-300);
   const id = event.id || "default";
+  registerEventSession(event, id);
   switch (event.event) {
     case "snapshot":
       if (event.snapshot) {
@@ -1246,7 +1286,7 @@ function handleEvent(event) {
         key: "thinking-stream",
         kind: "thinking",
         title: "Thinking",
-        body: "Reasoning stream active.",
+        body: event.text ? oneLine(event.text, 180) : "Reasoning stream active.",
         status: "running",
       });
       break;
@@ -1270,6 +1310,7 @@ function handleEvent(event) {
       state.busy = false;
       setStatus("Needs attention");
       stopLivePulse(id);
+      touchLiveTurn(id, { status: "failed" });
       appendLiveEvent(id, { kind: "error", title: "Stopped", body: event.error || "", status: "failed" });
       updateAssistantMessage(id, event.error || "Something failed.", { typing: false });
       delete state.taskSessions[id];
@@ -1363,6 +1404,7 @@ function handleEvent(event) {
     case "error":
       state.busy = false;
       setStatus("Needs attention");
+      touchLiveTurn(id, { status: "failed" });
       pushMessage({ role: "system", label: "Crypt", text: event.error || "Something failed." });
       addActivity("Error", event.error || "");
       break;

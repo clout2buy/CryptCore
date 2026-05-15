@@ -45,13 +45,21 @@ Progress:
 - Wired AppDaemon and WebUI event emission through the normalizer in
   compatibility mode so future events can roll out without breaking older UI.
 
-## Phase 3 - True Live Chat Rendering
+## Phase 3 - True Live Chat Rendering [started]
 
 Render assistant thinking, streaming response text, tool calls, and status
 changes immediately inside the active chat without waiting for the next user
 message or refresh.
 
 Verification: browser test that observes intermediate states before completion.
+
+Progress:
+
+- Added a browser-side live-turn registry and restored request/session mapping
+  from replayed live events.
+- Preserved live timeline items in stored chat sessions so refreshes and session
+  switches do not erase visible tool/thinking history.
+- Thinking deltas now surface useful live text when the provider exposes them.
 
 ## Phase 4 - Minimal Composer
 

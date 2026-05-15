@@ -105,6 +105,9 @@ def test_webui_static_is_chat_first():
     assert "pollSnapshotOnce" in script
     assert "startLivePulse" in script
     assert "renderLiveTimeline" in script
+    assert "liveTurns" in script
+    assert "registerEventSession" in script
+    assert "sessionKey" in script
     assert "New Mission" not in script
     assert "Something Crypt should remember permanently" not in script
     assert "surface-dock" not in html
