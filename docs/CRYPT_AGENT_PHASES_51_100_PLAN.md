@@ -187,6 +187,11 @@ critical counts, and the home UI shows a compact notification center.
 Connect generated files, missions, memories, agents, checks, and releases into
 a navigable dependency graph.
 
+Progress: added `core.artifact_graph`, which builds nodes and edges for
+workspace artifacts, goals, work threads, learned lessons, saved agents,
+verification checks, and release records. The WebUI files panel now surfaces
+graph counts and recent dependency links.
+
 ## Phase 71 - Self-Upgrade Sandbox
 
 Plan self-upgrades in an isolated branch/worktree, run checks, then propose the

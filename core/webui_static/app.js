@@ -617,6 +617,8 @@ function filesView(snapshot) {
   const artifacts = snapshot.artifactsPreview || [];
   const groups = snapshot.artifactGroups || [];
   const summary = snapshot.artifactSummary || {};
+  const graph = snapshot.artifactGraph || {};
+  const graphSummary = graph.summary || {};
   const pipelines = snapshot.websitePipelines?.pipelines || [];
   const latest = artifacts[0];
   return `
@@ -636,7 +638,11 @@ function filesView(snapshot) {
         ${statCard("Mission linked", summary.missionLinked || 0)}
         ${statCard("Verified", summary.verified || 0)}
         ${statCard("Site pipelines", snapshot.websitePipelines?.active || 0)}
+        ${statCard("Graph", `${graphSummary.nodes || 0}/${graphSummary.edges || 0}`, "nodes / links")}
       </div>
+    </section>
+    <section class="data-list artifact-graph-list">
+      ${(graph.edges || []).slice(0, 8).map((edge) => row(edge.kind || "link", edge.label || edge.source, `${edge.source} -> ${edge.target}`)).join("") || emptyRow("Artifact graph has no links yet")}
     </section>
     <section class="data-list website-pipeline-list">
       ${pipelines.map(websitePipelineRow).join("") || ""}

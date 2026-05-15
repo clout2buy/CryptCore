@@ -19,6 +19,7 @@ from . import (
     agent_profiles,
     agent_delegation,
     agent_team_templates,
+    artifact_graph,
     app_daemon,
     autonomy,
     autonomy_contracts,
@@ -622,6 +623,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["artifactsPreview"] = studio["artifacts"]
         snapshot["artifactGroups"] = studio["groups"]
         snapshot["artifactSummary"] = studio["summary"]
+        snapshot["artifactGraph"] = artifact_graph.build(self.server.cwd)
         snapshot["websitePipelines"] = website_pipeline.snapshot(self.server.cwd)
         snapshot["browserRecordings"] = browser_recorder.snapshot(self.server.cwd)
         snapshot["desktopRecordings"] = desktop_recorder.snapshot(self.server.cwd)
@@ -1157,6 +1159,9 @@ def _prompt_with_context(
         website_section = website_pipeline.prompt_section(workspace)
         if website_section:
             hints.append(website_section.replace("\n", " | "))
+        artifact_graph_section = artifact_graph.prompt_section(workspace)
+        if artifact_graph_section:
+            hints.append(artifact_graph_section.replace("\n", " | "))
     if not hints:
         return text
     return f"{text}\n\n[Crypt runtime hints: {'; '.join(hints)}]"
