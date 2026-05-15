@@ -616,12 +616,21 @@ Progress:
 - Autonomy cycles now refresh the self-upgrade queue, and WebUI/runtime context
   can surface the highest-priority proposed upgrades.
 
-## Phase 41 - Live Runtime Rebuild
+## Phase 41 - Live Runtime Rebuild [started]
 
 Support safe local rebuild/restart flows that keep UI state, preserve sessions,
 and report when the backend changed.
 
 Verification: restart smoke test with active session preserved.
+
+Progress:
+
+- Added a runtime rebuild planner with verification commands, restart command,
+  preservation notes, and changed-file tracking.
+- Rebuild records are stored per workspace, and snapshots report when backend
+  code changed after the last rebuild record.
+- WebUI/runtime context now exposes rebuild status so Crypt can recommend safe
+  verification and restart without losing durable sessions or local UI state.
 
 ## Phase 42 - Plugin And MCP Gateway
 
