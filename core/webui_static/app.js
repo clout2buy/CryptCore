@@ -804,6 +804,7 @@ function threadRow(thread) {
 function agentsView(snapshot) {
   const agents = snapshot.agentProfiles || [];
   const definitions = snapshot.agentDefinitions || [];
+  const teamTemplates = snapshot.agentTeamTemplates?.templates || [];
   const provider = state.engine.provider || snapshot.provider || "crypt";
   const model = state.engine.model || snapshot.model || "";
   const providerOptions = providerRows(snapshot).map((item) => ({ value: item.id, label: item.label || item.id }));
@@ -834,6 +835,9 @@ function agentsView(snapshot) {
         <p>Saved agents also update the matching runtime route, so delegated work uses the provider and model you chose.</p>
         <button class="ask-button" data-ask="Look at my saved agents and tell me which specialists you would create next.">Suggest agents</button>
       </div>
+    </section>
+    <section class="data-list team-template-list">
+      ${teamTemplates.map((team) => row("Team", team.label || team.id, `${team.category || "template"} / ${(team.members || []).length} agent(s) / ${team.summary || ""}`)).join("") || ""}
     </section>
     <section class="feature-grid agent-grid">
       ${agents.map((agent) => featureCard({

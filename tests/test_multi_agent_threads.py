@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from core import agent_profiles, multi_agent_threads, settings, webui
+from core import agent_profiles, agent_team_templates, multi_agent_threads, settings, webui
 
 
 def _agent(workspace: Path, name: str) -> agent_profiles.AgentProfile:
@@ -107,3 +107,19 @@ def test_webui_snapshot_and_prompt_include_multi_agent_threads(monkeypatch, tmp_
 
     assert snapshot["multiAgentThreads"]["count"] == 1
     assert "Multi-Agent Work Threads" in prompt
+
+
+def test_agent_team_template_creates_profiles_and_thread(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    monkeypatch.setattr(settings, "CONFIG_PATH", tmp_path / "config.json")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+
+    thread = agent_team_templates.apply_template(workspace, "frontend-build", title="Ship UI rebuild")
+    profiles = agent_profiles.list_profiles(workspace)
+
+    assert thread.title == "Ship UI rebuild"
+    assert len(thread.assignments) == 3
+    assert len(profiles) == 3
+    assert {template.template_id for template in agent_team_templates.list_templates()} >= {"business-launch", "release"}
+    assert "Agent Team Templates" in agent_team_templates.prompt_section()

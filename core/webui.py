@@ -18,6 +18,7 @@ from urllib.parse import parse_qs, urlsplit
 from . import (
     agent_profiles,
     agent_delegation,
+    agent_team_templates,
     app_daemon,
     autonomy,
     autonomy_contracts,
@@ -601,6 +602,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["agentProfiles"] = [profile.to_dict() for profile in agent_profiles.list_profiles(self.server.cwd)]
         snapshot["agentDelegation"] = agent_delegation.snapshot(self.server.cwd)
         snapshot["multiAgentThreads"] = multi_agent_threads.snapshot(self.server.cwd)
+        snapshot["agentTeamTemplates"] = agent_team_templates.snapshot()
         snapshot["agentDefinitions"] = _agent_definition_previews()
         snapshot["skillsPreview"] = [skill.as_dict() for skill in skills.discover(self.server.cwd, include_disabled=True)[:40]]
         snapshot["skillLifecycle"] = skill_lifecycle.snapshot(self.server.cwd)
@@ -1120,6 +1122,9 @@ def _prompt_with_context(
         multi_agent_section = multi_agent_threads.prompt_section(workspace)
         if multi_agent_section:
             hints.append(multi_agent_section.replace("\n", " | "))
+        team_template_section = agent_team_templates.prompt_section()
+        if team_template_section:
+            hints.append(team_template_section.replace("\n", " | "))
         builder_section = code_builder.prompt_section(workspace, text)
         if builder_section:
             hints.append(builder_section.replace("\n", " | "))

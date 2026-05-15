@@ -89,6 +89,10 @@ current skill state.
 Define reusable teams like business launch, frontend build, bug fix, research,
 release, and content operations.
 
+Progress: added `core.agent_team_templates`, reusable team definitions, profile
+creation, multi-agent thread creation, WebUI snapshot/agents panel, and prompt
+context for team selection.
+
 ## Phase 61 - Memory Importance Scoring V2
 
 Score memory candidates by recurrence, user preference, project value, risk,

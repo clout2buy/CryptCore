@@ -36,6 +36,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert web_snapshot["workspace"] == str(workspace.resolve())
         assert "agentProfiles" in web_snapshot
         assert "agentDefinitions" in web_snapshot
+        assert "agentTeamTemplates" in web_snapshot
         assert "voice" in web_snapshot
         assert "workThreads" in web_snapshot
         assert "skillLifecycle" in web_snapshot
@@ -160,6 +161,7 @@ def test_webui_static_is_chat_first():
     assert "providerSelect" in html
     assert "data-view=\"missions\"" in html
     assert "data-view=\"agents\"" in html
+    assert "agentTeamTemplates" in script
     assert "CHAT_STORE_KEY" in script
     assert "currentView: \"chat\"" in script
     assert "Self-Updating Memory" in script
