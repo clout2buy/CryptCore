@@ -1399,7 +1399,8 @@ def _prompt_with_context(
         return (
             f"{text}\n\n"
             "[Crypt runtime hints: conversation mode; answer directly in Crypt's voice; "
-            "do not call tools, write files, create missions, or offer status notes unless the user asks.]"
+            "do not call tools, write files, create missions, or offer status notes unless the user asks; "
+            "for greetings or casual checks, do not ask what the user wants to build or tackle.]"
         )
     hint_map = {
         "web": "use web research if it helps",

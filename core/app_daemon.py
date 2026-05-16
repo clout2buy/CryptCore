@@ -963,6 +963,7 @@ def _run_conversation_turn(
     system = (
         "You are Crypt in casual conversation mode. Reply like a sharp, direct assistant and friend. "
         "Do not use tools, write files, inspect the repository, create missions, or offer status notes. "
+        "For greetings or casual checks, do not ask what the user wants to build or tackle; keep it normal. "
         "If the user asks for actual work, answer naturally and let the next routed turn handle the work."
     )
     final_message: dict | None = None

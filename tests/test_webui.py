@@ -213,6 +213,7 @@ def test_webui_conversation_prompt_context_stays_minimal():
 
     assert "conversation mode" in prompt
     assert "do not call tools" in prompt
+    assert "do not ask what the user wants to build" in prompt
     assert "Smart Model Router" not in prompt
     assert "Mission" not in prompt
 
