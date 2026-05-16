@@ -462,6 +462,14 @@ user to orchestrate.
 Let durable missions run background cycles with state, logs, and explicit
 external-action gates.
 
+Progress: added `core.mission_workers`, a persistent worker layer for durable
+missions with active/blocked/paused/completed state, cycle logs, cadence,
+queued background jobs, thread/goal links, and explicit external-action gates.
+Workers can run due cycles into the job queue, pause/complete, require approval
+before posts/sends/payments/writes, and resume after approval. Settings now
+shows active/gated workers, and prompt context includes worker status so Crypt
+can continue long-running missions without making the user manage the board.
+
 ## Phase 97 - User Trust Calibration
 
 Learn how much initiative the user wants per domain and adjust questions versus

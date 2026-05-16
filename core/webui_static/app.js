@@ -1202,6 +1202,7 @@ function settingsView(snapshot) {
   const contracts = snapshot.autonomyContracts?.profiles || [];
   const providerHealth = snapshot.providerHealth || {};
   const healthCards = providerHealth.cards || [];
+  const missionWorkers = snapshot.missionWorkers || {};
   const sandbox = snapshot.selfUpgradeSandbox || {};
   const patchRisk = snapshot.patchRisk || {};
   const localSearch = snapshot.localSearch || {};
@@ -1221,6 +1222,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Thinking", value: snapshot.thinkingMode, status: snapshot.reasoningEffort, detail: "Provider reasoning mode." })}
       ${featureCard({ label: "Auth", value: snapshot.authOk ? "ready" : "missing", status: snapshot.auth, detail: snapshot.authMessage || "Provider is usable." })}
       ${featureCard({ label: "Provider Health", value: `${providerHealth.ready || 0}/${providerHealth.total || 0}`, status: providerHealth.recommendedFallback ? `fallback ${providerHealth.recommendedFallback}` : "fallback none", detail: `${providerHealth.warnings || 0} warning(s), ${providerHealth.missing || 0} missing.` })}
+      ${featureCard({ label: "Mission Workers", value: missionWorkers.active || 0, status: `${missionWorkers.gated || 0} gated`, detail: "Durable mission cycles queue work and stop before external actions until approval is explicit." })}
       ${featureCard({ label: "Offline Local Mode", value: offline.prefer_local ? "local" : (offline.enabled ? "armed" : "standby"), status: offline.provider ? `${providerLabel(offline.provider, snapshot)} / ${modelLabel(offline.model)}` : "ollama", detail: offline.reason || "Say offline, private mode, local only, or no cloud to route local-first." })}
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
       ${featureCard({ label: "Patch Risk", value: patchRisk.risk || "low", status: patchRisk.blast_radius || "blast", detail: (patchRisk.reasons || []).join(" / ") || "No patch risk detected." })}
@@ -1248,6 +1250,12 @@ function settingsView(snapshot) {
       <div class="panel-card wide">
         <h3>Provider Health</h3>
         <div class="compact-list">${healthCards.map((card) => compactItem(card.status || "provider", card.label || card.provider, `${card.authState} / ${card.modelLabel} / failures ${card.failures || 0}`)).join("")}</div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Mission Workers</h3>
+        <div class="compact-list">
+          ${(missionWorkers.workers || []).slice(0, 7).map((worker) => compactItem(worker.status || "worker", worker.title, `${worker.cycle_count || 0} cycles / ${worker.gate_reason || worker.last_job_id || "next cycle ready"}`)).join("") || compactItem("empty", "No mission workers", "Crypt can create durable workers for long-running autonomous missions.")}
+        </div>
       </div>
       <div class="panel-card wide">
         <h3>Offline Local Mode</h3>

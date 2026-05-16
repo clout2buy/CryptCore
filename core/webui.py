@@ -54,6 +54,7 @@ from . import (
     mcp_gateway,
     mission_brain,
     mission_router,
+    mission_workers,
     mobile_companion,
     monitors,
     multi_agent_threads,
@@ -764,6 +765,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["approvalPolicy"] = approval_policy.snapshot(self.server.cwd)
         snapshot["liveReplay"] = live_replay.snapshot(self.server.cwd)
         snapshot["jobQueue"] = job_queue.snapshot(self.server.cwd)
+        snapshot["missionWorkers"] = mission_workers.snapshot(self.server.cwd)
         snapshot["schedulesPreview"] = [asdict(item) for item in scheduler.list_jobs(self.server.cwd, include_all=True)[:20]]
         snapshot["missionScheduler"] = scheduler.snapshot(self.server.cwd)
         snapshot["monitorsPreview"] = [asdict(item) for item in monitors.list_monitors(self.server.cwd, include_all=True)[:20]]
@@ -1390,6 +1392,9 @@ def _prompt_with_context(
         job_section = job_queue.prompt_section(workspace)
         if job_section:
             hints.append(job_section.replace("\n", " | "))
+        worker_section = mission_workers.prompt_section(workspace)
+        if worker_section:
+            hints.append(worker_section.replace("\n", " | "))
         persona_governance_section = persona_governance.prompt_section(workspace)
         if persona_governance_section:
             hints.append(persona_governance_section.replace("\n", " | "))
