@@ -51,6 +51,7 @@ from . import (
     intent_router,
     job_queue,
     knowledge_graph,
+    knowledge_packs,
     learning,
     local_search_index,
     local_voice,
@@ -822,6 +823,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["researchSources"] = research_sources.snapshot(self.server.cwd)
         snapshot["dataImports"] = data_importer.snapshot(self.server.cwd)
         snapshot["contextPackPreview"] = context_packs.preview(self.server.cwd)
+        snapshot["knowledgePacks"] = knowledge_packs.snapshot(self.server.cwd)
         snapshot["localSearch"] = local_search_index.snapshot(self.server.cwd)
         snapshot["workspaceMap"] = workspace_map.snapshot(self.server.cwd)
         snapshot["selfUpgradeQueue"] = upgrade_queue.snapshot(self.server.cwd)
@@ -1415,6 +1417,9 @@ def _prompt_with_context(
         context_section = context_packs.prompt_section(workspace, text, budget_tokens=1_400)
         if context_section:
             hints.append(context_section.replace("\n", " | "))
+        knowledge_pack_section = knowledge_packs.prompt_section(workspace)
+        if knowledge_pack_section:
+            hints.append(knowledge_pack_section.replace("\n", " | "))
         local_search_section = local_search_index.prompt_section(workspace, text)
         if local_search_section:
             hints.append(local_search_section.replace("\n", " | "))

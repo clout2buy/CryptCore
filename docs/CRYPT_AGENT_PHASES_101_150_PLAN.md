@@ -117,6 +117,11 @@ asset inventory alongside Artifact Studio.
 Bundle project docs, lessons, files, entities, and source summaries into
 portable context packs for agents and long-running workers.
 
+Progress: added `core.knowledge_packs`, which builds portable Markdown packs
+from the budgeted context pack plus reusable assets, CRM snapshot, and research
+sources. Packs are written under the project runtime directory with manifests,
+and Files/Settings now show pack inventory for reuse by agents and workers.
+
 ## Phase 112 - Prompt Injection Firewall
 
 Scan web/file content for instruction-injection patterns and downgrade them into

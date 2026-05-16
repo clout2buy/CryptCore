@@ -762,6 +762,8 @@ function filesView(snapshot) {
   const dataImports = snapshot.dataImports || {};
   const importRows = dataImports.imports || [];
   const pipelines = snapshot.websitePipelines?.pipelines || [];
+  const knowledgePacks = snapshot.knowledgePacks || {};
+  const packRows = knowledgePacks.packs || [];
   const latest = artifacts[0];
   return `
     <section class="two-col">
@@ -778,6 +780,7 @@ function filesView(snapshot) {
         <h3>Output State</h3>
         ${statCard("Artifacts", summary.total || artifacts.length || 0)}
         ${statCard("Assets", assetLibrary.total || 0, `${assetLibrary.reusable || 0} reusable`)}
+        ${statCard("Packs", knowledgePacks.total || 0)}
         ${statCard("Mission linked", summary.missionLinked || 0)}
         ${statCard("Verified", summary.verified || 0)}
         ${statCard("Office", office.total || 0)}
@@ -793,6 +796,9 @@ function filesView(snapshot) {
     </section>
     <section class="data-list asset-library-list">
       ${assets.slice(0, 10).map((asset) => row(asset.kind || "asset", asset.rel_path || asset.name, `${asset.purpose || "reusable asset"} / ${(asset.reuse_hints || []).slice(0, 1).join("") || asset.provenance || "check before reuse"}`)).join("") || emptyRow("No reusable assets indexed yet")}
+    </section>
+    <section class="data-list knowledge-pack-list">
+      ${packRows.slice(0, 8).map((pack) => row("Knowledge Pack", pack.title || pack.pack_id, `${pack.item_count || 0} items / ~${pack.estimated_tokens || 0} tokens / ${pack.path || ""}`)).join("") || emptyRow("No knowledge packs built yet")}
     </section>
     <section class="data-list workspace-map-list">
       ${row("Workspace Map", `${mapSummary.safeZones || 0} safe zones`, `${mapSummary.generatedZones || 0} generated zones / ${mapSummary.ignoredPatterns || 0} ignored patterns`)}
@@ -1335,6 +1341,7 @@ function settingsView(snapshot) {
   const missionBudget = snapshot.missionBudget || {};
   const businessCrm = snapshot.businessCrm || {};
   const assetLibrary = snapshot.assetLibrary || {};
+  const knowledgePacks = snapshot.knowledgePacks || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Onboarding", value: `${onboarding.percent || 0}%`, status: onboarding.status || "setup", detail: onboarding.summary || "One-screen setup for provider, voice, memory, autonomy, remote access, and safety." })}
@@ -1352,6 +1359,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Mission Budget", value: `$${Number(missionBudget.modelCostUsd || 0).toFixed(4)}`, status: `${missionBudget.overBudget || 0} over`, detail: `${missionBudget.totalMinutes || 0} minutes tracked; workspace model cost $${Number(missionBudget.workspaceModelCostUsd || 0).toFixed(4)}.` })}
       ${featureCard({ label: "Business CRM", value: businessCrm.contacts || 0, status: `$${Number(businessCrm.pipelineValueUsd || 0).toFixed(2)} pipeline`, detail: `${businessCrm.leads || 0} leads, ${businessCrm.customers || 0} customers, ${businessCrm.followUps || 0} follow-ups.` })}
       ${featureCard({ label: "Asset Library", value: assetLibrary.total || 0, status: `${assetLibrary.reusable || 0} reusable`, detail: Object.entries(assetLibrary.byKind || {}).slice(0, 4).map(([key, value]) => `${key}: ${value}`).join(" / ") || "Reusable media, UI, docs, data, and generated artifacts." })}
+      ${featureCard({ label: "Knowledge Packs", value: knowledgePacks.total || 0, status: knowledgePacks.latest?.title || "none", detail: knowledgePacks.latest ? `${knowledgePacks.latest.item_count || 0} items, ~${knowledgePacks.latest.estimated_tokens || 0} tokens.` : "Portable context packs for agents and workers." })}
       ${featureCard({ label: "Mission Workers", value: missionWorkers.active || 0, status: `${missionWorkers.gated || 0} gated`, detail: "Durable mission cycles queue work and stop before external actions until approval is explicit." })}
       ${featureCard({ label: "Offline Local Mode", value: offline.prefer_local ? "local" : (offline.enabled ? "armed" : "standby"), status: offline.provider ? `${providerLabel(offline.provider, snapshot)} / ${modelLabel(offline.model)}` : "ollama", detail: offline.reason || "Say offline, private mode, local only, or no cloud to route local-first." })}
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
@@ -1445,6 +1453,12 @@ function settingsView(snapshot) {
         <h3>Asset Library</h3>
         <div class="compact-list">
           ${(assetLibrary.assets || []).slice(0, 8).map((asset) => compactItem(asset.kind || "asset", asset.rel_path || asset.name, `${asset.purpose || "reusable asset"} / ${(asset.reuse_hints || []).slice(0, 1).join("") || asset.provenance || "check before reuse"}`)).join("") || compactItem("empty", "No reusable assets", "Images, videos, docs, data, UI files, and generated artifacts will appear here.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Knowledge Packs</h3>
+        <div class="compact-list">
+          ${(knowledgePacks.packs || []).slice(0, 8).map((pack) => compactItem("pack", pack.title || pack.pack_id, `${pack.item_count || 0} items / ~${pack.estimated_tokens || 0} tokens / ${pack.path || ""}`)).join("") || compactItem("empty", "No knowledge packs", "Portable context packs for agents and workers will appear here.")}
         </div>
       </div>
       <div class="panel-card wide">

@@ -56,6 +56,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "researchSources" in web_snapshot
         assert "dataImports" in web_snapshot
         assert "localSearch" in web_snapshot
+        assert "knowledgePacks" in web_snapshot
         assert "workspaceMap" in web_snapshot
         assert "offlineMode" in web_snapshot
         assert "safetyIncidents" in web_snapshot
@@ -221,6 +222,8 @@ def test_webui_static_is_chat_first():
     assert "Artifact Studio" in script
     assert "Asset Library" in script
     assert "assetLibrary" in script
+    assert "Knowledge Packs" in script
+    assert "knowledgePacks" in script
     assert "officeLayer" in script
     assert "artifactGroups" in script
     assert "artifactSummary" in script
