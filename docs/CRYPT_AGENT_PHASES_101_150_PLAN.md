@@ -137,6 +137,12 @@ records, and Settings exposes firewall activity.
 Detect secret-looking incidents and produce rotation/cleanup checklists without
 storing raw secrets.
 
+Progress: added `core.secret_rotation_advisor`, which detects secret-looking
+chat, tool, and runtime text, stores only redacted excerpts plus stable
+fingerprints, emits sanitized WebUI rotation checklist events, and injects
+rotate/revoke/update/audit cleanup guidance into prompt context without
+persisting raw secret material.
+
 ## Phase 114 - Voice Wake Session Layer
 
 Track voice-mode sessions, interruptions, confirmations, wake phrases, and

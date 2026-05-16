@@ -1343,6 +1343,7 @@ function settingsView(snapshot) {
   const assetLibrary = snapshot.assetLibrary || {};
   const knowledgePacks = snapshot.knowledgePacks || {};
   const promptInjectionFirewall = snapshot.promptInjectionFirewall || {};
+  const secretRotationAdvisor = snapshot.secretRotationAdvisor || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Onboarding", value: `${onboarding.percent || 0}%`, status: onboarding.status || "setup", detail: onboarding.summary || "One-screen setup for provider, voice, memory, autonomy, remote access, and safety." })}
@@ -1362,6 +1363,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Asset Library", value: assetLibrary.total || 0, status: `${assetLibrary.reusable || 0} reusable`, detail: Object.entries(assetLibrary.byKind || {}).slice(0, 4).map(([key, value]) => `${key}: ${value}`).join(" / ") || "Reusable media, UI, docs, data, and generated artifacts." })}
       ${featureCard({ label: "Knowledge Packs", value: knowledgePacks.total || 0, status: knowledgePacks.latest?.title || "none", detail: knowledgePacks.latest ? `${knowledgePacks.latest.item_count || 0} items, ~${knowledgePacks.latest.estimated_tokens || 0} tokens.` : "Portable context packs for agents and workers." })}
       ${featureCard({ label: "Prompt Injection Firewall", value: promptInjectionFirewall.total || 0, status: `${promptInjectionFirewall.critical || 0} critical`, detail: "Suspicious web/file instructions are quoted as evidence before they enter context." })}
+      ${featureCard({ label: "Secret Rotation Advisor", value: secretRotationAdvisor.total || 0, status: `${secretRotationAdvisor.critical || 0} critical`, detail: "Secret-looking signals create rotate, revoke, cleanup, and audit checklists without storing raw secrets." })}
       ${featureCard({ label: "Mission Workers", value: missionWorkers.active || 0, status: `${missionWorkers.gated || 0} gated`, detail: "Durable mission cycles queue work and stop before external actions until approval is explicit." })}
       ${featureCard({ label: "Offline Local Mode", value: offline.prefer_local ? "local" : (offline.enabled ? "armed" : "standby"), status: offline.provider ? `${providerLabel(offline.provider, snapshot)} / ${modelLabel(offline.model)}` : "ollama", detail: offline.reason || "Say offline, private mode, local only, or no cloud to route local-first." })}
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
@@ -1467,6 +1469,12 @@ function settingsView(snapshot) {
         <h3>Prompt Injection Firewall</h3>
         <div class="compact-list">
           ${(promptInjectionFirewall.scans || []).slice(0, 8).map((scan) => compactItem(scan.risk || "risk", scan.source || scan.scan_id, (scan.findings || []).map((finding) => finding.kind).slice(0, 3).join(" / ") || "quoted evidence")).join("") || compactItem("clear", "No injection-risk content", "Untrusted content scans will appear here when a pack quotes suspicious evidence.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Secret Rotation Advisor</h3>
+        <div class="compact-list">
+          ${(secretRotationAdvisor.signals || []).slice(0, 8).map((signal) => compactItem(signal.severity || "secret", signal.kind || signal.source, (signal.checklist || []).slice(0, 2).join(" / ") || signal.redacted_excerpt || "rotation checklist ready")).join("") || compactItem("clear", "No rotation signals", "Secret-looking chat, tool, or runtime text will create sanitized rotation checklists here.")}
         </div>
       </div>
       <div class="panel-card wide">
@@ -2156,6 +2164,13 @@ function handleEvent(event) {
       break;
     case "credentialVaultError":
       addActivity("Credential vault", event.error || "Could not update credential references.");
+      break;
+    case "secretRotationUpdated":
+      addActivity("Secret rotation", oneLine(event.text || "Sanitized rotation checklist created.", 160), "approval");
+      refresh({ renderView: state.currentView === "settings" || state.currentView === "core" }).catch((error) => addActivity("Secret rotation", error.message));
+      break;
+    case "secretRotationError":
+      addActivity("Secret rotation", event.error || "Could not update rotation advice.");
       break;
     case "researchSourcesUpdated":
       addActivity("Research sources", oneLine(event.text || "Saved source.", 160), "memory");

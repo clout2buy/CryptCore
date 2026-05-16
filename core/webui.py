@@ -87,6 +87,7 @@ from . import (
     runtime_compactor,
     safety_incidents,
     scheduler,
+    secret_rotation_advisor,
     session as sessions,
     self_upgrade_sandbox,
     settings,
@@ -166,6 +167,10 @@ class CryptWebServer(ThreadingHTTPServer):
             pass
         try:
             tool_failure_memory.record_event(self.cwd, event)
+        except Exception:
+            pass
+        try:
+            secret_rotation_advisor.scan_event(self.cwd, event)
         except Exception:
             pass
 
@@ -299,6 +304,21 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                             "sessionKey": session_key,
                             "text": incident.title,
                             "incident": incident.to_dict(),
+                        }
+                    )
+            try:
+                secret_signals = secret_rotation_advisor.inspect_text(self.server.cwd, text, source="chat")
+            except Exception as exc:
+                self.server.emit_event({"event": "secretRotationError", "error": f"{type(exc).__name__}: {exc}"})
+            else:
+                for signal in secret_signals:
+                    self.server.emit_event(
+                        {
+                            "event": "secretRotationUpdated",
+                            "id": request_id,
+                            "sessionKey": session_key,
+                            "text": f"{signal.kind} rotation checklist created.",
+                            "signal": signal.to_dict(),
                         }
                     )
             intent_decision = intent_router.route(text)
@@ -863,6 +883,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["offlineMode"] = offline_mode.snapshot(settings.load_config(), snapshot.get("providerHealth"))
         snapshot["safetyIncidents"] = safety_incidents.snapshot(self.server.cwd)
         snapshot["promptInjectionFirewall"] = prompt_injection_firewall.snapshot(self.server.cwd)
+        snapshot["secretRotationAdvisor"] = secret_rotation_advisor.snapshot(self.server.cwd)
         snapshot["remoteAccess"] = self.server.access.to_dict()
         snapshot["sessionsPreview"] = [_session_preview(item) for item in sessions.list_sessions(self.server.cwd)[:12]]
         snapshot["agentProfiles"] = [profile.to_dict() for profile in agent_profiles.list_profiles(self.server.cwd)]
@@ -1443,6 +1464,9 @@ def _prompt_with_context(
         prompt_injection_section = prompt_injection_firewall.prompt_section(workspace)
         if prompt_injection_section:
             hints.append(prompt_injection_section.replace("\n", " | "))
+        secret_rotation_section = secret_rotation_advisor.prompt_section(workspace)
+        if secret_rotation_section:
+            hints.append(secret_rotation_section.replace("\n", " | "))
         eval_section = eval_harness.prompt_section(workspace)
         if eval_section:
             hints.append(eval_section.replace("\n", " | "))
