@@ -183,6 +183,12 @@ and motion safety visible.
 Generate and maintain user-facing docs from shipped capabilities and runtime
 features without copying internal implementation noise.
 
+Progress: added `core.autonomous_docs`, which rebuilds a clean `Crypt User
+Guide` from live runtime capabilities, core feature labels, and readiness
+state. Files/Settings expose the generated sections and path, and prompt
+context now points Crypt toward user-facing explanations instead of leaking
+internal module details.
+
 ## Phase 118 - Structured Task Contracts
 
 Convert vague requests into durable contracts with outcome, constraints,

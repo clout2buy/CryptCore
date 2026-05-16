@@ -25,6 +25,7 @@ from . import (
     app_daemon,
     autonomy,
     autonomy_contracts,
+    autonomous_docs,
     artifact_studio,
     asset_library,
     browser_recorder,
@@ -953,6 +954,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["toolFailureMemory"] = tool_failure_memory.snapshot(self.server.cwd)
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         snapshot["capabilityMatrix"] = capability_matrix.build(self.server.cwd, snapshot).to_dict()
+        snapshot["autonomousDocs"] = autonomous_docs.snapshot(self.server.cwd, snapshot)
         return snapshot
 
     def _authorize(self, method: str, parsed) -> bool:
@@ -1613,6 +1615,9 @@ def _prompt_with_context(
         asset_section = asset_library.prompt_section(workspace)
         if asset_section:
             hints.append(asset_section.replace("\n", " | "))
+        docs_section = autonomous_docs.prompt_section(workspace)
+        if docs_section:
+            hints.append(docs_section.replace("\n", " | "))
         office_section = office_layer.prompt_section(workspace)
         if office_section:
             hints.append(office_section.replace("\n", " | "))

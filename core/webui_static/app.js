@@ -764,6 +764,7 @@ function filesView(snapshot) {
   const pipelines = snapshot.websitePipelines?.pipelines || [];
   const knowledgePacks = snapshot.knowledgePacks || {};
   const packRows = knowledgePacks.packs || [];
+  const autonomousDocs = snapshot.autonomousDocs || {};
   const screenshotMemory = snapshot.screenshotMemory || {};
   const visualRows = screenshotMemory.annotations || [];
   const latest = artifacts[0];
@@ -783,6 +784,7 @@ function filesView(snapshot) {
         ${statCard("Artifacts", summary.total || artifacts.length || 0)}
         ${statCard("Assets", assetLibrary.total || 0, `${assetLibrary.reusable || 0} reusable`)}
         ${statCard("Packs", knowledgePacks.total || 0)}
+        ${statCard("Docs", autonomousDocs.sectionCount || 0, `${autonomousDocs.wordCount || 0} words`)}
         ${statCard("Visual notes", screenshotMemory.active || 0, `${screenshotMemory.defects || 0} defects`)}
         ${statCard("Mission linked", summary.missionLinked || 0)}
         ${statCard("Verified", summary.verified || 0)}
@@ -802,6 +804,9 @@ function filesView(snapshot) {
     </section>
     <section class="data-list knowledge-pack-list">
       ${packRows.slice(0, 8).map((pack) => row("Knowledge Pack", pack.title || pack.pack_id, `${pack.item_count || 0} items / ~${pack.estimated_tokens || 0} tokens / ${pack.path || ""}`)).join("") || emptyRow("No knowledge packs built yet")}
+    </section>
+    <section class="data-list autonomous-docs-list">
+      ${(autonomousDocs.sections || []).slice(0, 8).map((section) => row("User Guide", section.title || "Section", oneLine(section.body || "", 150))).join("") || emptyRow("No autonomous docs generated yet")}
     </section>
     <section class="data-list screenshot-memory-list">
       ${visualRows.slice(0, 8).map((item) => row(item.severity || "Visual", item.screenshot || item.source, item.defect ? `${item.defect} / ${item.recommendation || item.observation}` : item.observation || "visual note")).join("") || emptyRow("No screenshot memory yet")}
@@ -1349,6 +1354,7 @@ function settingsView(snapshot) {
   const businessCrm = snapshot.businessCrm || {};
   const assetLibrary = snapshot.assetLibrary || {};
   const knowledgePacks = snapshot.knowledgePacks || {};
+  const autonomousDocs = snapshot.autonomousDocs || {};
   const screenshotMemory = snapshot.screenshotMemory || {};
   const accessibilityMotionAudit = snapshot.accessibilityMotionAudit || {};
   const promptInjectionFirewall = snapshot.promptInjectionFirewall || {};
@@ -1372,6 +1378,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Business CRM", value: businessCrm.contacts || 0, status: `$${Number(businessCrm.pipelineValueUsd || 0).toFixed(2)} pipeline`, detail: `${businessCrm.leads || 0} leads, ${businessCrm.customers || 0} customers, ${businessCrm.followUps || 0} follow-ups.` })}
       ${featureCard({ label: "Asset Library", value: assetLibrary.total || 0, status: `${assetLibrary.reusable || 0} reusable`, detail: Object.entries(assetLibrary.byKind || {}).slice(0, 4).map(([key, value]) => `${key}: ${value}`).join(" / ") || "Reusable media, UI, docs, data, and generated artifacts." })}
       ${featureCard({ label: "Knowledge Packs", value: knowledgePacks.total || 0, status: knowledgePacks.latest?.title || "none", detail: knowledgePacks.latest ? `${knowledgePacks.latest.item_count || 0} items, ~${knowledgePacks.latest.estimated_tokens || 0} tokens.` : "Portable context packs for agents and workers." })}
+      ${featureCard({ label: "Autonomous Docs", value: autonomousDocs.sectionCount || 0, status: `${autonomousDocs.wordCount || 0} words`, detail: autonomousDocs.path || "User-facing guide is rebuilt from live runtime capabilities." })}
       ${featureCard({ label: "Screenshot Memory", value: screenshotMemory.active || 0, status: `${screenshotMemory.defects || 0} defects`, detail: "Screenshot observations, UI defects, and visual QA notes are retained as reusable memory." })}
       ${featureCard({ label: "Accessibility Motion Audit", value: `${Math.round((accessibilityMotionAudit.score || 0) * 100)}%`, status: `${accessibilityMotionAudit.passed || 0}/${accessibilityMotionAudit.total || 0} pass`, detail: "Keyboard, contrast, overflow, reduced-motion, screen-reader, and touch ergonomics checks." })}
       ${featureCard({ label: "Prompt Injection Firewall", value: promptInjectionFirewall.total || 0, status: `${promptInjectionFirewall.critical || 0} critical`, detail: "Suspicious web/file instructions are quoted as evidence before they enter context." })}
@@ -1483,6 +1490,12 @@ function settingsView(snapshot) {
         <h3>Knowledge Packs</h3>
         <div class="compact-list">
           ${(knowledgePacks.packs || []).slice(0, 8).map((pack) => compactItem("pack", pack.title || pack.pack_id, `${pack.item_count || 0} items / ~${pack.estimated_tokens || 0} tokens / ${pack.path || ""}`)).join("") || compactItem("empty", "No knowledge packs", "Portable context packs for agents and workers will appear here.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Autonomous Docs</h3>
+        <div class="compact-list">
+          ${(autonomousDocs.sections || []).slice(0, 8).map((section) => compactItem("guide", section.title || "Section", oneLine(section.body || "", 180))).join("") || compactItem("empty", "No guide generated", "Crypt will rebuild a clean user guide from runtime capabilities.")}
         </div>
       </div>
       <div class="panel-card wide">

@@ -101,6 +101,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "runtimeCompact" in web_snapshot
         assert "webuiCacheHealth" in web_snapshot
         assert "toolFailureMemory" in web_snapshot
+        assert "autonomousDocs" in web_snapshot
         assert "toolCapabilityCards" in web_snapshot
         assert "smartModelRouter" in web_snapshot
         assert "providerHealth" in web_snapshot
@@ -229,6 +230,8 @@ def test_webui_static_is_chat_first():
     assert "assetLibrary" in script
     assert "Knowledge Packs" in script
     assert "knowledgePacks" in script
+    assert "Autonomous Docs" in script
+    assert "autonomousDocs" in script
     assert "officeLayer" in script
     assert "artifactGroups" in script
     assert "artifactSummary" in script
