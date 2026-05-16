@@ -127,6 +127,11 @@ and Files/Settings now show pack inventory for reuse by agents and workers.
 Scan web/file content for instruction-injection patterns and downgrade them into
 quoted evidence instead of executable guidance.
 
+Progress: added `core.prompt_injection_firewall`, which detects override,
+secret-exfiltration, tool-coercion, role-tag, and authority-claim patterns.
+Context packs now quote risky content as untrusted evidence, persist scan
+records, and Settings exposes firewall activity.
+
 ## Phase 113 - Secret Rotation Advisor
 
 Detect secret-looking incidents and produce rotation/cleanup checklists without

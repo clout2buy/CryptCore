@@ -8,7 +8,7 @@ from typing import Any
 
 from tools import REGISTRY
 
-from . import entities, goals, knowledge_graph, memory_journal, skills, work_threads
+from . import entities, goals, knowledge_graph, memory_journal, prompt_injection_firewall, skills, work_threads
 
 
 DEFAULT_BUDGET_TOKENS = 1_600
@@ -51,7 +51,7 @@ def build(cwd: str | Path, text: str, *, budget_tokens: int = DEFAULT_BUDGET_TOK
     root = Path(cwd).expanduser().resolve()
     query = str(text or "").strip()
     budget = max(180, int(budget_tokens or DEFAULT_BUDGET_TOKENS))
-    candidates = _candidate_items(root, query)
+    candidates = [_firewalled_item(root, item) for item in _candidate_items(root, query)]
     selected: list[ContextItem] = []
     used = _estimate_tokens("# Crypt Context Pack\n")
     for item in candidates:
@@ -308,6 +308,15 @@ def _dedupe(items: list[ContextItem]) -> list[ContextItem]:
         seen.add(key)
         out.append(item)
     return out
+
+
+def _firewalled_item(root: Path, item: ContextItem) -> ContextItem:
+    scan = prompt_injection_firewall.scan_text(item.text, source=item.source or item.title)
+    if scan.risk == "low":
+        return item
+    prompt_injection_firewall.record_scan(root, scan)
+    tags = [*item.tags, "prompt-injection-risk", scan.risk]
+    return ContextItem(**{**asdict(item), "text": scan.quoted_text, "tags": tags})
 
 
 def _estimate_tokens(value: str) -> int:

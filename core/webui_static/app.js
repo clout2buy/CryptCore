@@ -1342,6 +1342,7 @@ function settingsView(snapshot) {
   const businessCrm = snapshot.businessCrm || {};
   const assetLibrary = snapshot.assetLibrary || {};
   const knowledgePacks = snapshot.knowledgePacks || {};
+  const promptInjectionFirewall = snapshot.promptInjectionFirewall || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Onboarding", value: `${onboarding.percent || 0}%`, status: onboarding.status || "setup", detail: onboarding.summary || "One-screen setup for provider, voice, memory, autonomy, remote access, and safety." })}
@@ -1360,6 +1361,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Business CRM", value: businessCrm.contacts || 0, status: `$${Number(businessCrm.pipelineValueUsd || 0).toFixed(2)} pipeline`, detail: `${businessCrm.leads || 0} leads, ${businessCrm.customers || 0} customers, ${businessCrm.followUps || 0} follow-ups.` })}
       ${featureCard({ label: "Asset Library", value: assetLibrary.total || 0, status: `${assetLibrary.reusable || 0} reusable`, detail: Object.entries(assetLibrary.byKind || {}).slice(0, 4).map(([key, value]) => `${key}: ${value}`).join(" / ") || "Reusable media, UI, docs, data, and generated artifacts." })}
       ${featureCard({ label: "Knowledge Packs", value: knowledgePacks.total || 0, status: knowledgePacks.latest?.title || "none", detail: knowledgePacks.latest ? `${knowledgePacks.latest.item_count || 0} items, ~${knowledgePacks.latest.estimated_tokens || 0} tokens.` : "Portable context packs for agents and workers." })}
+      ${featureCard({ label: "Prompt Injection Firewall", value: promptInjectionFirewall.total || 0, status: `${promptInjectionFirewall.critical || 0} critical`, detail: "Suspicious web/file instructions are quoted as evidence before they enter context." })}
       ${featureCard({ label: "Mission Workers", value: missionWorkers.active || 0, status: `${missionWorkers.gated || 0} gated`, detail: "Durable mission cycles queue work and stop before external actions until approval is explicit." })}
       ${featureCard({ label: "Offline Local Mode", value: offline.prefer_local ? "local" : (offline.enabled ? "armed" : "standby"), status: offline.provider ? `${providerLabel(offline.provider, snapshot)} / ${modelLabel(offline.model)}` : "ollama", detail: offline.reason || "Say offline, private mode, local only, or no cloud to route local-first." })}
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
@@ -1459,6 +1461,12 @@ function settingsView(snapshot) {
         <h3>Knowledge Packs</h3>
         <div class="compact-list">
           ${(knowledgePacks.packs || []).slice(0, 8).map((pack) => compactItem("pack", pack.title || pack.pack_id, `${pack.item_count || 0} items / ~${pack.estimated_tokens || 0} tokens / ${pack.path || ""}`)).join("") || compactItem("empty", "No knowledge packs", "Portable context packs for agents and workers will appear here.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Prompt Injection Firewall</h3>
+        <div class="compact-list">
+          ${(promptInjectionFirewall.scans || []).slice(0, 8).map((scan) => compactItem(scan.risk || "risk", scan.source || scan.scan_id, (scan.findings || []).map((finding) => finding.kind).slice(0, 3).join(" / ") || "quoted evidence")).join("") || compactItem("clear", "No injection-risk content", "Untrusted content scans will appear here when a pack quotes suspicious evidence.")}
         </div>
       </div>
       <div class="panel-card wide">

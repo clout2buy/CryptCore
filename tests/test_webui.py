@@ -60,6 +60,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "workspaceMap" in web_snapshot
         assert "offlineMode" in web_snapshot
         assert "safetyIncidents" in web_snapshot
+        assert "promptInjectionFirewall" in web_snapshot
         assert "remoteAccess" in web_snapshot
         assert "capabilityMatrix" in web_snapshot
         assert "personaGovernance" in web_snapshot
@@ -305,6 +306,8 @@ def test_webui_static_is_chat_first():
     assert "offlineMode" in script
     assert "Safety Incident Log" in script
     assert "safetyIncidents" in script
+    assert "Prompt Injection Firewall" in script
+    assert "promptInjectionFirewall" in script
     assert "Evaluation Harness" in script
     assert "evalHarness" in script
     assert "Repair Doctor" in script
