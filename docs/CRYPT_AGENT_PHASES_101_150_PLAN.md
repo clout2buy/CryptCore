@@ -66,6 +66,11 @@ Skills/Settings show the rubric scores plus recommendations.
 Show visible operator status, current target, last action, and approval boundary
 for browser and desktop operation.
 
+Progress: added `core.operator_hud`, which summarizes browser and desktop
+recordings into visible channels with status, target, last action, and approval
+boundary. Home and Settings now show the HUD, and prompt context includes
+active operator state so visual work stays explicit and approval-aware.
+
 ## Phase 107 - External Action Receipt Ledger
 
 Record every approved external send/post/write/payment attempt with before/after

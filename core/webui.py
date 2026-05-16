@@ -63,6 +63,7 @@ from . import (
     office_layer,
     offline_mode,
     onboarding,
+    operator_hud,
     passive_memory,
     patch_risk,
     personal_os,
@@ -858,6 +859,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["websitePipelines"] = website_pipeline.snapshot(self.server.cwd)
         snapshot["browserRecordings"] = browser_recorder.snapshot(self.server.cwd)
         snapshot["desktopRecordings"] = desktop_recorder.snapshot(self.server.cwd)
+        snapshot["operatorHud"] = operator_hud.snapshot(self.server.cwd)
         snapshot["personalOS"] = personal_os.snapshot(self.server.cwd, snapshot)
         snapshot["mobileCompanion"] = mobile_companion.snapshot(self.server.cwd, snapshot)
         snapshot["evalHarness"] = eval_harness.snapshot(self.server.cwd, snapshot)
@@ -1425,6 +1427,9 @@ def _prompt_with_context(
         desktop_recording_section = desktop_recorder.prompt_section(workspace)
         if desktop_recording_section:
             hints.append(desktop_recording_section.replace("\n", " | "))
+        operator_section = operator_hud.prompt_section(workspace)
+        if operator_section:
+            hints.append(operator_section.replace("\n", " | "))
         agent_section = agent_profiles.prompt_section(workspace)
         if agent_section:
             hints.append(agent_section.replace("\n", " | "))

@@ -621,6 +621,8 @@ function panelView(snapshot) {
   const notificationItems = notifications.items || [];
   const replay = snapshot.liveReplay || {};
   const replayItems = replay.items || [];
+  const operatorHud = snapshot.operatorHud || {};
+  const operatorChannels = operatorHud.channels || [];
   const usage = snapshot.modelUsageLedger || {};
   const personalOS = snapshot.personalOS || {};
   const osSignals = personalOS.signals || [];
@@ -664,6 +666,12 @@ function panelView(snapshot) {
       </aside>
     </section>
     <section class="home-ledger">
+      <div class="panel-card wide">
+        <h3>Operator HUD</h3>
+        <div class="compact-list">
+          ${operatorChannels.map((channel) => compactItem(channel.status || "idle", `${channel.channel || "operator"} -> ${channel.target || "no target"}`, `${channel.last_action || "No visible action yet"} / ${channel.approval_boundary || "approval rules loaded"}`)).join("") || compactItem("idle", "Browser and desktop idle", "Visual operation status will appear here when Crypt drives the browser or desktop.")}
+        </div>
+      </div>
       <div class="panel-card wide">
         <h3>Daily Command Surface</h3>
         <div class="compact-list">
@@ -1301,6 +1309,7 @@ function settingsView(snapshot) {
   const clientCacheReport = browserCacheReport();
   const toolFailureMemory = snapshot.toolFailureMemory || {};
   const skillQualityRubric = snapshot.skillQualityRubric || {};
+  const operatorHud = snapshot.operatorHud || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Onboarding", value: `${onboarding.percent || 0}%`, status: onboarding.status || "setup", detail: onboarding.summary || "One-screen setup for provider, voice, memory, autonomy, remote access, and safety." })}
@@ -1313,6 +1322,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "WebUI Cache", value: `${webuiCache.total || 0} stores`, status: `${state.cache.repaired.length} repaired`, detail: "Browser session cache contract, client report, and self-repair actions." })}
       ${featureCard({ label: "Tool Failure Memory", value: toolFailureMemory.recurring || 0, status: `${toolFailureMemory.total || 0} signatures`, detail: "Recurring tool failures and recovery patterns are remembered before retrying." })}
       ${featureCard({ label: "Skill Quality Rubric", value: `${Math.round((skillQualityRubric.averageScore || 0) * 100)}%`, status: `${skillQualityRubric.ready || 0}/${skillQualityRubric.total || 0} ready`, detail: "Generated skills are scored before promotion into durable runtime behavior." })}
+      ${featureCard({ label: "Operator HUD", value: operatorHud.status || "idle", status: `${operatorHud.approvalRequired || 0} approval`, detail: "Browser and desktop targets, last action, and approval boundaries stay visible." })}
       ${featureCard({ label: "Mission Workers", value: missionWorkers.active || 0, status: `${missionWorkers.gated || 0} gated`, detail: "Durable mission cycles queue work and stop before external actions until approval is explicit." })}
       ${featureCard({ label: "Offline Local Mode", value: offline.prefer_local ? "local" : (offline.enabled ? "armed" : "standby"), status: offline.provider ? `${providerLabel(offline.provider, snapshot)} / ${modelLabel(offline.model)}` : "ollama", detail: offline.reason || "Say offline, private mode, local only, or no cloud to route local-first." })}
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
@@ -1375,6 +1385,12 @@ function settingsView(snapshot) {
         <h3>Skill Quality Rubric</h3>
         <div class="compact-list">
           ${(skillQualityRubric.scores || []).slice(0, 8).map((score) => compactItem(score.status || "quality", `$${score.name}`, `${Math.round((score.score || 0) * 100)}% / ${(score.recommendations || []).slice(0, 2).join(" / ") || "promotion-ready"}`)).join("") || compactItem("empty", "No skill scores yet", "Skills will be scored for trigger clarity, workflow, verification, safety, tools, and examples.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Operator HUD</h3>
+        <div class="compact-list">
+          ${(operatorHud.channels || []).map((channel) => compactItem(channel.status || "idle", `${channel.channel || "operator"} -> ${channel.target || "no target"}`, `${channel.last_action || "No visible action yet"} / ${channel.approval_boundary || "approval rules loaded"}`)).join("") || compactItem("idle", "No operator state", "Browser and desktop activity will appear here.")}
         </div>
       </div>
       <div class="panel-card wide">

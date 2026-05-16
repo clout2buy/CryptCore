@@ -79,6 +79,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "revenueOps" in web_snapshot
         assert "browserRecordings" in web_snapshot
         assert "desktopRecordings" in web_snapshot
+        assert "operatorHud" in web_snapshot
         assert "personalOS" in web_snapshot
         assert "mobileCompanion" in web_snapshot
         assert "evalHarness" in web_snapshot
@@ -233,6 +234,8 @@ def test_webui_static_is_chat_first():
     assert "intentRouted" in script
     assert "browserActivity" in script
     assert "desktopActivity" in script
+    assert "Operator HUD" in script
+    assert "operatorHud" in script
     assert "missionStep" in script
     assert "activity-browser" in resources.files("core.webui_static").joinpath("styles.css").read_text(encoding="utf-8")
     assert "kokoro ready" in script
