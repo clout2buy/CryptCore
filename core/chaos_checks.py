@@ -59,15 +59,41 @@ def latest_path(cwd: str | Path) -> Path:
 def cached_snapshot(cwd: str | Path, *, max_age_seconds: int = 300) -> dict[str, Any]:
     path = latest_path(cwd)
     now = int(time.time())
+    stale: dict[str, Any] = {}
     if path.exists():
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             data = {}
         if isinstance(data, dict) and int(data.get("schema") or 0) == SCHEMA_VERSION:
+            stale = data
             if now - int(data.get("generatedAt") or 0) <= max_age_seconds:
                 return data
-    data = snapshot(cwd)
+    try:
+        data = snapshot(cwd)
+    except Exception as exc:
+        if stale:
+            return {**stale, "stale": True, "cacheError": f"{type(exc).__name__}: {exc}"}
+        return {
+            "schema": SCHEMA_VERSION,
+            "generatedAt": now,
+            "total": 1,
+            "passed": 0,
+            "failed": 1,
+            "status": "fail",
+            "cacheError": f"{type(exc).__name__}: {exc}",
+            "scenarios": [
+                ChaosScenario(
+                    "chaos-cache-error",
+                    "Chaos checks could not refresh",
+                    "chaos",
+                    False,
+                    f"{type(exc).__name__}: {exc}",
+                    "cached chaos checks should not crash chat prompt handling",
+                    "retry chaos checks outside the prompt request",
+                ).to_dict()
+            ],
+        }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     settings.restrict_file_permissions(path)
@@ -99,7 +125,7 @@ def write_report(cwd: str | Path) -> dict[str, Any]:
 
 
 def prompt_section(cwd: str | Path) -> str:
-    data = snapshot(cwd)
+    data = cached_snapshot(cwd)
     if data["status"] == "pass":
         return ""
     lines = ["# Full-System Chaos Checks"]
@@ -228,7 +254,7 @@ def _corrupt_memory_store(root: Path) -> ChaosScenario:
 
 def _isolated(root: Path, check: Callable[[Path], ChaosScenario]) -> ChaosScenario:
     old_app_dir = settings.APP_DIR
-    with tempfile.TemporaryDirectory(prefix="crypt-chaos-") as td:
+    with tempfile.TemporaryDirectory(prefix="crypt-chaos-", ignore_cleanup_errors=True) as td:
         settings.APP_DIR = Path(td) / "home"
         scenario_root = Path(td) / "repo"
         scenario_root.mkdir(parents=True, exist_ok=True)
