@@ -44,6 +44,12 @@ client cache report in Settings.
 Remember recurring tool failures by signature and teach Crypt the successful
 recovery pattern before it retries the same broken path.
 
+Progress: added `core.tool_failure_memory`, which classifies failed tool
+results by stable signature, persists recurrence counts and recovery hints,
+marks later successful calls as recovery patterns, surfaces the data in WebUI
+Settings, and injects compact failure memory into future prompt context so
+Crypt changes strategy instead of repeating the same broken call.
+
 ## Phase 105 - Agent Skill Quality Rubric
 
 Score generated skills for safety, clarity, workflow usefulness, tests,

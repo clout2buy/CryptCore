@@ -89,6 +89,7 @@ from . import (
     skills,
     smart_model_router,
     soul,
+    tool_failure_memory,
     tool_capability_cards,
     trust_calibration,
     upgrade_queue,
@@ -153,6 +154,10 @@ class CryptWebServer(ThreadingHTTPServer):
                 self.events[:] = self.events[-MAX_EVENTS:]
         try:
             live_replay.record_event(self.cwd, event)
+        except Exception:
+            pass
+        try:
+            tool_failure_memory.record_event(self.cwd, event)
         except Exception:
             pass
 
@@ -860,6 +865,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["chaosChecks"] = chaos_checks.cached_snapshot(self.server.cwd)
         snapshot["releaseCandidate"] = release_candidate.snapshot(self.server.cwd, snapshot)
         snapshot["runtimeCompact"] = runtime_compactor.compact(snapshot)
+        snapshot["toolFailureMemory"] = tool_failure_memory.snapshot(self.server.cwd)
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         snapshot["capabilityMatrix"] = capability_matrix.build(self.server.cwd, snapshot).to_dict()
         return snapshot
@@ -1456,6 +1462,9 @@ def _prompt_with_context(
         replay_section = live_replay.prompt_section(workspace)
         if replay_section:
             hints.append(replay_section.replace("\n", " | "))
+        tool_failure_section = tool_failure_memory.prompt_section(workspace)
+        if tool_failure_section:
+            hints.append(tool_failure_section.replace("\n", " | "))
         job_section = job_queue.prompt_section(workspace)
         if job_section:
             hints.append(job_section.replace("\n", " | "))

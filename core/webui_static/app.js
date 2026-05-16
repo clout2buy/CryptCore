@@ -1296,6 +1296,7 @@ function settingsView(snapshot) {
   const runtimeCompact = snapshot.runtimeCompact || {};
   const webuiCache = snapshot.webuiCacheHealth || {};
   const clientCacheReport = browserCacheReport();
+  const toolFailureMemory = snapshot.toolFailureMemory || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Onboarding", value: `${onboarding.percent || 0}%`, status: onboarding.status || "setup", detail: onboarding.summary || "One-screen setup for provider, voice, memory, autonomy, remote access, and safety." })}
@@ -1306,6 +1307,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Provider Health", value: `${providerHealth.ready || 0}/${providerHealth.total || 0}`, status: providerHealth.recommendedFallback ? `fallback ${providerHealth.recommendedFallback}` : "fallback none", detail: `${providerHealth.warnings || 0} warning(s), ${providerHealth.missing || 0} missing.` })}
       ${featureCard({ label: "Live Event Integrity", value: liveIntegrity.status || "ok", status: `${liveIntegrity.gaps || 0} gaps / ${liveIntegrity.duplicates || 0} dupes`, detail: `${liveIntegrity.total || 0} buffered events, newest ${liveIntegrity.newest_age_seconds || 0}s old.` })}
       ${featureCard({ label: "WebUI Cache", value: `${webuiCache.total || 0} stores`, status: `${state.cache.repaired.length} repaired`, detail: "Browser session cache contract, client report, and self-repair actions." })}
+      ${featureCard({ label: "Tool Failure Memory", value: toolFailureMemory.recurring || 0, status: `${toolFailureMemory.total || 0} signatures`, detail: "Recurring tool failures and recovery patterns are remembered before retrying." })}
       ${featureCard({ label: "Mission Workers", value: missionWorkers.active || 0, status: `${missionWorkers.gated || 0} gated`, detail: "Durable mission cycles queue work and stop before external actions until approval is explicit." })}
       ${featureCard({ label: "Offline Local Mode", value: offline.prefer_local ? "local" : (offline.enabled ? "armed" : "standby"), status: offline.provider ? `${providerLabel(offline.provider, snapshot)} / ${modelLabel(offline.model)}` : "ollama", detail: offline.reason || "Say offline, private mode, local only, or no cloud to route local-first." })}
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
@@ -1356,6 +1358,12 @@ function settingsView(snapshot) {
         <div class="compact-list">
           ${(webuiCache.stores || []).map((store) => compactItem(store.required ? "required" : "optional", store.label || store.key, store.repair_action || store.key)).join("") || compactItem("empty", "No cache contract", "Browser cache health will appear here after refresh.")}
           ${Object.entries(clientCacheReport).map(([key, value]) => compactItem(value.corrupt ? "repaired" : "client", key, `count ${value.count ?? "n/a"} / present ${value.present ?? true} / repairs ${value.repaired ?? 0}`)).join("")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Tool Failure Memory</h3>
+        <div class="compact-list">
+          ${(toolFailureMemory.patterns || []).slice(0, 8).map((pattern) => compactItem(`${pattern.kind || "failure"} x${pattern.count || 0}`, pattern.tool || pattern.signature, pattern.recovery_pattern || pattern.recovery_hint || pattern.last_error)).join("") || compactItem("clean", "No recurring tool failures", "Crypt will save failed tool signatures here and change strategy before retrying.")}
         </div>
       </div>
       <div class="panel-card wide">
