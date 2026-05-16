@@ -76,6 +76,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "desktopRecordings" in web_snapshot
         assert "personalOS" in web_snapshot
         assert "mobileCompanion" in web_snapshot
+        assert "evalHarness" in web_snapshot
         assert "toolCapabilityCards" in web_snapshot
         assert "smartModelRouter" in web_snapshot
         assert "providerHealth" in web_snapshot
@@ -264,6 +265,8 @@ def test_webui_static_is_chat_first():
     assert "offlineMode" in script
     assert "Safety Incident Log" in script
     assert "safetyIncidents" in script
+    assert "Evaluation Harness" in script
+    assert "evalHarness" in script
     assert "Usage Ledger" in script
     assert "Notification Center" in script
     assert "Personal OS" in script

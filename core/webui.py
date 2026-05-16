@@ -38,6 +38,7 @@ from . import (
     data_importer,
     desktop_recorder,
     entities,
+    eval_harness,
     external_drafts,
     goals,
     integrations,
@@ -801,6 +802,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["desktopRecordings"] = desktop_recorder.snapshot(self.server.cwd)
         snapshot["personalOS"] = personal_os.snapshot(self.server.cwd, snapshot)
         snapshot["mobileCompanion"] = mobile_companion.snapshot(self.server.cwd, snapshot)
+        snapshot["evalHarness"] = eval_harness.snapshot(self.server.cwd, snapshot)
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         snapshot["capabilityMatrix"] = capability_matrix.build(self.server.cwd, snapshot).to_dict()
         return snapshot
@@ -1319,6 +1321,9 @@ def _prompt_with_context(
         safety_section = safety_incidents.prompt_section(workspace)
         if safety_section:
             hints.append(safety_section.replace("\n", " | "))
+        eval_section = eval_harness.prompt_section(workspace)
+        if eval_section:
+            hints.append(eval_section.replace("\n", " | "))
         upgrade_section = upgrade_queue.prompt_section(workspace)
         if upgrade_section:
             hints.append(upgrade_section.replace("\n", " | "))

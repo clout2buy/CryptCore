@@ -411,6 +411,13 @@ retry blocked or denied actions.
 Grade autonomous tasks beyond code: business, research, memory, browser, voice,
 and WebUI stability.
 
+Progress: added `core.eval_harness`, an expanded scenario/rubric layer for
+business autopilot, research source quality, memory self-improvement, browser
+visual QA, voice conversation, and WebUI stability. It scores runtime snapshots,
+can write reports, surfaces scenario scores in Settings, and injects evaluation
+status into prompt context so Crypt can see which autonomous capabilities need
+evidence.
+
 ## Phase 93 - Recovery And Repair Doctor
 
 Detect broken setup, missing voice assets, failed auth, bad config, and stale
