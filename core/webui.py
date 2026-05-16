@@ -86,6 +86,7 @@ from . import (
     skill_lifecycle,
     skill_forge,
     skill_outcome_autoforge,
+    skill_quality_rubric,
     skills,
     smart_model_router,
     soul,
@@ -844,6 +845,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["skillsPreview"] = [skill.as_dict() for skill in skills.discover(self.server.cwd, include_disabled=True)[:40]]
         snapshot["skillLifecycle"] = skill_lifecycle.snapshot(self.server.cwd)
         snapshot["skillOutcomeAutoforge"] = skill_outcome_autoforge.snapshot(self.server.cwd)
+        snapshot["skillQualityRubric"] = skill_quality_rubric.snapshot(self.server.cwd)
         snapshot["toolCapabilityCards"] = tool_capability_cards.snapshot()
         snapshot["toolsPreview"] = _tool_previews()
         snapshot["filesPreview"] = _workspace_files(self.server.cwd)
@@ -1429,6 +1431,9 @@ def _prompt_with_context(
         skill_lifecycle_section = skill_lifecycle.prompt_section(workspace)
         if skill_lifecycle_section:
             hints.append(skill_lifecycle_section.replace("\n", " | "))
+        skill_quality_section = skill_quality_rubric.prompt_section(workspace)
+        if skill_quality_section:
+            hints.append(skill_quality_section.replace("\n", " | "))
         skill_outcome_section = skill_outcome_autoforge.prompt_section(workspace)
         if skill_outcome_section:
             hints.append(skill_outcome_section.replace("\n", " | "))

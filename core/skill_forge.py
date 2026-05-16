@@ -6,7 +6,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import learning, redact, skills
+from . import learning, redact, skill_quality_rubric, skills
 
 
 MIN_LESSONS = 2
@@ -20,6 +20,8 @@ class ForgeResult:
     created: bool
     validated: bool = False
     blocked_reason: str = ""
+    quality_score: float = 0.0
+    quality_status: str = "unknown"
 
 
 def forge_skill(
@@ -40,21 +42,25 @@ def forge_skill(
     created = not target.exists()
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(_skill_text(skill_name, lessons, topic=topic), encoding="utf-8")
+    quality = skill_quality_rubric.apply_promotion_gate(target)
     parsed = _validated_skill(root, skill_name)
     return ForgeResult(
         path=target,
         skill_name=skill_name,
         lesson_count=len(lessons),
         created=created,
-        validated=bool(parsed and parsed.enabled),
-        blocked_reason="" if parsed and parsed.enabled else (parsed.blocked_reason if parsed else "skill not discoverable"),
+        validated=bool(parsed and parsed.enabled and quality.status != "blocked"),
+        blocked_reason="" if parsed and parsed.enabled and quality.status != "blocked" else (parsed.blocked_reason if parsed else "skill not discoverable"),
+        quality_score=quality.score,
+        quality_status=quality.status,
     )
 
 
 def format_result(result: ForgeResult) -> str:
     action = "created" if result.created else "updated"
+    quality = f"quality {result.quality_score:.2f}/{result.quality_status}"
     validation = "validated" if result.validated else f"not validated: {result.blocked_reason}"
-    return f"{action} ${result.skill_name} from {result.lesson_count} lesson(s) ({validation}): {result.path}"
+    return f"{action} ${result.skill_name} from {result.lesson_count} lesson(s) ({validation}; {quality}): {result.path}"
 
 
 def _skill_text(skill_name: str, lessons: list[learning.Lesson], *, topic: str) -> str:

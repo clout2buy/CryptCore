@@ -42,6 +42,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "workThreads" in web_snapshot
         assert "skillLifecycle" in web_snapshot
         assert "skillOutcomeAutoforge" in web_snapshot
+        assert "skillQualityRubric" in web_snapshot
         assert "artifactsPreview" in web_snapshot
         assert "artifactGroups" in web_snapshot
         assert "artifactSummary" in web_snapshot
@@ -222,6 +223,8 @@ def test_webui_static_is_chat_first():
     assert "Autoforge Skill" in script
     assert "skillLifecycle" in script
     assert "skillOutcomeAutoforge" in script
+    assert "Skill Quality Rubric" in script
+    assert "skillQualityRubric" in script
     assert "No outcome patterns ready to promote" in script
     assert "workThreadUpdated" in script
     assert "memoryJournalUpdated" in script

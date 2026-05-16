@@ -1120,6 +1120,7 @@ function skillsView(snapshot) {
   const skills = snapshot.skillsPreview || [];
   const lifecycle = snapshot.skillLifecycle || {};
   const outcomeForge = snapshot.skillOutcomeAutoforge || {};
+  const quality = snapshot.skillQualityRubric || {};
   const candidates = outcomeForge.candidates || [];
   const frontendSkill = skills.find((skill) => skill.name === "frontend-design");
   return `
@@ -1136,11 +1137,13 @@ function skillsView(snapshot) {
         ${statCard("Enabled", lifecycle.enabled || skills.filter((skill) => skill.enabled).length)}
         ${statCard("Blocked", lifecycle.blocked || 0)}
         ${statCard("Autoforge", candidates.length)}
+        ${statCard("Quality", `${Math.round((quality.averageScore || 0) * 100)}%`, `${quality.ready || 0} ready / ${quality.needsWork || 0} needs work`)}
         <button class="ask-button" data-ask="Find useful skills for what I am trying to do, learn them, and integrate the ones that fit.">Find skills</button>
         <button class="ask-button" data-ask="Inspect my current skills and suggest what Crypt should learn next.">Audit skills</button>
       </div>
     </section>
     <section class="data-list">${candidates.slice(0, 6).map((candidate) => row("Outcome", candidate.topic, `${candidate.episode_count || 0} wins / ${candidate.lesson_count || 0} lessons / ${(candidate.confidence || 0).toFixed ? candidate.confidence.toFixed(2) : candidate.confidence}`)).join("") || emptyRow("No outcome patterns ready to promote")}</section>
+    <section class="data-list">${(quality.scores || []).slice(0, 8).map((score) => row(score.status || "quality", `$${score.name}`, `${Math.round((score.score || 0) * 100)}% / ${(score.recommendations || []).slice(0, 2).join(" / ") || "promotion-ready"}`)).join("") || emptyRow("No skill quality scores yet")}</section>
     <section class="feature-grid">${skills.map((skill) => featureCard({ label: skill.name, value: skill.enabled ? "on" : "blocked", status: skill.title || "skill", detail: skill.description || skill.path })).join("") || emptyRow("No skills discovered")}</section>
   `;
 }
@@ -1297,6 +1300,7 @@ function settingsView(snapshot) {
   const webuiCache = snapshot.webuiCacheHealth || {};
   const clientCacheReport = browserCacheReport();
   const toolFailureMemory = snapshot.toolFailureMemory || {};
+  const skillQualityRubric = snapshot.skillQualityRubric || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Onboarding", value: `${onboarding.percent || 0}%`, status: onboarding.status || "setup", detail: onboarding.summary || "One-screen setup for provider, voice, memory, autonomy, remote access, and safety." })}
@@ -1308,6 +1312,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Live Event Integrity", value: liveIntegrity.status || "ok", status: `${liveIntegrity.gaps || 0} gaps / ${liveIntegrity.duplicates || 0} dupes`, detail: `${liveIntegrity.total || 0} buffered events, newest ${liveIntegrity.newest_age_seconds || 0}s old.` })}
       ${featureCard({ label: "WebUI Cache", value: `${webuiCache.total || 0} stores`, status: `${state.cache.repaired.length} repaired`, detail: "Browser session cache contract, client report, and self-repair actions." })}
       ${featureCard({ label: "Tool Failure Memory", value: toolFailureMemory.recurring || 0, status: `${toolFailureMemory.total || 0} signatures`, detail: "Recurring tool failures and recovery patterns are remembered before retrying." })}
+      ${featureCard({ label: "Skill Quality Rubric", value: `${Math.round((skillQualityRubric.averageScore || 0) * 100)}%`, status: `${skillQualityRubric.ready || 0}/${skillQualityRubric.total || 0} ready`, detail: "Generated skills are scored before promotion into durable runtime behavior." })}
       ${featureCard({ label: "Mission Workers", value: missionWorkers.active || 0, status: `${missionWorkers.gated || 0} gated`, detail: "Durable mission cycles queue work and stop before external actions until approval is explicit." })}
       ${featureCard({ label: "Offline Local Mode", value: offline.prefer_local ? "local" : (offline.enabled ? "armed" : "standby"), status: offline.provider ? `${providerLabel(offline.provider, snapshot)} / ${modelLabel(offline.model)}` : "ollama", detail: offline.reason || "Say offline, private mode, local only, or no cloud to route local-first." })}
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
@@ -1364,6 +1369,12 @@ function settingsView(snapshot) {
         <h3>Tool Failure Memory</h3>
         <div class="compact-list">
           ${(toolFailureMemory.patterns || []).slice(0, 8).map((pattern) => compactItem(`${pattern.kind || "failure"} x${pattern.count || 0}`, pattern.tool || pattern.signature, pattern.recovery_pattern || pattern.recovery_hint || pattern.last_error)).join("") || compactItem("clean", "No recurring tool failures", "Crypt will save failed tool signatures here and change strategy before retrying.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Skill Quality Rubric</h3>
+        <div class="compact-list">
+          ${(skillQualityRubric.scores || []).slice(0, 8).map((score) => compactItem(score.status || "quality", `$${score.name}`, `${Math.round((score.score || 0) * 100)}% / ${(score.recommendations || []).slice(0, 2).join(" / ") || "promotion-ready"}`)).join("") || compactItem("empty", "No skill scores yet", "Skills will be scored for trigger clarity, workflow, verification, safety, tools, and examples.")}
         </div>
       </div>
       <div class="panel-card wide">

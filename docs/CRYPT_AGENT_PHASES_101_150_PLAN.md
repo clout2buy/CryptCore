@@ -55,6 +55,12 @@ Crypt changes strategy instead of repeating the same broken call.
 Score generated skills for safety, clarity, workflow usefulness, tests,
 references, and tool boundaries before promoting them.
 
+Progress: added `core.skill_quality_rubric`, which scores SKILL.md bundles
+for metadata, trigger clarity, workflow instructions, verification, safety
+boundaries, tool boundaries, and examples. Forged skills now write quality
+status into lifecycle state before promotion, blocked skills are disabled, and
+Skills/Settings show the rubric scores plus recommendations.
+
 ## Phase 106 - Browser/Desktop Permission HUD
 
 Show visible operator status, current target, last action, and approval boundary

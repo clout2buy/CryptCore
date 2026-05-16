@@ -123,6 +123,8 @@ def autoforge(
                 "path": str(result.path),
                 "created": result.created,
                 "validated": result.validated,
+                "qualityScore": result.quality_score,
+                "qualityStatus": result.quality_status,
                 "lessonCount": result.lesson_count,
                 "confidence": candidate.confidence,
             }
