@@ -19,6 +19,7 @@ from . import (
     project_index,
     prompt,
     redact,
+    repair_doctor,
     session,
     skills,
     task_state,
@@ -70,6 +71,8 @@ def run_doctor(cwd: str | Path) -> str:
         mark = "OK" if check.ok else "FAIL"
         suffix = f" - {check.detail}" if check.detail else ""
         lines.append(f"[{mark}] {check.name}{suffix}")
+    lines.append("")
+    lines.append(repair_doctor.format_report(cwd))
     return "\n".join(lines)
 
 

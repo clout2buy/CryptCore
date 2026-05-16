@@ -73,6 +73,8 @@ def snapshot(saved: dict | None = None, health: dict[str, Any] | None = None) ->
     decision = decide(saved=saved, health=health)
     return {
         **decision.to_dict(),
+        "localReady": decision.local_ready,
+        "activeProvider": decision.active_provider,
         "triggerTerms": ["offline", "private mode", "local only", "no cloud"],
         "localTools": ["filesystem", "memory", "artifacts", "office", "local search", "kokoro voice", "ollama"],
     }

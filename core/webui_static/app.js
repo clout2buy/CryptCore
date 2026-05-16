@@ -1211,6 +1211,7 @@ function settingsView(snapshot) {
   const offline = snapshot.offlineMode || {};
   const incidents = snapshot.safetyIncidents || {};
   const evalHarness = snapshot.evalHarness || {};
+  const repairDoctor = snapshot.repairDoctor || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Engine", value: modelLabel(snapshot.model), status: providerLabel(snapshot.provider, snapshot), detail: "Current model used by chat." })}
@@ -1226,6 +1227,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Approval Policy", value: approvalPolicy.enabled || 0, status: `${approvalPolicy.ask || 0} ask / ${approvalPolicy.block || 0} block`, detail: "Configurable rules for what Crypt can do automatically, draft, ask for, or block." })}
       ${featureCard({ label: "Safety Incident Log", value: incidents.open || 0, status: `${incidents.critical || 0} critical`, detail: "Blocked actions, dangerous prompts, secret detections, and denied approvals are logged here." })}
       ${featureCard({ label: "Evaluation Harness", value: `${evalHarness.passing || 0}/${evalHarness.total || 0}`, status: `${Math.round((evalHarness.overallScore || 0) * 100)}% score`, detail: "Business, research, memory, browser, voice, and WebUI stability scenarios." })}
+      ${featureCard({ label: "Repair Doctor", value: repairDoctor.failing || 0, status: repairDoctor.status || "ready", detail: repairDoctor.summary || "Checks setup, auth, voice assets, jobs, and live WebUI state." })}
       ${featureCard({ label: "Usage Ledger", value: usage.total || 0, status: `$${Number(usage.costEstimatedUsd || 0).toFixed(4)} est`, detail: `${usage.tokensEstimated || 0} estimated tokens, ${usage.avgLatencyMs || 0}ms avg latency.` })}
       ${featureCard({ label: "Gateway", value: "local", status: "webui", detail: snapshot.webui?.url || "local" })}
       ${featureCard({ label: "Workspace", value: "open", status: "local", detail: snapshot.workspace })}
@@ -1260,6 +1262,12 @@ function settingsView(snapshot) {
         <h3>Evaluation Harness</h3>
         <div class="compact-list">
           ${(evalHarness.scores || []).map((score) => compactItem(score.status || "watch", score.title || score.category, `${score.category || "eval"} / ${Math.round((score.score || 0) * 100)}%`)).join("") || compactItem("empty", "No evaluation snapshot", "Runtime evaluation scenarios will appear here.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Repair Doctor</h3>
+        <div class="compact-list">
+          ${(repairDoctor.checks || []).filter((check) => !check.ok).slice(0, 7).map((check) => compactItem(check.severity || "repair", check.name, check.repair_command || check.detail || "Needs attention.")).join("") || compactItem("ready", "No repairs needed", "Setup, provider, voice, jobs, and live replay checks are clean.")}
         </div>
       </div>
       <div class="panel-card wide">

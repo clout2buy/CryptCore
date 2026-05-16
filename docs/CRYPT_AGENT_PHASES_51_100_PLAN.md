@@ -423,6 +423,13 @@ evidence.
 Detect broken setup, missing voice assets, failed auth, bad config, and stale
 WebUI state with repair commands.
 
+Progress: added `core.repair_doctor`, a structured recovery layer that checks
+app/workspace writeability, provider/model config, active provider health,
+Kokoro voice assets, offline fallback readiness, stale job queue state, and live
+replay attachment. It returns concrete repair commands, surfaces failing checks
+in Settings, feeds prompt context so Crypt can repair before retrying broken
+paths, and extends the CLI doctor report with actionable fixes.
+
 ## Phase 94 - Plugin/Connector Readiness Layer
 
 Represent external connectors, required auth, scopes, and safe actions before

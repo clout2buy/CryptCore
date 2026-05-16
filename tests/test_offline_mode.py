@@ -43,4 +43,5 @@ def test_offline_mode_standby_when_cloud_ready(monkeypatch):
 
     assert snap["enabled"] is False
     assert snap["prefer_local"] is False
+    assert snap["localReady"] is True
     assert snap["triggerTerms"]
