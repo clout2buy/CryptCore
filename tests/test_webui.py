@@ -41,6 +41,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "voiceConversation" in web_snapshot
         assert "voiceWakeSessions" in web_snapshot
         assert "workThreads" in web_snapshot
+        assert "taskContracts" in web_snapshot
         assert "skillLifecycle" in web_snapshot
         assert "skillOutcomeAutoforge" in web_snapshot
         assert "skillQualityRubric" in web_snapshot
@@ -223,6 +224,9 @@ def test_webui_static_is_chat_first():
     assert "Self-Updating Memory" in script
     assert "Mission brain" in script
     assert "missionScheduler" in script
+    assert "Task Contracts" in script
+    assert "taskContracts" in script
+    assert "taskContractUpdated" in script
     assert "No schedules yet" in script
     assert "personaGovernance" in script
     assert "Artifact Studio" in script

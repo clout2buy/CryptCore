@@ -101,6 +101,7 @@ from . import (
     skills,
     smart_model_router,
     soul,
+    task_contracts,
     tool_failure_memory,
     tool_capability_cards,
     trust_calibration,
@@ -584,6 +585,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                     "confidence": delegation_decision.confidence,
                 }
             )
+            thread = None
             try:
                 mission_result = mission_router.observe(self.server.cwd, text, route=intent_decision)
             except Exception as exc:
@@ -623,6 +625,27 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                                 "nextAction": thread.next_action,
                             }
                         )
+            try:
+                task_contract = task_contracts.ensure_for_prompt(
+                    self.server.cwd,
+                    text,
+                    route=intent_decision,
+                    mission=mission_result,
+                    thread=thread,
+                )
+            except Exception as exc:
+                self.server.emit_event({"event": "taskContractError", "error": f"{type(exc).__name__}: {exc}"})
+            else:
+                if task_contract:
+                    self.server.emit_event(
+                        {
+                            "event": "taskContractUpdated",
+                            "id": request_id,
+                            "sessionKey": session_key,
+                            "text": task_contract.title,
+                            "contract": task_contract.to_dict(),
+                        }
+                    )
             intents = _intent_hints(body.get("intents"))
             profile = agent_profiles.get_profile(self.server.cwd, str(body.get("agentId") or ""))
             prompt_text = _prompt_with_context(
@@ -860,6 +883,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["project"] = asdict(project_index.get(self.server.cwd))
         snapshot["goals"] = [asdict(goal) for goal in goals.list_goals(self.server.cwd, include_all=True)[:20]]
         snapshot["workThreads"] = [asdict(thread) for thread in work_threads.list_threads(self.server.cwd, include_all=True)[:20]]
+        snapshot["taskContracts"] = task_contracts.snapshot(self.server.cwd)
         snapshot["memoryJournal"] = memory_journal.snapshot(self.server.cwd)
         snapshot["entitiesPreview"] = entities.snapshot(self.server.cwd)
         snapshot["businessEntities"] = business_entities.snapshot(self.server.cwd)
@@ -1591,6 +1615,9 @@ def _prompt_with_context(
         worker_section = mission_workers.prompt_section(workspace)
         if worker_section:
             hints.append(worker_section.replace("\n", " | "))
+        task_contract_section = task_contracts.prompt_section(workspace)
+        if task_contract_section:
+            hints.append(task_contract_section.replace("\n", " | "))
         persona_governance_section = persona_governance.prompt_section(workspace)
         if persona_governance_section:
             hints.append(persona_governance_section.replace("\n", " | "))

@@ -194,6 +194,13 @@ internal module details.
 Convert vague requests into durable contracts with outcome, constraints,
 acceptance checks, external gates, and stop conditions.
 
+Progress: added `core.task_contracts`, which turns actionable chat into durable
+contracts with outcomes, local constraints, acceptance checks, approval gates,
+and stop conditions. Prompt handling now creates/updates contracts alongside
+missions and work threads, Missions/Settings expose them, and prompt context
+uses them so Crypt can execute without making the user choreograph internal
+steps.
+
 ## Phase 119 - Agent Evaluation Arena
 
 Run saved agent profiles against small task scenarios and score correctness,

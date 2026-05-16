@@ -969,6 +969,8 @@ function missionsView(snapshot) {
   const campaigns = contentOps.campaigns || [];
   const missionBudget = snapshot.missionBudget || {};
   const budgetCards = missionBudget.cards || [];
+  const taskContracts = snapshot.taskContracts || {};
+  const contractRows = taskContracts.contracts || [];
   return `
     <section class="mission-board">
       <div class="panel-card mission-hero">
@@ -980,6 +982,7 @@ function missionsView(snapshot) {
       <div class="mission-metrics">
         ${statCard("Goals", active.length)}
         ${statCard("Threads", threads.length)}
+        ${statCard("Contracts", taskContracts.active || 0, `${taskContracts.approvalGated || 0} gated`)}
         ${statCard("Blocked", blockedThreads.length)}
         ${statCard("Due", scheduler.due ?? due.length)}
         ${statCard("Paused", scheduler.paused || 0)}
@@ -989,12 +992,19 @@ function missionsView(snapshot) {
       </div>
     </section>
     <section class="data-list mission-list">${budgetCards.slice(0, 8).map((card) => row(card.status || "budget", card.title || card.missionId, `${card.minutes || 0}/${card.maxMinutes || 0} min / $${Number(card.modelCostUsd || 0).toFixed(4)} of $${Number(card.maxCostUsd || 0).toFixed(2)} / risk ${card.riskBudget || "medium"}`)).join("") || emptyRow("No mission budgets yet")}</section>
+    <section class="data-list mission-list task-contract-list">${contractRows.slice(0, 8).map(taskContractRow).join("") || emptyRow("No task contracts yet")}</section>
     <section class="data-list mission-list business-launch-list">${launches.map(businessLaunchRow).join("") || ""}</section>
     <section class="data-list mission-list content-ops-list">${campaigns.map(contentCampaignRow).join("") || ""}</section>
     <section class="data-list mission-list">${jobs.slice(0, 8).map(scheduleRow).join("") || emptyRow("No schedules yet")}</section>
     <section class="data-list mission-list thread-list">${threads.map(threadRow).join("") || emptyRow("No work threads yet")}</section>
     <section class="data-list mission-list">${goals.map(missionRow).join("") || emptyRow("No missions yet")}</section>
   `;
+}
+
+function taskContractRow(contract) {
+  const checks = (contract.acceptance_checks || []).slice(0, 2).join(" / ");
+  const gates = (contract.external_gates || []).length ? `${(contract.external_gates || []).length} gate(s)` : "local";
+  return row(contract.intent || "contract", contract.title || "Task contract", `${gates} / ${checks || contract.outcome || "acceptance checks pending"}`);
 }
 
 function businessLaunchRow(launch) {
@@ -1328,6 +1338,7 @@ function settingsView(snapshot) {
   const healthCards = providerHealth.cards || [];
   const liveIntegrity = snapshot.liveEventIntegrity || {};
   const missionWorkers = snapshot.missionWorkers || {};
+  const taskContracts = snapshot.taskContracts || {};
   const sandbox = snapshot.selfUpgradeSandbox || {};
   const patchRisk = snapshot.patchRisk || {};
   const localSearch = snapshot.localSearch || {};
@@ -1369,6 +1380,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Auth", value: snapshot.authOk ? "ready" : "missing", status: snapshot.auth, detail: snapshot.authMessage || "Provider is usable." })}
       ${featureCard({ label: "Provider Health", value: `${providerHealth.ready || 0}/${providerHealth.total || 0}`, status: providerHealth.recommendedFallback ? `fallback ${providerHealth.recommendedFallback}` : "fallback none", detail: `${providerHealth.warnings || 0} warning(s), ${providerHealth.missing || 0} missing.` })}
       ${featureCard({ label: "Live Event Integrity", value: liveIntegrity.status || "ok", status: `${liveIntegrity.gaps || 0} gaps / ${liveIntegrity.duplicates || 0} dupes`, detail: `${liveIntegrity.total || 0} buffered events, newest ${liveIntegrity.newest_age_seconds || 0}s old.` })}
+      ${featureCard({ label: "Task Contracts", value: taskContracts.active || 0, status: `${taskContracts.approvalGated || 0} gated`, detail: "Vague asks become outcome, constraint, acceptance, gate, and stop-condition records." })}
       ${featureCard({ label: "WebUI Cache", value: `${webuiCache.total || 0} stores`, status: `${state.cache.repaired.length} repaired`, detail: "Browser session cache contract, client report, and self-repair actions." })}
       ${featureCard({ label: "Tool Failure Memory", value: toolFailureMemory.recurring || 0, status: `${toolFailureMemory.total || 0} signatures`, detail: "Recurring tool failures and recovery patterns are remembered before retrying." })}
       ${featureCard({ label: "Skill Quality Rubric", value: `${Math.round((skillQualityRubric.averageScore || 0) * 100)}%`, status: `${skillQualityRubric.ready || 0}/${skillQualityRubric.total || 0} ready`, detail: "Generated skills are scored before promotion into durable runtime behavior." })}
@@ -1434,6 +1446,12 @@ function settingsView(snapshot) {
         <h3>Live Event Integrity</h3>
         <div class="compact-list">
           ${(liveIntegrity.issues || []).map((issue) => compactItem(issue.severity || "issue", issue.kind, issue.detail)).join("") || compactItem("ok", "Live stream healthy", `${liveIntegrity.total || 0} events buffered; last seq ${liveIntegrity.last_seq || 0}.`)}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Task Contracts</h3>
+        <div class="compact-list">
+          ${(taskContracts.contracts || []).slice(0, 8).map((contract) => compactItem(contract.intent || "contract", contract.title || "Task contract", `${(contract.external_gates || []).length} gate(s) / ${(contract.acceptance_checks || []).slice(0, 2).join(" / ") || contract.outcome || "checks pending"}`)).join("") || compactItem("empty", "No task contracts", "Multi-step asks will become structured contracts here.")}
         </div>
       </div>
       <div class="panel-card wide">
@@ -2293,6 +2311,13 @@ function handleEvent(event) {
     case "workThreadUpdated":
       addActivity("Work thread", oneLine(event.nextAction || event.text || "Thread updated.", 160), "mission");
       refresh({ renderView: state.currentView === "missions" || state.currentView === "jobs" }).catch((error) => addActivity("Threads", error.message));
+      break;
+    case "taskContractUpdated":
+      addActivity("Task contract", oneLine(event.text || "Contract updated.", 160), "mission");
+      refresh({ renderView: state.currentView === "missions" || state.currentView === "settings" }).catch((error) => addActivity("Task contracts", error.message));
+      break;
+    case "taskContractError":
+      addActivity("Task contract", event.error || "Could not update task contract.");
       break;
     case "browserActivity":
       addActivity("Browser", event.url ? `${event.text} / ${event.url}` : event.text, "browser");
