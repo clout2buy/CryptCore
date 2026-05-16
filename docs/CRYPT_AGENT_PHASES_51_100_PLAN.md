@@ -511,3 +511,9 @@ cannot recover cleanly.
 
 Generate the final release checklist, benchmark report, screenshots, upgrade
 notes, known risks, rollback plan, and push/PR package.
+
+Progress: added `core.release_candidate`, which builds a Crypt `1.0-rc`
+manifest on top of the release train, chaos report, evaluation report, daily
+brief, repair state, upgrade notes, known risks, rollback plan, and push/PR
+package. Settings now shows RC status and package details, and prompt context
+surfaces release blockers until the manifest is generated and clean.

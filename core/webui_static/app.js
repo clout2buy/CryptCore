@@ -1218,6 +1218,7 @@ function settingsView(snapshot) {
   const repairDoctor = snapshot.repairDoctor || {};
   const dailyBrief = snapshot.dailyBrief || {};
   const chaosChecks = snapshot.chaosChecks || {};
+  const releaseCandidate = snapshot.releaseCandidate || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Onboarding", value: `${onboarding.percent || 0}%`, status: onboarding.status || "setup", detail: onboarding.summary || "One-screen setup for provider, voice, memory, autonomy, remote access, and safety." })}
@@ -1240,6 +1241,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Repair Doctor", value: repairDoctor.failing || 0, status: repairDoctor.status || "ready", detail: repairDoctor.summary || "Checks setup, auth, voice assets, jobs, and live WebUI state." })}
       ${featureCard({ label: "Daily Brief", value: dailyBrief.counts?.nextActions || 0, status: `${dailyBrief.counts?.approvals || 0} approvals`, detail: `Open missions ${dailyBrief.counts?.openMissions || 0}, reminders ${dailyBrief.counts?.reminders || 0}.` })}
       ${featureCard({ label: "Chaos Checks", value: `${chaosChecks.passed || 0}/${chaosChecks.total || 0}`, status: chaosChecks.status || "pending", detail: "Simulated provider outage, bad config, stale WebUI, missing voice, memory corruption, and external-gate failures." })}
+      ${featureCard({ label: "Crypt 1.0 RC", value: releaseCandidate.version || "1.0-rc", status: releaseCandidate.status || "not-generated", detail: releaseCandidate.path || "Generate the release candidate manifest before final packaging." })}
       ${featureCard({ label: "Usage Ledger", value: usage.total || 0, status: `$${Number(usage.costEstimatedUsd || 0).toFixed(4)} est`, detail: `${usage.tokensEstimated || 0} estimated tokens, ${usage.avgLatencyMs || 0}ms avg latency.` })}
       ${featureCard({ label: "Gateway", value: "local", status: "webui", detail: snapshot.webui?.url || "local" })}
       ${featureCard({ label: "Workspace", value: "open", status: "local", detail: snapshot.workspace })}
@@ -1316,6 +1318,13 @@ function settingsView(snapshot) {
         <h3>Chaos Checks</h3>
         <div class="compact-list">
           ${(chaosChecks.scenarios || []).map((item) => compactItem(item.passed ? "pass" : "fail", item.title, item.observed || item.repair_hint || item.expected)).join("") || compactItem("pending", "No chaos run", "Run quick verification to populate simulated failure checks.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Crypt 1.0 RC</h3>
+        <div class="compact-list">
+          ${(releaseCandidate.known_risks || []).slice(0, 5).map((risk) => compactItem(releaseCandidate.status || "risk", "Known risk", risk)).join("") || compactItem("ready", "No known risks", releaseCandidate.release_checklist || releaseCandidate.path || "Release candidate manifest ready.")}
+          ${(releaseCandidate.push_package || []).slice(0, 5).map((item) => compactItem("package", "Push / PR", item)).join("")}
         </div>
       </div>
       <div class="panel-card wide">

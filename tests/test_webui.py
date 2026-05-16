@@ -84,6 +84,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "dailyBrief" in web_snapshot
         assert "onboarding" in web_snapshot
         assert "chaosChecks" in web_snapshot
+        assert "releaseCandidate" in web_snapshot
         assert "toolCapabilityCards" in web_snapshot
         assert "smartModelRouter" in web_snapshot
         assert "providerHealth" in web_snapshot
@@ -284,6 +285,8 @@ def test_webui_static_is_chat_first():
     assert "onboarding" in script
     assert "Chaos Checks" in script
     assert "chaosChecks" in script
+    assert "Crypt 1.0 RC" in script
+    assert "releaseCandidate" in script
     assert "Usage Ledger" in script
     assert "Notification Center" in script
     assert "Personal OS" in script

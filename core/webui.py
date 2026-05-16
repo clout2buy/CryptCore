@@ -73,6 +73,7 @@ from . import (
     project_index,
     research_sources,
     reflection,
+    release_candidate,
     revenue,
     revenue_ops,
     runtime_rebuild,
@@ -843,6 +844,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["dailyBrief"] = daily_brief.snapshot(self.server.cwd, snapshot)
         snapshot["onboarding"] = onboarding.snapshot(self.server.cwd, snapshot)
         snapshot["chaosChecks"] = chaos_checks.cached_snapshot(self.server.cwd)
+        snapshot["releaseCandidate"] = release_candidate.snapshot(self.server.cwd, snapshot)
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         snapshot["capabilityMatrix"] = capability_matrix.build(self.server.cwd, snapshot).to_dict()
         return snapshot
@@ -1433,6 +1435,9 @@ def _prompt_with_context(
         chaos_section = chaos_checks.prompt_section(workspace)
         if chaos_section:
             hints.append(chaos_section.replace("\n", " | "))
+        release_section = release_candidate.prompt_section(workspace)
+        if release_section:
+            hints.append(release_section.replace("\n", " | "))
         replay_section = live_replay.prompt_section(workspace)
         if replay_section:
             hints.append(replay_section.replace("\n", " | "))
