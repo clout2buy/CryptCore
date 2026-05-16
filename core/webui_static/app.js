@@ -1203,6 +1203,7 @@ function settingsView(snapshot) {
   const contracts = snapshot.autonomyContracts?.profiles || [];
   const providerHealth = snapshot.providerHealth || {};
   const healthCards = providerHealth.cards || [];
+  const liveIntegrity = snapshot.liveEventIntegrity || {};
   const missionWorkers = snapshot.missionWorkers || {};
   const sandbox = snapshot.selfUpgradeSandbox || {};
   const patchRisk = snapshot.patchRisk || {};
@@ -1228,6 +1229,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Thinking", value: snapshot.thinkingMode, status: snapshot.reasoningEffort, detail: "Provider reasoning mode." })}
       ${featureCard({ label: "Auth", value: snapshot.authOk ? "ready" : "missing", status: snapshot.auth, detail: snapshot.authMessage || "Provider is usable." })}
       ${featureCard({ label: "Provider Health", value: `${providerHealth.ready || 0}/${providerHealth.total || 0}`, status: providerHealth.recommendedFallback ? `fallback ${providerHealth.recommendedFallback}` : "fallback none", detail: `${providerHealth.warnings || 0} warning(s), ${providerHealth.missing || 0} missing.` })}
+      ${featureCard({ label: "Live Event Integrity", value: liveIntegrity.status || "ok", status: `${liveIntegrity.gaps || 0} gaps / ${liveIntegrity.duplicates || 0} dupes`, detail: `${liveIntegrity.total || 0} buffered events, newest ${liveIntegrity.newest_age_seconds || 0}s old.` })}
       ${featureCard({ label: "Mission Workers", value: missionWorkers.active || 0, status: `${missionWorkers.gated || 0} gated`, detail: "Durable mission cycles queue work and stop before external actions until approval is explicit." })}
       ${featureCard({ label: "Offline Local Mode", value: offline.prefer_local ? "local" : (offline.enabled ? "armed" : "standby"), status: offline.provider ? `${providerLabel(offline.provider, snapshot)} / ${modelLabel(offline.model)}` : "ollama", detail: offline.reason || "Say offline, private mode, local only, or no cloud to route local-first." })}
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
@@ -1266,6 +1268,12 @@ function settingsView(snapshot) {
       <div class="panel-card wide">
         <h3>Provider Health</h3>
         <div class="compact-list">${healthCards.map((card) => compactItem(card.status || "provider", card.label || card.provider, `${card.authState} / ${card.modelLabel} / failures ${card.failures || 0}`)).join("")}</div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Live Event Integrity</h3>
+        <div class="compact-list">
+          ${(liveIntegrity.issues || []).map((issue) => compactItem(issue.severity || "issue", issue.kind, issue.detail)).join("") || compactItem("ok", "Live stream healthy", `${liveIntegrity.total || 0} events buffered; last seq ${liveIntegrity.last_seq || 0}.`)}
+        </div>
       </div>
       <div class="panel-card wide">
         <h3>Mission Workers</h3>

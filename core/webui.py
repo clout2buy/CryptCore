@@ -99,6 +99,7 @@ from . import (
     workspace_map,
     work_threads,
     live_events,
+    live_event_integrity,
     live_replay,
     model_usage_ledger,
 )
@@ -196,7 +197,16 @@ class CryptWebHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/events":
             since = _int(query.get("since", ["0"])[0], 0)
-            self._json({"events": self.server.events_since(since)})
+            events = self.server.events_since(since)
+            self._json(
+                {
+                    "events": events,
+                    "integrity": live_event_integrity.analyze(
+                        self.server.events,
+                        active_task=self.server.daemon.snapshot().get("activeTask"),
+                    ),
+                }
+            )
             return
         if path == "/api/lessons":
             q = query.get("q", [""])[0]
@@ -795,6 +805,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["autonomyContracts"] = autonomy_contracts.snapshot()
         snapshot["trustCalibration"] = trust_calibration.snapshot(self.server.cwd)
         snapshot["approvalPolicy"] = approval_policy.snapshot(self.server.cwd)
+        snapshot["liveEventIntegrity"] = live_event_integrity.analyze(self.server.events, active_task=snapshot.get("activeTask"))
         snapshot["liveReplay"] = live_replay.snapshot(self.server.cwd)
         snapshot["jobQueue"] = job_queue.snapshot(self.server.cwd)
         snapshot["missionWorkers"] = mission_workers.snapshot(self.server.cwd)

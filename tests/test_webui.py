@@ -63,6 +63,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "autonomyContracts" in web_snapshot
         assert "trustCalibration" in web_snapshot
         assert "approvalPolicy" in web_snapshot
+        assert "liveEventIntegrity" in web_snapshot
         assert "liveReplay" in web_snapshot
         assert "jobQueue" in web_snapshot
         assert "missionWorkers" in web_snapshot
@@ -270,6 +271,8 @@ def test_webui_static_is_chat_first():
     assert "Smart Model Router" in script
     assert "modelRouted" in script
     assert "Provider Health" in script
+    assert "Live Event Integrity" in script
+    assert "liveEventIntegrity" in script
     assert "Mission Workers" in script
     assert "missionWorkers" in script
     assert "Offline Local Mode" in script

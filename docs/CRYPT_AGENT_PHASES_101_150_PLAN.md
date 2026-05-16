@@ -21,6 +21,13 @@ of flooding every prompt or panel with raw nested state.
 Detect event gaps, duplicated event ids, stalled streams, and stale thinking
 events so live chat can prove whether it is actually streaming.
 
+Progress: added `core.live_event_integrity`, which analyzes buffered WebUI
+events for missing sequence numbers, duplicate sequence ids, unknown/invalid
+events, stale active streams, and stalled thinking deltas. `/api/events` now
+returns integrity metadata, the WebUI snapshot exposes stream health, and
+Settings shows event issues so chat flicker/stalls can be diagnosed instead of
+hand-waved.
+
 ## Phase 103 - Self-Healing WebUI Cache
 
 Detect stale browser-side sessions, broken localStorage chat state, and
