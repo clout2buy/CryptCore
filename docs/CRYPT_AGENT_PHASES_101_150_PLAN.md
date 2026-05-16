@@ -160,6 +160,12 @@ spoken chat can behave like a real first-class input mode.
 Let Crypt save screenshot observations, UI defects, and visual verification
 notes to reusable visual memory.
 
+Progress: added `core.screenshot_memory`, which ingests browser and desktop
+recording screenshots, stores reusable visual observations, captures chat
+feedback about flicker, clutter, overlap, and rendering defects, and exposes
+those notes in Files/Settings plus prompt context for future UI and visual QA
+passes.
+
 ## Phase 116 - Accessibility And Motion Audit
 
 Score the WebUI for keyboard reachability, contrast, text overflow, motion

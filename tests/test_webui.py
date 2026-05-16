@@ -87,6 +87,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "revenueOps" in web_snapshot
         assert "browserRecordings" in web_snapshot
         assert "desktopRecordings" in web_snapshot
+        assert "screenshotMemory" in web_snapshot
         assert "operatorHud" in web_snapshot
         assert "personalOS" in web_snapshot
         assert "mobileCompanion" in web_snapshot
@@ -266,6 +267,9 @@ def test_webui_static_is_chat_first():
     assert "voiceConversation" in script
     assert "Voice Wake Sessions" in script
     assert "voiceWakeSessions" in script
+    assert "Screenshot Memory" in script
+    assert "screenshotMemory" in script
+    assert "screenshotMemoryUpdated" in script
     assert "shouldSpeakResponse" in script
     assert "pollEventsOnce" in script
     assert "pollSnapshotOnce" in script

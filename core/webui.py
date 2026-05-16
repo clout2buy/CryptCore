@@ -89,6 +89,7 @@ from . import (
     scheduler,
     secret_rotation_advisor,
     session as sessions,
+    screenshot_memory,
     self_upgrade_sandbox,
     settings,
     skill_lifecycle,
@@ -395,6 +396,21 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                             "lessonId": memory_result.lesson_id,
                             "tags": list(memory_result.tags),
                             "soulChanged": memory_result.soul_changed,
+                        }
+                    )
+            try:
+                visual_note = screenshot_memory.observe_feedback(self.server.cwd, text, source="chat")
+            except Exception as exc:
+                self.server.emit_event({"event": "screenshotMemoryError", "error": f"{type(exc).__name__}: {exc}"})
+            else:
+                if visual_note:
+                    self.server.emit_event(
+                        {
+                            "event": "screenshotMemoryUpdated",
+                            "id": request_id,
+                            "sessionKey": session_key,
+                            "text": visual_note.observation,
+                            "annotation": visual_note.to_dict(),
                         }
                     )
             try:
@@ -921,6 +937,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["websitePipelines"] = website_pipeline.snapshot(self.server.cwd)
         snapshot["browserRecordings"] = browser_recorder.snapshot(self.server.cwd)
         snapshot["desktopRecordings"] = desktop_recorder.snapshot(self.server.cwd)
+        snapshot["screenshotMemory"] = screenshot_memory.snapshot(self.server.cwd)
         snapshot["operatorHud"] = operator_hud.snapshot(self.server.cwd)
         snapshot["personalOS"] = personal_os.snapshot(self.server.cwd, snapshot)
         snapshot["mobileCompanion"] = mobile_companion.snapshot(self.server.cwd, snapshot)
@@ -1510,6 +1527,9 @@ def _prompt_with_context(
         desktop_recording_section = desktop_recorder.prompt_section(workspace)
         if desktop_recording_section:
             hints.append(desktop_recording_section.replace("\n", " | "))
+        screenshot_memory_section = screenshot_memory.prompt_section(workspace)
+        if screenshot_memory_section:
+            hints.append(screenshot_memory_section.replace("\n", " | "))
         operator_section = operator_hud.prompt_section(workspace)
         if operator_section:
             hints.append(operator_section.replace("\n", " | "))

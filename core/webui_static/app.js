@@ -764,6 +764,8 @@ function filesView(snapshot) {
   const pipelines = snapshot.websitePipelines?.pipelines || [];
   const knowledgePacks = snapshot.knowledgePacks || {};
   const packRows = knowledgePacks.packs || [];
+  const screenshotMemory = snapshot.screenshotMemory || {};
+  const visualRows = screenshotMemory.annotations || [];
   const latest = artifacts[0];
   return `
     <section class="two-col">
@@ -781,6 +783,7 @@ function filesView(snapshot) {
         ${statCard("Artifacts", summary.total || artifacts.length || 0)}
         ${statCard("Assets", assetLibrary.total || 0, `${assetLibrary.reusable || 0} reusable`)}
         ${statCard("Packs", knowledgePacks.total || 0)}
+        ${statCard("Visual notes", screenshotMemory.active || 0, `${screenshotMemory.defects || 0} defects`)}
         ${statCard("Mission linked", summary.missionLinked || 0)}
         ${statCard("Verified", summary.verified || 0)}
         ${statCard("Office", office.total || 0)}
@@ -799,6 +802,9 @@ function filesView(snapshot) {
     </section>
     <section class="data-list knowledge-pack-list">
       ${packRows.slice(0, 8).map((pack) => row("Knowledge Pack", pack.title || pack.pack_id, `${pack.item_count || 0} items / ~${pack.estimated_tokens || 0} tokens / ${pack.path || ""}`)).join("") || emptyRow("No knowledge packs built yet")}
+    </section>
+    <section class="data-list screenshot-memory-list">
+      ${visualRows.slice(0, 8).map((item) => row(item.severity || "Visual", item.screenshot || item.source, item.defect ? `${item.defect} / ${item.recommendation || item.observation}` : item.observation || "visual note")).join("") || emptyRow("No screenshot memory yet")}
     </section>
     <section class="data-list workspace-map-list">
       ${row("Workspace Map", `${mapSummary.safeZones || 0} safe zones`, `${mapSummary.generatedZones || 0} generated zones / ${mapSummary.ignoredPatterns || 0} ignored patterns`)}
@@ -1343,6 +1349,7 @@ function settingsView(snapshot) {
   const businessCrm = snapshot.businessCrm || {};
   const assetLibrary = snapshot.assetLibrary || {};
   const knowledgePacks = snapshot.knowledgePacks || {};
+  const screenshotMemory = snapshot.screenshotMemory || {};
   const promptInjectionFirewall = snapshot.promptInjectionFirewall || {};
   const secretRotationAdvisor = snapshot.secretRotationAdvisor || {};
   return `
@@ -1364,6 +1371,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Business CRM", value: businessCrm.contacts || 0, status: `$${Number(businessCrm.pipelineValueUsd || 0).toFixed(2)} pipeline`, detail: `${businessCrm.leads || 0} leads, ${businessCrm.customers || 0} customers, ${businessCrm.followUps || 0} follow-ups.` })}
       ${featureCard({ label: "Asset Library", value: assetLibrary.total || 0, status: `${assetLibrary.reusable || 0} reusable`, detail: Object.entries(assetLibrary.byKind || {}).slice(0, 4).map(([key, value]) => `${key}: ${value}`).join(" / ") || "Reusable media, UI, docs, data, and generated artifacts." })}
       ${featureCard({ label: "Knowledge Packs", value: knowledgePacks.total || 0, status: knowledgePacks.latest?.title || "none", detail: knowledgePacks.latest ? `${knowledgePacks.latest.item_count || 0} items, ~${knowledgePacks.latest.estimated_tokens || 0} tokens.` : "Portable context packs for agents and workers." })}
+      ${featureCard({ label: "Screenshot Memory", value: screenshotMemory.active || 0, status: `${screenshotMemory.defects || 0} defects`, detail: "Screenshot observations, UI defects, and visual QA notes are retained as reusable memory." })}
       ${featureCard({ label: "Prompt Injection Firewall", value: promptInjectionFirewall.total || 0, status: `${promptInjectionFirewall.critical || 0} critical`, detail: "Suspicious web/file instructions are quoted as evidence before they enter context." })}
       ${featureCard({ label: "Secret Rotation Advisor", value: secretRotationAdvisor.total || 0, status: `${secretRotationAdvisor.critical || 0} critical`, detail: "Secret-looking signals create rotate, revoke, cleanup, and audit checklists without storing raw secrets." })}
       ${featureCard({ label: "Mission Workers", value: missionWorkers.active || 0, status: `${missionWorkers.gated || 0} gated`, detail: "Durable mission cycles queue work and stop before external actions until approval is explicit." })}
@@ -1473,6 +1481,12 @@ function settingsView(snapshot) {
         <h3>Knowledge Packs</h3>
         <div class="compact-list">
           ${(knowledgePacks.packs || []).slice(0, 8).map((pack) => compactItem("pack", pack.title || pack.pack_id, `${pack.item_count || 0} items / ~${pack.estimated_tokens || 0} tokens / ${pack.path || ""}`)).join("") || compactItem("empty", "No knowledge packs", "Portable context packs for agents and workers will appear here.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Screenshot Memory</h3>
+        <div class="compact-list">
+          ${(screenshotMemory.annotations || []).slice(0, 8).map((item) => compactItem(item.severity || "visual", item.screenshot || item.source, item.defect ? `${item.defect} / ${item.recommendation || item.observation}` : item.observation || "visual note")).join("") || compactItem("empty", "No screenshot notes", "Browser, desktop, and chat visual feedback will appear here.")}
         </div>
       </div>
       <div class="panel-card wide">
@@ -2124,6 +2138,13 @@ function handleEvent(event) {
       break;
     case "memoryJournalError":
       addActivity("Memory journal", event.error || "Could not update journal.");
+      break;
+    case "screenshotMemoryUpdated":
+      addActivity("Screenshot memory", oneLine(event.text || "Visual note saved.", 160), "memory");
+      refresh({ renderView: state.currentView === "settings" || state.currentView === "files" }).catch((error) => addActivity("Screenshot memory", error.message));
+      break;
+    case "screenshotMemoryError":
+      addActivity("Screenshot memory", event.error || "Could not save visual note.");
       break;
     case "entitiesUpdated":
       addActivity("Entity memory", oneLine(event.text || "Typed entity memory updated.", 160));
