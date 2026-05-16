@@ -19,6 +19,7 @@ from . import (
     agent_profiles,
     agent_delegation,
     agent_team_templates,
+    accessibility_motion_audit,
     approval_policy,
     artifact_graph,
     app_daemon,
@@ -939,6 +940,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["desktopRecordings"] = desktop_recorder.snapshot(self.server.cwd)
         snapshot["screenshotMemory"] = screenshot_memory.snapshot(self.server.cwd)
         snapshot["operatorHud"] = operator_hud.snapshot(self.server.cwd)
+        snapshot["accessibilityMotionAudit"] = accessibility_motion_audit.snapshot()
         snapshot["personalOS"] = personal_os.snapshot(self.server.cwd, snapshot)
         snapshot["mobileCompanion"] = mobile_companion.snapshot(self.server.cwd, snapshot)
         snapshot["evalHarness"] = eval_harness.snapshot(self.server.cwd, snapshot)
@@ -1530,6 +1532,9 @@ def _prompt_with_context(
         screenshot_memory_section = screenshot_memory.prompt_section(workspace)
         if screenshot_memory_section:
             hints.append(screenshot_memory_section.replace("\n", " | "))
+        accessibility_section = accessibility_motion_audit.prompt_section()
+        if accessibility_section:
+            hints.append(accessibility_section.replace("\n", " | "))
         operator_section = operator_hud.prompt_section(workspace)
         if operator_section:
             hints.append(operator_section.replace("\n", " | "))

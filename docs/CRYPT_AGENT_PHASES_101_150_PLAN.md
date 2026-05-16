@@ -171,6 +171,13 @@ passes.
 Score the WebUI for keyboard reachability, contrast, text overflow, motion
 safety, and touch ergonomics.
 
+Progress: added `core.accessibility_motion_audit`, a static WebUI audit that
+scores keyboard focus, button semantics, live-region state, contrast tokens,
+text overflow guards, reduced-motion support, touch sizing, and decorative
+media hiding. The WebUI now includes a reduced-motion CSS fallback and exposes
+the audit in Settings and prompt context so visual changes keep accessibility
+and motion safety visible.
+
 ## Phase 117 - Autonomous Documentation Writer
 
 Generate and maintain user-facing docs from shipped capabilities and runtime

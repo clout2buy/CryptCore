@@ -1350,6 +1350,7 @@ function settingsView(snapshot) {
   const assetLibrary = snapshot.assetLibrary || {};
   const knowledgePacks = snapshot.knowledgePacks || {};
   const screenshotMemory = snapshot.screenshotMemory || {};
+  const accessibilityMotionAudit = snapshot.accessibilityMotionAudit || {};
   const promptInjectionFirewall = snapshot.promptInjectionFirewall || {};
   const secretRotationAdvisor = snapshot.secretRotationAdvisor || {};
   return `
@@ -1372,6 +1373,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Asset Library", value: assetLibrary.total || 0, status: `${assetLibrary.reusable || 0} reusable`, detail: Object.entries(assetLibrary.byKind || {}).slice(0, 4).map(([key, value]) => `${key}: ${value}`).join(" / ") || "Reusable media, UI, docs, data, and generated artifacts." })}
       ${featureCard({ label: "Knowledge Packs", value: knowledgePacks.total || 0, status: knowledgePacks.latest?.title || "none", detail: knowledgePacks.latest ? `${knowledgePacks.latest.item_count || 0} items, ~${knowledgePacks.latest.estimated_tokens || 0} tokens.` : "Portable context packs for agents and workers." })}
       ${featureCard({ label: "Screenshot Memory", value: screenshotMemory.active || 0, status: `${screenshotMemory.defects || 0} defects`, detail: "Screenshot observations, UI defects, and visual QA notes are retained as reusable memory." })}
+      ${featureCard({ label: "Accessibility Motion Audit", value: `${Math.round((accessibilityMotionAudit.score || 0) * 100)}%`, status: `${accessibilityMotionAudit.passed || 0}/${accessibilityMotionAudit.total || 0} pass`, detail: "Keyboard, contrast, overflow, reduced-motion, screen-reader, and touch ergonomics checks." })}
       ${featureCard({ label: "Prompt Injection Firewall", value: promptInjectionFirewall.total || 0, status: `${promptInjectionFirewall.critical || 0} critical`, detail: "Suspicious web/file instructions are quoted as evidence before they enter context." })}
       ${featureCard({ label: "Secret Rotation Advisor", value: secretRotationAdvisor.total || 0, status: `${secretRotationAdvisor.critical || 0} critical`, detail: "Secret-looking signals create rotate, revoke, cleanup, and audit checklists without storing raw secrets." })}
       ${featureCard({ label: "Mission Workers", value: missionWorkers.active || 0, status: `${missionWorkers.gated || 0} gated`, detail: "Durable mission cycles queue work and stop before external actions until approval is explicit." })}
@@ -1487,6 +1489,12 @@ function settingsView(snapshot) {
         <h3>Screenshot Memory</h3>
         <div class="compact-list">
           ${(screenshotMemory.annotations || []).slice(0, 8).map((item) => compactItem(item.severity || "visual", item.screenshot || item.source, item.defect ? `${item.defect} / ${item.recommendation || item.observation}` : item.observation || "visual note")).join("") || compactItem("empty", "No screenshot notes", "Browser, desktop, and chat visual feedback will appear here.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Accessibility Motion Audit</h3>
+        <div class="compact-list">
+          ${(accessibilityMotionAudit.checks || []).map((check) => compactItem(check.ok ? "pass" : check.severity || "check", check.label || check.check_id, check.detail || check.category)).join("") || compactItem("empty", "No accessibility audit", "Static WebUI checks will appear here.")}
         </div>
       </div>
       <div class="panel-card wide">
