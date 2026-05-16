@@ -69,6 +69,7 @@ from . import (
     revenue,
     revenue_ops,
     runtime_rebuild,
+    safety_incidents,
     scheduler,
     session as sessions,
     self_upgrade_sandbox,
@@ -251,6 +252,21 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                 return
             request_id = str(body.get("id") or f"web-{uuid.uuid4().hex[:10]}")
             session_key = str(body.get("sessionKey") or "web")
+            try:
+                incidents = safety_incidents.observe_prompt(self.server.cwd, text, source="webui")
+            except Exception as exc:
+                self.server.emit_event({"event": "safetyIncidentError", "error": f"{type(exc).__name__}: {exc}"})
+            else:
+                for incident in incidents:
+                    self.server.emit_event(
+                        {
+                            "event": "safetyIncident",
+                            "id": request_id,
+                            "sessionKey": session_key,
+                            "text": incident.title,
+                            "incident": incident.to_dict(),
+                        }
+                    )
             intent_decision = intent_router.route(text)
             action_decision = clarification_policy.decide(intent_decision)
             contract = autonomy_contracts.select(text, intent_decision)
@@ -627,14 +643,28 @@ class CryptWebHandler(BaseHTTPRequestHandler):
             self._json({"id": request_id})
             return
         if path == "/api/approval":
+            approved = bool(body.get("approved"))
+            approval_id = str(body.get("approvalId") or "")
+            feedback = str(body.get("feedback") or "")
             self.server.daemon.handle_command(
                 {
                     "type": "approvalResponse",
-                    "approvalId": str(body.get("approvalId") or ""),
-                    "approved": bool(body.get("approved")),
-                    "feedback": str(body.get("feedback") or ""),
+                    "approvalId": approval_id,
+                    "approved": approved,
+                    "feedback": feedback,
                 }
             )
+            if not approved:
+                safety_incidents.record(
+                    self.server.cwd,
+                    kind="approval-denied",
+                    severity="warning",
+                    title="User denied approval request",
+                    detail=feedback or "Approval denied without feedback.",
+                    source="webui",
+                    related_id=approval_id,
+                    tags=["approval"],
+                )
             self._json({"ok": True})
             return
         if path == "/api/lessons":
@@ -746,6 +776,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["voice"] = local_voice.status().to_dict()
         snapshot["voiceConversation"] = voice_conversation.snapshot(self.server.cwd)
         snapshot["offlineMode"] = offline_mode.snapshot(settings.load_config(), snapshot.get("providerHealth"))
+        snapshot["safetyIncidents"] = safety_incidents.snapshot(self.server.cwd)
         snapshot["remoteAccess"] = self.server.access.to_dict()
         snapshot["sessionsPreview"] = [_session_preview(item) for item in sessions.list_sessions(self.server.cwd)[:12]]
         snapshot["agentProfiles"] = [profile.to_dict() for profile in agent_profiles.list_profiles(self.server.cwd)]
@@ -1285,6 +1316,9 @@ def _prompt_with_context(
         offline_section = offline_mode.prompt_section(text, saved=settings.load_config())
         if offline_section:
             hints.append(offline_section.replace("\n", " | "))
+        safety_section = safety_incidents.prompt_section(workspace)
+        if safety_section:
+            hints.append(safety_section.replace("\n", " | "))
         upgrade_section = upgrade_queue.prompt_section(workspace)
         if upgrade_section:
             hints.append(upgrade_section.replace("\n", " | "))

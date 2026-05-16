@@ -1209,6 +1209,7 @@ function settingsView(snapshot) {
   const approvalPolicy = snapshot.approvalPolicy || {};
   const usage = snapshot.modelUsageLedger || {};
   const offline = snapshot.offlineMode || {};
+  const incidents = snapshot.safetyIncidents || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Engine", value: modelLabel(snapshot.model), status: providerLabel(snapshot.provider, snapshot), detail: "Current model used by chat." })}
@@ -1222,6 +1223,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Local Search", value: localSearch.documents || 0, status: `${localSearch.tokenCount || 0} tokens`, detail: Object.entries(localSearch.sources || {}).map(([key, value]) => `${key}: ${value}`).join(" / ") || "Index is ready to build." })}
       ${featureCard({ label: "Credential Vault", value: credentialVault.total || 0, status: `${credentialVault.needed || 0} needed`, detail: "Reference-only account and secret requirements. Raw secrets stay out of chat and files." })}
       ${featureCard({ label: "Approval Policy", value: approvalPolicy.enabled || 0, status: `${approvalPolicy.ask || 0} ask / ${approvalPolicy.block || 0} block`, detail: "Configurable rules for what Crypt can do automatically, draft, ask for, or block." })}
+      ${featureCard({ label: "Safety Incident Log", value: incidents.open || 0, status: `${incidents.critical || 0} critical`, detail: "Blocked actions, dangerous prompts, secret detections, and denied approvals are logged here." })}
       ${featureCard({ label: "Usage Ledger", value: usage.total || 0, status: `$${Number(usage.costEstimatedUsd || 0).toFixed(4)} est`, detail: `${usage.tokensEstimated || 0} estimated tokens, ${usage.avgLatencyMs || 0}ms avg latency.` })}
       ${featureCard({ label: "Gateway", value: "local", status: "webui", detail: snapshot.webui?.url || "local" })}
       ${featureCard({ label: "Workspace", value: "open", status: "local", detail: snapshot.workspace })}
@@ -1244,6 +1246,12 @@ function settingsView(snapshot) {
         <div class="compact-list">
           ${compactItem(offline.localReady ? "local" : "setup", offline.host || "Ollama host", offline.localReady ? "Local route is available." : "Install/start Ollama for full offline mode.")}
           ${(offline.constraints || []).map((item) => compactItem("rule", item, "Applied when local/private mode is active.")).join("")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Safety Incident Log</h3>
+        <div class="compact-list">
+          ${(incidents.incidents || []).slice(0, 6).map((incident) => compactItem(incident.severity || "warning", incident.title || incident.kind, `${incident.kind || "policy"} / ${incident.detail || "review"}`)).join("") || compactItem("clear", "No safety incidents", "Blocked, denied, dangerous, and secret-looking events will appear here.")}
         </div>
       </div>
       <div class="panel-card wide">

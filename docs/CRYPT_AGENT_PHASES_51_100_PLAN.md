@@ -399,6 +399,13 @@ state, trigger terms, host, and constraints.
 Record blocked actions, dangerous prompts, secret detections, and approval
 denials for review.
 
+Progress: added `core.safety_incidents`, which records secret-looking prompts,
+dangerous operation requests, denied approvals, blocked actions, and policy
+events into a durable per-project safety log. WebUI prompt handling now logs
+incidents passively, approval denials create incident records, Settings shows
+open/critical incident counts, and prompt context warns Crypt not to blindly
+retry blocked or denied actions.
+
 ## Phase 92 - Evaluation Harness Expansion
 
 Grade autonomous tasks beyond code: business, research, memory, browser, voice,
