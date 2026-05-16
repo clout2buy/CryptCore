@@ -1076,11 +1076,14 @@ function memoryView(snapshot) {
   const journal = snapshot.memoryJournal || {};
   const entities = snapshot.entitiesPreview || {};
   const businessEntities = snapshot.businessEntities || {};
+  const businessCrm = snapshot.businessCrm || {};
   const graph = snapshot.knowledgeGraph || {};
   const localSearch = snapshot.localSearch || {};
   const research = snapshot.researchSources || {};
   const entityRows = entities.preview || [];
   const businessRows = businessEntities.preview || [];
+  const crmContacts = businessCrm.contactPreview || [];
+  const crmOpportunities = businessCrm.opportunityPreview || [];
   const longTerm = journal.longTermPreview || [];
   const working = journal.workingPreview || [];
   const loops = journal.openLoopPreview || [];
@@ -1097,12 +1100,15 @@ function memoryView(snapshot) {
         ${statCard("Open loops", journal.openLoopCount || 0)}
         ${statCard("Entities", entities.count || 0)}
         ${statCard("Business", businessEntities.count || 0)}
+        ${statCard("CRM", businessCrm.contacts || 0, `$${Number(businessCrm.pipelineValueUsd || 0).toFixed(2)} pipeline`)}
         ${statCard("Graph", `${graph.nodeCount || 0}/${graph.edgeCount || 0}`)}
         ${statCard("Sources", research.total || 0)}
         ${statCard("Local search", localSearch.documents || 0)}
         ${statCard("Lessons", snapshot.lessons || 0)}
       </div>
     </section>
+    <section class="data-list">${crmOpportunities.map((item) => row(item.stage || "opportunity", item.title || "Opportunity", `$${Number(item.value_usd || 0).toFixed(2)} / ${(Number(item.probability || 0) * 100).toFixed(0)}% / ${item.next_action || "next action pending"}`)).join("") || ""}</section>
+    <section class="data-list">${crmContacts.map((item) => row(item.status || "lead", item.name || "Contact", `${item.email || item.company || "no contact detail"} / ${item.next_action || "next action pending"}`)).join("") || ""}</section>
     <section class="data-list">${businessRows.map(businessEntityRow).join("") || ""}</section>
     <section class="data-list">${entityRows.map(entityRow).join("") || ""}</section>
     <section class="data-list">${longTerm.map(memorySignalRow).join("") || emptyRow("No long-term journal memory yet")}</section>
@@ -1321,6 +1327,7 @@ function settingsView(snapshot) {
   const operatorHud = snapshot.operatorHud || {};
   const externalReceipts = snapshot.externalReceipts || {};
   const missionBudget = snapshot.missionBudget || {};
+  const businessCrm = snapshot.businessCrm || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Onboarding", value: `${onboarding.percent || 0}%`, status: onboarding.status || "setup", detail: onboarding.summary || "One-screen setup for provider, voice, memory, autonomy, remote access, and safety." })}
@@ -1336,6 +1343,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Operator HUD", value: operatorHud.status || "idle", status: `${operatorHud.approvalRequired || 0} approval`, detail: "Browser and desktop targets, last action, and approval boundaries stay visible." })}
       ${featureCard({ label: "External Receipts", value: externalReceipts.total || 0, status: `${externalReceipts.approved || 0} approved`, detail: "External approvals and publication marks keep before/after receipt trails plus rollback hints." })}
       ${featureCard({ label: "Mission Budget", value: `$${Number(missionBudget.modelCostUsd || 0).toFixed(4)}`, status: `${missionBudget.overBudget || 0} over`, detail: `${missionBudget.totalMinutes || 0} minutes tracked; workspace model cost $${Number(missionBudget.workspaceModelCostUsd || 0).toFixed(4)}.` })}
+      ${featureCard({ label: "Business CRM", value: businessCrm.contacts || 0, status: `$${Number(businessCrm.pipelineValueUsd || 0).toFixed(2)} pipeline`, detail: `${businessCrm.leads || 0} leads, ${businessCrm.customers || 0} customers, ${businessCrm.followUps || 0} follow-ups.` })}
       ${featureCard({ label: "Mission Workers", value: missionWorkers.active || 0, status: `${missionWorkers.gated || 0} gated`, detail: "Durable mission cycles queue work and stop before external actions until approval is explicit." })}
       ${featureCard({ label: "Offline Local Mode", value: offline.prefer_local ? "local" : (offline.enabled ? "armed" : "standby"), status: offline.provider ? `${providerLabel(offline.provider, snapshot)} / ${modelLabel(offline.model)}` : "ollama", detail: offline.reason || "Say offline, private mode, local only, or no cloud to route local-first." })}
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
@@ -1416,6 +1424,13 @@ function settingsView(snapshot) {
         <h3>Mission Budget</h3>
         <div class="compact-list">
           ${(missionBudget.cards || []).slice(0, 8).map((card) => compactItem(card.status || "budget", card.title || card.missionId, `${card.minutes || 0}/${card.maxMinutes || 0} min / $${Number(card.modelCostUsd || 0).toFixed(4)} of $${Number(card.maxCostUsd || 0).toFixed(2)} / risk ${card.riskBudget || "medium"}`)).join("") || compactItem("empty", "No mission budgets", "Work threads will show time, model spend, revenue target, and risk budget here.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Business CRM</h3>
+        <div class="compact-list">
+          ${(businessCrm.contactPreview || []).slice(0, 8).map((contact) => compactItem(contact.status || "lead", contact.name || "Contact", `${contact.email || contact.company || "no contact detail"} / ${contact.next_action || "next action pending"}`)).join("") || compactItem("empty", "No CRM contacts", "Leads, customers, opportunities, and follow-ups will appear here.")}
+          ${(businessCrm.opportunityPreview || []).slice(0, 5).map((opp) => compactItem(opp.stage || "opportunity", opp.title || "Opportunity", `$${Number(opp.value_usd || 0).toFixed(2)} / ${(Number(opp.probability || 0) * 100).toFixed(0)}% / ${opp.next_action || "next action pending"}`)).join("")}
         </div>
       </div>
       <div class="panel-card wide">
@@ -2069,6 +2084,13 @@ function handleEvent(event) {
       break;
     case "businessEntitiesError":
       addActivity("Business registry", event.error || "Could not update business registry.");
+      break;
+    case "businessCrmUpdated":
+      addActivity("Business CRM", oneLine(event.text || "CRM updated.", 160), "mission");
+      refresh({ renderView: state.currentView === "memory" || state.currentView === "missions" }).catch((error) => addActivity("Business CRM", error.message));
+      break;
+    case "businessCrmError":
+      addActivity("Business CRM", event.error || "Could not update CRM.");
       break;
     case "businessLaunchUpdated":
       addActivity(

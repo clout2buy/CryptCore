@@ -26,6 +26,7 @@ from . import (
     autonomy_contracts,
     artifact_studio,
     browser_recorder,
+    business_crm,
     business_entities,
     business_launch,
     business_mission,
@@ -414,6 +415,22 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                         }
                     )
             try:
+                crm_result = business_crm.observe_text(self.server.cwd, text)
+            except Exception as exc:
+                self.server.emit_event({"event": "businessCrmError", "error": f"{type(exc).__name__}: {exc}"})
+            else:
+                if crm_result.changed:
+                    self.server.emit_event(
+                        {
+                            "event": "businessCrmUpdated",
+                            "id": request_id,
+                            "sessionKey": session_key,
+                            "text": f"{len(crm_result.contacts)} CRM contact(s), {len(crm_result.opportunities)} opportunit(ies) captured.",
+                            "contacts": [item.to_dict() for item in crm_result.contacts],
+                            "opportunities": [item.to_dict() for item in crm_result.opportunities],
+                        }
+                    )
+            try:
                 launch_decision = business_launch.ensure_for_prompt(self.server.cwd, text)
             except Exception as exc:
                 self.server.emit_event({"event": "businessLaunchError", "error": f"{type(exc).__name__}: {exc}"})
@@ -793,6 +810,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["memoryJournal"] = memory_journal.snapshot(self.server.cwd)
         snapshot["entitiesPreview"] = entities.snapshot(self.server.cwd)
         snapshot["businessEntities"] = business_entities.snapshot(self.server.cwd)
+        snapshot["businessCrm"] = business_crm.snapshot(self.server.cwd)
         snapshot["businessLaunch"] = business_launch.snapshot(self.server.cwd)
         snapshot["contentOps"] = content_ops.snapshot(self.server.cwd)
         snapshot["credentialVault"] = credential_vault.snapshot(self.server.cwd)
@@ -1356,6 +1374,9 @@ def _prompt_with_context(
         business_entity_section = business_entities.prompt_section(workspace)
         if business_entity_section:
             hints.append(business_entity_section.replace("\n", " | "))
+        crm_section = business_crm.prompt_section(workspace)
+        if crm_section:
+            hints.append(crm_section.replace("\n", " | "))
         business_launch_section = business_launch.prompt_section(workspace)
         if business_launch_section:
             hints.append(business_launch_section.replace("\n", " | "))

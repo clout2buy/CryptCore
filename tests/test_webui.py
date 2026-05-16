@@ -73,6 +73,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "externalReceipts" in web_snapshot
         assert "publicPosting" in web_snapshot
         assert "businessEntities" in web_snapshot
+        assert "businessCrm" in web_snapshot
         assert "businessLaunch" in web_snapshot
         assert "contentOps" in web_snapshot
         assert "credentialVault" in web_snapshot
@@ -330,6 +331,8 @@ def test_webui_static_is_chat_first():
     assert "externalDraftCreated" in script
     assert "businessEntitiesUpdated" in script
     assert "Business registry" in script
+    assert "Business CRM" in script
+    assert "businessCrm" in script
     assert "businessLaunchUpdated" in script
     assert "Business launch" in script
     assert "contentOpsUpdated" in script

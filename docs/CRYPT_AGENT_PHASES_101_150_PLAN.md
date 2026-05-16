@@ -96,6 +96,12 @@ workspace model usage context in Missions and Settings.
 Create lightweight local lead/customer/opportunity records that missions can
 update before any real external CRM connector exists.
 
+Progress: added `core.business_crm`, a local CRM for contacts, leads,
+customers, opportunities, interactions, pipeline value, weighted pipeline, and
+follow-ups. Chat can passively capture obvious lead/customer emails and deal
+values, prompt context includes the CRM, and Memory/Settings expose the CRM
+surface.
+
 ## Phase 110 - Asset Library Manager
 
 Index local images, videos, generated UI assets, documents, and website
