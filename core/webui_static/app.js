@@ -51,6 +51,10 @@ const state = {
     eventsStarted: false,
     snapshotStarted: false,
   },
+  cache: {
+    repaired: [],
+    corrupt: false,
+  },
   liveTimers: {},
 };
 
@@ -141,12 +145,24 @@ function newSessionId() {
 }
 
 function loadChatSessions() {
+  const raw = localStorage.getItem(CHAT_STORE_KEY);
   try {
-    const parsed = JSON.parse(localStorage.getItem(CHAT_STORE_KEY) || "[]");
-    state.sessions = Array.isArray(parsed)
-      ? parsed.filter((item) => item && item.id).slice(0, MAX_STORED_SESSIONS)
-      : [];
+    const parsed = JSON.parse(raw || "[]");
+    if (!Array.isArray(parsed)) {
+      backupCorruptCache(CHAT_STORE_KEY, raw || "", "chat session cache was not a list");
+      state.sessions = [];
+    } else {
+      state.sessions = sanitizeStoredSessions(parsed);
+      if (state.sessions.length !== parsed.length) {
+        state.cache.repaired.push({
+          key: CHAT_STORE_KEY,
+          reason: "invalid chat session entries removed",
+          at: Date.now(),
+        });
+      }
+    }
   } catch (error) {
+    backupCorruptCache(CHAT_STORE_KEY, raw || "", `invalid chat session JSON: ${error.message || error}`);
     state.sessions = [];
   }
   if (!state.sessions.length) {
@@ -155,6 +171,63 @@ function loadChatSessions() {
   state.currentSessionId = state.sessions[0].id;
   hydrateCurrentSession();
   saveChatSessions();
+}
+
+function backupCorruptCache(key, value, reason) {
+  try {
+    let backupKey = "";
+    if (value) {
+      backupKey = `${key}.corrupt.${Date.now()}`;
+      localStorage.setItem(backupKey, String(value).slice(0, 200000));
+    }
+    localStorage.removeItem(key);
+    state.cache.repaired.push({ key, backupKey, reason, at: Date.now() });
+    state.cache.corrupt = true;
+    addActivity("WebUI cache repaired", `${oneLine(reason || "Browser cache was reset.", 140)}${backupKey ? ` Backup: ${backupKey}` : ""}`, "warning");
+  } catch (error) {
+    state.cache.corrupt = true;
+    addActivity("WebUI cache repair failed", oneLine(error.message || error, 180), "warning");
+  }
+}
+
+function sanitizeStoredSessions(sessions) {
+  const seen = new Set();
+  const clean = [];
+  for (const item of sessions || []) {
+    if (!item || !item.id || seen.has(item.id)) continue;
+    seen.add(item.id);
+    const messages = Array.isArray(item.messages)
+      ? item.messages.filter((message) => message && typeof message.text === "string").slice(-MAX_SESSION_MESSAGES)
+      : [];
+    clean.push({
+      ...item,
+      title: oneLine(item.title || "New conversation", 80),
+      createdAt: Number(item.createdAt || Date.now()),
+      updatedAt: Number(item.updatedAt || item.createdAt || Date.now()),
+      messages,
+    });
+  }
+  return clean.slice(0, MAX_STORED_SESSIONS);
+}
+
+function browserCacheReport() {
+  return {
+    [CHAT_STORE_KEY]: {
+      count: state.sessions.length,
+      currentSessionId: state.currentSessionId,
+      repaired: state.cache.repaired.length,
+      corrupt: state.cache.corrupt,
+    },
+    "crypt.composer.advanced": {
+      present: localStorage.getItem("crypt.composer.advanced") !== null,
+    },
+    "crypt.voice.output.enabled": {
+      present: localStorage.getItem("crypt.voice.output.enabled") !== null,
+    },
+    "crypt.voice.output.voice": {
+      present: localStorage.getItem("crypt.voice.output.voice") !== null,
+    },
+  };
 }
 
 function emptySession() {
@@ -190,7 +263,7 @@ function saveChatSessions() {
   try {
     localStorage.setItem(CHAT_STORE_KEY, JSON.stringify(state.sessions.slice(0, MAX_STORED_SESSIONS)));
   } catch (error) {
-    addActivity("Sessions", "Could not save browser chat sessions.");
+    addActivity("WebUI cache", `Could not save browser chat sessions: ${oneLine(error.message || error, 100)}`, "warning");
   }
 }
 
@@ -1221,6 +1294,8 @@ function settingsView(snapshot) {
   const chaosChecks = snapshot.chaosChecks || {};
   const releaseCandidate = snapshot.releaseCandidate || {};
   const runtimeCompact = snapshot.runtimeCompact || {};
+  const webuiCache = snapshot.webuiCacheHealth || {};
+  const clientCacheReport = browserCacheReport();
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Onboarding", value: `${onboarding.percent || 0}%`, status: onboarding.status || "setup", detail: onboarding.summary || "One-screen setup for provider, voice, memory, autonomy, remote access, and safety." })}
@@ -1230,6 +1305,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Auth", value: snapshot.authOk ? "ready" : "missing", status: snapshot.auth, detail: snapshot.authMessage || "Provider is usable." })}
       ${featureCard({ label: "Provider Health", value: `${providerHealth.ready || 0}/${providerHealth.total || 0}`, status: providerHealth.recommendedFallback ? `fallback ${providerHealth.recommendedFallback}` : "fallback none", detail: `${providerHealth.warnings || 0} warning(s), ${providerHealth.missing || 0} missing.` })}
       ${featureCard({ label: "Live Event Integrity", value: liveIntegrity.status || "ok", status: `${liveIntegrity.gaps || 0} gaps / ${liveIntegrity.duplicates || 0} dupes`, detail: `${liveIntegrity.total || 0} buffered events, newest ${liveIntegrity.newest_age_seconds || 0}s old.` })}
+      ${featureCard({ label: "WebUI Cache", value: `${webuiCache.total || 0} stores`, status: `${state.cache.repaired.length} repaired`, detail: "Browser session cache contract, client report, and self-repair actions." })}
       ${featureCard({ label: "Mission Workers", value: missionWorkers.active || 0, status: `${missionWorkers.gated || 0} gated`, detail: "Durable mission cycles queue work and stop before external actions until approval is explicit." })}
       ${featureCard({ label: "Offline Local Mode", value: offline.prefer_local ? "local" : (offline.enabled ? "armed" : "standby"), status: offline.provider ? `${providerLabel(offline.provider, snapshot)} / ${modelLabel(offline.model)}` : "ollama", detail: offline.reason || "Say offline, private mode, local only, or no cloud to route local-first." })}
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
@@ -1273,6 +1349,13 @@ function settingsView(snapshot) {
         <h3>Live Event Integrity</h3>
         <div class="compact-list">
           ${(liveIntegrity.issues || []).map((issue) => compactItem(issue.severity || "issue", issue.kind, issue.detail)).join("") || compactItem("ok", "Live stream healthy", `${liveIntegrity.total || 0} events buffered; last seq ${liveIntegrity.last_seq || 0}.`)}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>WebUI Cache</h3>
+        <div class="compact-list">
+          ${(webuiCache.stores || []).map((store) => compactItem(store.required ? "required" : "optional", store.label || store.key, store.repair_action || store.key)).join("") || compactItem("empty", "No cache contract", "Browser cache health will appear here after refresh.")}
+          ${Object.entries(clientCacheReport).map(([key, value]) => compactItem(value.corrupt ? "repaired" : "client", key, `count ${value.count ?? "n/a"} / present ${value.present ?? true} / repairs ${value.repaired ?? 0}`)).join("")}
         </div>
       </div>
       <div class="panel-card wide">

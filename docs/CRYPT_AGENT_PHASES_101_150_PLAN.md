@@ -33,6 +33,12 @@ hand-waved.
 Detect stale browser-side sessions, broken localStorage chat state, and
 snapshot/feed mismatches, then provide safe reset and repair actions.
 
+Progress: added `core.webui_cache_health` and browser-side cache self-repair.
+The WebUI now backs up corrupt chat session localStorage to
+`.corrupt.<timestamp>`, sanitizes cached sessions/messages before rendering,
+tracks repaired browser cache state, and exposes the backend cache contract plus
+client cache report in Settings.
+
 ## Phase 104 - Tool Failure Memory
 
 Remember recurring tool failures by signature and teach Crypt the successful

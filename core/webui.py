@@ -94,6 +94,7 @@ from . import (
     upgrade_queue,
     webui_access,
     webui_backup,
+    webui_cache_health,
     website_pipeline,
     voice_conversation,
     workspace_map,
@@ -776,6 +777,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
             "port": self.server.server_address[1],
             "url": f"http://{self.server.server_address[0]}:{self.server.server_address[1]}/",
         }
+        snapshot["webuiCacheHealth"] = webui_cache_health.snapshot()
         snapshot["project"] = asdict(project_index.get(self.server.cwd))
         snapshot["goals"] = [asdict(goal) for goal in goals.list_goals(self.server.cwd, include_all=True)[:20]]
         snapshot["workThreads"] = [asdict(thread) for thread in work_threads.list_threads(self.server.cwd, include_all=True)[:20]]

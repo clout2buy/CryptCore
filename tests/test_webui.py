@@ -87,6 +87,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "chaosChecks" in web_snapshot
         assert "releaseCandidate" in web_snapshot
         assert "runtimeCompact" in web_snapshot
+        assert "webuiCacheHealth" in web_snapshot
         assert "toolCapabilityCards" in web_snapshot
         assert "smartModelRouter" in web_snapshot
         assert "providerHealth" in web_snapshot
@@ -252,6 +253,11 @@ def test_webui_static_is_chat_first():
     assert "liveTurns" in script
     assert "registerEventSession" in script
     assert "sessionKey" in script
+    assert "WebUI Cache" in script
+    assert "webuiCacheHealth" in script
+    assert "backupCorruptCache" in script
+    assert "browserCacheReport" in script
+    assert ".corrupt." in script
     assert "New Mission" not in script
     assert "Something Crypt should remember permanently" not in script
     assert "surface-dock" not in html
