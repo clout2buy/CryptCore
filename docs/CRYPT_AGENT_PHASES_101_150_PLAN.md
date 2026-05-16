@@ -86,6 +86,11 @@ Settings expose the ledger.
 
 Track time, model usage, estimated cost, revenue, and risk budget per mission.
 
+Progress: added `core.mission_budget`, a project-local ledger for mission
+budgets and spend events. Work threads now surface budget cards with minutes,
+estimated model cost, revenue target, risk budget, over-budget status, and
+workspace model usage context in Missions and Settings.
+
 ## Phase 109 - Business CRM Starter
 
 Create lightweight local lead/customer/opportunity records that missions can

@@ -68,6 +68,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "liveReplay" in web_snapshot
         assert "jobQueue" in web_snapshot
         assert "missionWorkers" in web_snapshot
+        assert "missionBudget" in web_snapshot
         assert "externalDrafts" in web_snapshot
         assert "externalReceipts" in web_snapshot
         assert "publicPosting" in web_snapshot
@@ -291,6 +292,8 @@ def test_webui_static_is_chat_first():
     assert "liveEventIntegrity" in script
     assert "Mission Workers" in script
     assert "missionWorkers" in script
+    assert "Mission Budget" in script
+    assert "missionBudget" in script
     assert "Offline Local Mode" in script
     assert "offlineMode" in script
     assert "Safety Incident Log" in script

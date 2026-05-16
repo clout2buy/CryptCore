@@ -944,6 +944,8 @@ function missionsView(snapshot) {
   const launches = businessLaunch.launches || [];
   const contentOps = snapshot.contentOps || {};
   const campaigns = contentOps.campaigns || [];
+  const missionBudget = snapshot.missionBudget || {};
+  const budgetCards = missionBudget.cards || [];
   return `
     <section class="mission-board">
       <div class="panel-card mission-hero">
@@ -960,8 +962,10 @@ function missionsView(snapshot) {
         ${statCard("Paused", scheduler.paused || 0)}
         ${statCard("Launches", businessLaunch.active || 0)}
         ${statCard("Content", contentOps.pieces || 0)}
+        ${statCard("Budget", `$${Number(missionBudget.modelCostUsd || 0).toFixed(4)}`, `${missionBudget.overBudget || 0} over`)}
       </div>
     </section>
+    <section class="data-list mission-list">${budgetCards.slice(0, 8).map((card) => row(card.status || "budget", card.title || card.missionId, `${card.minutes || 0}/${card.maxMinutes || 0} min / $${Number(card.modelCostUsd || 0).toFixed(4)} of $${Number(card.maxCostUsd || 0).toFixed(2)} / risk ${card.riskBudget || "medium"}`)).join("") || emptyRow("No mission budgets yet")}</section>
     <section class="data-list mission-list business-launch-list">${launches.map(businessLaunchRow).join("") || ""}</section>
     <section class="data-list mission-list content-ops-list">${campaigns.map(contentCampaignRow).join("") || ""}</section>
     <section class="data-list mission-list">${jobs.slice(0, 8).map(scheduleRow).join("") || emptyRow("No schedules yet")}</section>
@@ -1316,6 +1320,7 @@ function settingsView(snapshot) {
   const skillQualityRubric = snapshot.skillQualityRubric || {};
   const operatorHud = snapshot.operatorHud || {};
   const externalReceipts = snapshot.externalReceipts || {};
+  const missionBudget = snapshot.missionBudget || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Onboarding", value: `${onboarding.percent || 0}%`, status: onboarding.status || "setup", detail: onboarding.summary || "One-screen setup for provider, voice, memory, autonomy, remote access, and safety." })}
@@ -1330,6 +1335,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Skill Quality Rubric", value: `${Math.round((skillQualityRubric.averageScore || 0) * 100)}%`, status: `${skillQualityRubric.ready || 0}/${skillQualityRubric.total || 0} ready`, detail: "Generated skills are scored before promotion into durable runtime behavior." })}
       ${featureCard({ label: "Operator HUD", value: operatorHud.status || "idle", status: `${operatorHud.approvalRequired || 0} approval`, detail: "Browser and desktop targets, last action, and approval boundaries stay visible." })}
       ${featureCard({ label: "External Receipts", value: externalReceipts.total || 0, status: `${externalReceipts.approved || 0} approved`, detail: "External approvals and publication marks keep before/after receipt trails plus rollback hints." })}
+      ${featureCard({ label: "Mission Budget", value: `$${Number(missionBudget.modelCostUsd || 0).toFixed(4)}`, status: `${missionBudget.overBudget || 0} over`, detail: `${missionBudget.totalMinutes || 0} minutes tracked; workspace model cost $${Number(missionBudget.workspaceModelCostUsd || 0).toFixed(4)}.` })}
       ${featureCard({ label: "Mission Workers", value: missionWorkers.active || 0, status: `${missionWorkers.gated || 0} gated`, detail: "Durable mission cycles queue work and stop before external actions until approval is explicit." })}
       ${featureCard({ label: "Offline Local Mode", value: offline.prefer_local ? "local" : (offline.enabled ? "armed" : "standby"), status: offline.provider ? `${providerLabel(offline.provider, snapshot)} / ${modelLabel(offline.model)}` : "ollama", detail: offline.reason || "Say offline, private mode, local only, or no cloud to route local-first." })}
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
@@ -1404,6 +1410,12 @@ function settingsView(snapshot) {
         <h3>External Receipts</h3>
         <div class="compact-list">
           ${(externalReceipts.receipts || []).slice(0, 8).map((receipt) => compactItem(receipt.approval_status || "receipt", receipt.title || receipt.action_type, `${receipt.before_state || "before"} -> ${receipt.after_state || "after"} / ${receipt.rollback_hint || "rollback hint logged"}`)).join("") || compactItem("empty", "No external receipts", "Approved sends, posts, payments, and account actions will leave receipts here.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Mission Budget</h3>
+        <div class="compact-list">
+          ${(missionBudget.cards || []).slice(0, 8).map((card) => compactItem(card.status || "budget", card.title || card.missionId, `${card.minutes || 0}/${card.maxMinutes || 0} min / $${Number(card.modelCostUsd || 0).toFixed(4)} of $${Number(card.maxCostUsd || 0).toFixed(2)} / risk ${card.riskBudget || "medium"}`)).join("") || compactItem("empty", "No mission budgets", "Work threads will show time, model spend, revenue target, and risk budget here.")}
         </div>
       </div>
       <div class="panel-card wide">

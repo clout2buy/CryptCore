@@ -54,6 +54,7 @@ from . import (
     local_voice,
     memory_journal,
     mcp_gateway,
+    mission_budget,
     mission_brain,
     mission_router,
     mission_workers,
@@ -825,6 +826,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["monitorsPreview"] = [asdict(item) for item in monitors.list_monitors(self.server.cwd, include_all=True)[:20]]
         snapshot["revenue"] = revenue.dashboard_snapshot(self.server.cwd)
         snapshot["revenueOps"] = revenue_ops.dashboard(self.server.cwd)
+        snapshot["missionBudget"] = mission_budget.snapshot(self.server.cwd)
         snapshot["integrationsPreview"] = integrations.snapshot()
         soul_path = soul.ensure_soul()
         soul_update = soul.evolve(self.server.cwd)
@@ -1348,6 +1350,9 @@ def _prompt_with_context(
         revenue_ops_section = revenue_ops.prompt_section(workspace)
         if revenue_ops_section:
             hints.append(revenue_ops_section.replace("\n", " | "))
+        budget_section = mission_budget.prompt_section(workspace)
+        if budget_section:
+            hints.append(budget_section.replace("\n", " | "))
         business_entity_section = business_entities.prompt_section(workspace)
         if business_entity_section:
             hints.append(business_entity_section.replace("\n", " | "))
