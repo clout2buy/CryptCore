@@ -500,6 +500,13 @@ asking the user to know which subsystem is broken.
 Run simulated failures for provider outage, broken tools, corrupt memory, bad
 config, and stale WebUI sessions.
 
+Progress: added `core.chaos_checks`, a cached simulated failure suite covering
+provider outage, missing voice assets, bad provider config, stale WebUI replay
+and job queue state, external-action approval gates, and corrupt memory store
+degradation. Reports can be written to project chaos artifacts, Settings shows
+pass/fail scenarios, and prompt context surfaces chaos failures if the runtime
+cannot recover cleanly.
+
 ## Phase 100 - Crypt 1.0 Release Candidate
 
 Generate the final release checklist, benchmark report, screenshots, upgrade

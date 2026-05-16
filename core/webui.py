@@ -30,6 +30,7 @@ from . import (
     business_launch,
     business_mission,
     capability_matrix,
+    chaos_checks,
     clarification_policy,
     code_builder,
     content_ops,
@@ -841,6 +842,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["repairDoctor"] = repair_doctor.snapshot(self.server.cwd, snapshot)
         snapshot["dailyBrief"] = daily_brief.snapshot(self.server.cwd, snapshot)
         snapshot["onboarding"] = onboarding.snapshot(self.server.cwd, snapshot)
+        snapshot["chaosChecks"] = chaos_checks.cached_snapshot(self.server.cwd)
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         snapshot["capabilityMatrix"] = capability_matrix.build(self.server.cwd, snapshot).to_dict()
         return snapshot
@@ -1428,6 +1430,9 @@ def _prompt_with_context(
         onboarding_section = onboarding.prompt_section(workspace)
         if onboarding_section:
             hints.append(onboarding_section.replace("\n", " | "))
+        chaos_section = chaos_checks.prompt_section(workspace)
+        if chaos_section:
+            hints.append(chaos_section.replace("\n", " | "))
         replay_section = live_replay.prompt_section(workspace)
         if replay_section:
             hints.append(replay_section.replace("\n", " | "))
