@@ -70,6 +70,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "businessLaunch" in web_snapshot
         assert "contentOps" in web_snapshot
         assert "credentialVault" in web_snapshot
+        assert "connectorReadiness" in web_snapshot
         assert "websitePipelines" in web_snapshot
         assert "revenueOps" in web_snapshot
         assert "browserRecordings" in web_snapshot
@@ -292,6 +293,8 @@ def test_webui_static_is_chat_first():
     assert "Content ops" in script
     assert "credentialVaultUpdated" in script
     assert "Credential Vault" in script
+    assert "Connector Readiness" in script
+    assert "connectorReadiness" in script
     assert "researchSourcesUpdated" in script
     assert "Data Import" in script
     assert "dataImports" in script

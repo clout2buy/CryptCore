@@ -435,6 +435,15 @@ paths, and extends the CLI doctor report with actionable fixes.
 Represent external connectors, required auth, scopes, and safe actions before
 Crypt tries to use them.
 
+Progress: added `core.connector_readiness`, which maps GitHub, email,
+calendar, storage, Slack, Discord, Reddit, Stripe, analytics, and database
+connectors into readiness cards with required auth, scopes, safe read/draft
+actions, approval-only actions, blocked actions, and setup guidance. WebUI
+Settings now shows connector readiness, and prompt context tells Crypt to
+draft/read first, create credential references instead of asking for raw
+secrets, and request explicit approval before external writes, sends, posts, or
+payment actions.
+
 ## Phase 95 - Autonomous Daily Brief
 
 Summarize overnight changes, open missions, approvals, reminders, and suggested

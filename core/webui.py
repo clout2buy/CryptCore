@@ -33,6 +33,7 @@ from . import (
     clarification_policy,
     code_builder,
     content_ops,
+    connector_readiness,
     context_packs,
     credential_vault,
     data_importer,
@@ -754,6 +755,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["runtimeRebuild"] = runtime_rebuild.snapshot(self.server.cwd)
         snapshot["patchRisk"] = patch_risk.snapshot(self.server.cwd)
         snapshot["mcpGateway"] = mcp_gateway.snapshot(self.server.cwd)
+        snapshot["connectorReadiness"] = connector_readiness.snapshot(self.server.cwd, snapshot)
         snapshot["lessonsPreview"] = [asdict(lesson) for lesson in learning.list_lessons(self.server.cwd)[:8]]
         snapshot["reflections"] = [asdict(item) for item in reflection.list_reflections(self.server.cwd, limit=5)]
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
@@ -1293,6 +1295,9 @@ def _prompt_with_context(
         credential_section = credential_vault.prompt_section(workspace)
         if credential_section:
             hints.append(credential_section.replace("\n", " | "))
+        connector_section = connector_readiness.prompt_section(workspace, text)
+        if connector_section:
+            hints.append(connector_section.replace("\n", " | "))
         graph_section = knowledge_graph.prompt_section(workspace, text=text)
         if graph_section:
             hints.append(graph_section.replace("\n", " | "))
