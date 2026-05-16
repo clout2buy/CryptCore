@@ -43,6 +43,7 @@ from . import (
     entities,
     eval_harness,
     external_drafts,
+    external_receipts,
     goals,
     integrations,
     intent_router,
@@ -795,6 +796,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["contentOps"] = content_ops.snapshot(self.server.cwd)
         snapshot["credentialVault"] = credential_vault.snapshot(self.server.cwd)
         snapshot["externalDrafts"] = external_drafts.snapshot(self.server.cwd)
+        snapshot["externalReceipts"] = external_receipts.snapshot(self.server.cwd)
         snapshot["publicPosting"] = public_posting.snapshot(self.server.cwd)
         snapshot["knowledgeGraph"] = knowledge_graph.snapshot(self.server.cwd)
         snapshot["researchSources"] = research_sources.snapshot(self.server.cwd)
@@ -1361,6 +1363,9 @@ def _prompt_with_context(
         external_section = external_drafts.prompt_section(workspace)
         if external_section:
             hints.append(external_section.replace("\n", " | "))
+        receipt_section = external_receipts.prompt_section(workspace)
+        if receipt_section:
+            hints.append(receipt_section.replace("\n", " | "))
         posting_section = public_posting.prompt_section(workspace)
         if posting_section:
             hints.append(posting_section.replace("\n", " | "))

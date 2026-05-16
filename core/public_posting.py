@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
-from . import external_drafts, research_sources, session, settings
+from . import external_drafts, external_receipts, research_sources, session, settings
 
 
 SCHEMA_VERSION = 1
@@ -106,7 +106,10 @@ def mark_published(cwd: str | Path, post_id: str, *, url: str) -> PublicPost:
     clean_url = str(url or "").strip()
     if not clean_url.startswith(("http://", "https://")):
         raise ValueError("published url must be http(s)")
-    return _update(cwd, post_id, status="published", published_url=clean_url)
+    before = next((post.status for post in list_posts(cwd, include_all=True) if post.post_id == post_id), "")
+    updated = _update(cwd, post_id, status="published", published_url=clean_url)
+    external_receipts.record_publication(cwd, updated.to_dict(), before_status=before, url=clean_url)
+    return updated
 
 
 def list_posts(cwd: str | Path, *, include_all: bool = False, limit: int = 80) -> list[PublicPost]:

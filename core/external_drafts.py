@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import evidence, settings
+from . import evidence, external_receipts, settings
 
 
 SCHEMA_VERSION = 1
@@ -124,6 +124,7 @@ def update_status(draft_id: str, status: str, *, note: str = "") -> ExternalDraf
         if draft.draft_id != draft_id:
             out.append(draft)
             continue
+        before_status = draft.status
         data = draft.to_dict()
         data["status"] = clean_status
         data["approval_note"] = _clean(note, 1_000)
@@ -139,6 +140,13 @@ def update_status(draft_id: str, status: str, *, note: str = "") -> ExternalDraf
         "external_drafts",
         f"External draft {draft_id} marked {clean_status}",
         details={"draft_id": draft_id, "status": clean_status, "note": note},
+    )
+    external_receipts.record_draft_transition(
+        updated.cwd,
+        updated.to_dict(),
+        before_status=before_status,
+        after_status=clean_status,
+        note=note,
     )
     return updated
 

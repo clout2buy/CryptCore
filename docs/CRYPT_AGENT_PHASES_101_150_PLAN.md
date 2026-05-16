@@ -76,6 +76,12 @@ active operator state so visual work stays explicit and approval-aware.
 Record every approved external send/post/write/payment attempt with before/after
 state, user approval, outcome, and rollback hint.
 
+Progress: added `core.external_receipts`, a project-local JSONL ledger for
+external draft approvals, denials, cancellations, and public publication marks.
+External draft status changes and published post marks now create receipts with
+before/after state, approval note, outcome, and rollback guidance; Jobs and
+Settings expose the ledger.
+
 ## Phase 108 - Mission Budget Ledger
 
 Track time, model usage, estimated cost, revenue, and risk budget per mission.

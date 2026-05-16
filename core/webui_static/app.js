@@ -883,6 +883,7 @@ function terminalView(snapshot) {
 function jobsView(snapshot) {
   const events = state.events.slice(-20).reverse();
   const drafts = snapshot.externalDrafts?.drafts || [];
+  const receipts = snapshot.externalReceipts?.receipts || [];
   const recordings = snapshot.browserRecordings?.recordings || [];
   const desktopRecordings = snapshot.desktopRecordings?.recordings || [];
   const queue = snapshot.jobQueue || {};
@@ -908,6 +909,10 @@ function jobsView(snapshot) {
       <div class="panel-card wide">
         <h3>External Draft Queue</h3>
         <div class="compact-list">${drafts.slice(0, 5).map((draft) => compactItem(draft.status || "draft", draft.title || draft.kind, draft.target || "approval required before external effect")).join("") || compactItem("clear", "No external drafts waiting", "Posts, emails, purchases, and account actions will queue here.")}</div>
+      </div>
+      <div class="panel-card wide">
+        <h3>External Receipts</h3>
+        <div class="compact-list">${receipts.slice(0, 5).map((receipt) => compactItem(receipt.approval_status || "receipt", receipt.title || receipt.action_type, `${receipt.before_state || "before"} -> ${receipt.after_state || "after"} / ${receipt.rollback_hint || "rollback hint logged"}`)).join("") || compactItem("empty", "No external receipts yet", "Approved sends, posts, payments, and account actions will leave receipts here.")}</div>
       </div>
       <div class="panel-card wide">
         <h3>Public Posting</h3>
@@ -1310,6 +1315,7 @@ function settingsView(snapshot) {
   const toolFailureMemory = snapshot.toolFailureMemory || {};
   const skillQualityRubric = snapshot.skillQualityRubric || {};
   const operatorHud = snapshot.operatorHud || {};
+  const externalReceipts = snapshot.externalReceipts || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Onboarding", value: `${onboarding.percent || 0}%`, status: onboarding.status || "setup", detail: onboarding.summary || "One-screen setup for provider, voice, memory, autonomy, remote access, and safety." })}
@@ -1323,6 +1329,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Tool Failure Memory", value: toolFailureMemory.recurring || 0, status: `${toolFailureMemory.total || 0} signatures`, detail: "Recurring tool failures and recovery patterns are remembered before retrying." })}
       ${featureCard({ label: "Skill Quality Rubric", value: `${Math.round((skillQualityRubric.averageScore || 0) * 100)}%`, status: `${skillQualityRubric.ready || 0}/${skillQualityRubric.total || 0} ready`, detail: "Generated skills are scored before promotion into durable runtime behavior." })}
       ${featureCard({ label: "Operator HUD", value: operatorHud.status || "idle", status: `${operatorHud.approvalRequired || 0} approval`, detail: "Browser and desktop targets, last action, and approval boundaries stay visible." })}
+      ${featureCard({ label: "External Receipts", value: externalReceipts.total || 0, status: `${externalReceipts.approved || 0} approved`, detail: "External approvals and publication marks keep before/after receipt trails plus rollback hints." })}
       ${featureCard({ label: "Mission Workers", value: missionWorkers.active || 0, status: `${missionWorkers.gated || 0} gated`, detail: "Durable mission cycles queue work and stop before external actions until approval is explicit." })}
       ${featureCard({ label: "Offline Local Mode", value: offline.prefer_local ? "local" : (offline.enabled ? "armed" : "standby"), status: offline.provider ? `${providerLabel(offline.provider, snapshot)} / ${modelLabel(offline.model)}` : "ollama", detail: offline.reason || "Say offline, private mode, local only, or no cloud to route local-first." })}
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
@@ -1391,6 +1398,12 @@ function settingsView(snapshot) {
         <h3>Operator HUD</h3>
         <div class="compact-list">
           ${(operatorHud.channels || []).map((channel) => compactItem(channel.status || "idle", `${channel.channel || "operator"} -> ${channel.target || "no target"}`, `${channel.last_action || "No visible action yet"} / ${channel.approval_boundary || "approval rules loaded"}`)).join("") || compactItem("idle", "No operator state", "Browser and desktop activity will appear here.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>External Receipts</h3>
+        <div class="compact-list">
+          ${(externalReceipts.receipts || []).slice(0, 8).map((receipt) => compactItem(receipt.approval_status || "receipt", receipt.title || receipt.action_type, `${receipt.before_state || "before"} -> ${receipt.after_state || "after"} / ${receipt.rollback_hint || "rollback hint logged"}`)).join("") || compactItem("empty", "No external receipts", "Approved sends, posts, payments, and account actions will leave receipts here.")}
         </div>
       </div>
       <div class="panel-card wide">
