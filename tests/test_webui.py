@@ -61,6 +61,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "capabilityMatrix" in web_snapshot
         assert "personaGovernance" in web_snapshot
         assert "autonomyContracts" in web_snapshot
+        assert "trustCalibration" in web_snapshot
         assert "approvalPolicy" in web_snapshot
         assert "liveReplay" in web_snapshot
         assert "jobQueue" in web_snapshot
@@ -301,6 +302,8 @@ def test_webui_static_is_chat_first():
     assert "Credential Vault" in script
     assert "Connector Readiness" in script
     assert "connectorReadiness" in script
+    assert "Trust Calibration" in script
+    assert "trustCalibration" in script
     assert "researchSourcesUpdated" in script
     assert "Data Import" in script
     assert "dataImports" in script

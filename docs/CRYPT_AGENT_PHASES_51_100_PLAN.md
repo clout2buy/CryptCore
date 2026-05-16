@@ -475,6 +475,14 @@ can continue long-running missions without making the user manage the board.
 Learn how much initiative the user wants per domain and adjust questions versus
 execution.
 
+Progress: added `core.trust_calibration`, a per-domain initiative profile for
+code, UI, business, research, memory, personal, external, finance, and system
+work. It passively records autonomy/caution signals from chat, adjusts
+execute/draft/ask guidance, keeps external and finance work approval-gated, and
+surfaces the trust profile in Settings. WebUI prompt handling now uses the trust
+decision to reduce unnecessary clarification for trusted low-risk work while
+asking or drafting when the domain/risk says to slow down.
+
 ## Phase 98 - Productized Onboarding
 
 Replace prompts with a one-screen setup that configures voice, providers,

@@ -86,6 +86,7 @@ from . import (
     smart_model_router,
     soul,
     tool_capability_cards,
+    trust_calibration,
     upgrade_queue,
     webui_access,
     webui_backup,
@@ -274,6 +275,21 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                     )
             intent_decision = intent_router.route(text)
             action_decision = clarification_policy.decide(intent_decision)
+            trust_risk = "critical" if intent_decision.needs_approval else "medium"
+            try:
+                trust_signal = trust_calibration.observe(self.server.cwd, text, intent=intent_decision.intent, source="webui")
+            except Exception as exc:
+                self.server.emit_event({"event": "trustCalibrationError", "error": f"{type(exc).__name__}: {exc}"})
+                trust_signal = None
+            trust_decision = trust_calibration.decide(self.server.cwd, text, intent=intent_decision.intent, risk=trust_risk)
+            if action_decision.action == "clarify" and trust_decision.action == "execute" and not intent_decision.needs_approval:
+                action_decision = clarification_policy.ActionDecision("execute", f"trust calibration: {trust_decision.reason}")
+            elif action_decision.action == "execute" and trust_decision.action == "ask":
+                action_decision = clarification_policy.ActionDecision(
+                    "clarify",
+                    f"trust calibration: {trust_decision.reason}",
+                    "Before I go further, what boundary should I keep for this?",
+                )
             contract = autonomy_contracts.select(text, intent_decision)
             self.server.emit_event(
                 {
@@ -291,6 +307,17 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                     "text": intent_router.prompt_hint(intent_decision),
                 }
             )
+            if trust_signal:
+                self.server.emit_event(
+                    {
+                        "event": "trustCalibrationUpdated",
+                        "id": request_id,
+                        "sessionKey": session_key,
+                        "text": f"{trust_signal.domain} initiative {'+' if trust_signal.delta > 0 else ''}{trust_signal.delta}",
+                        "signal": trust_signal.to_dict(),
+                        "decision": trust_decision.to_dict(),
+                    }
+                )
             try:
                 journal_result = memory_journal.observe(self.server.cwd, text)
             except Exception as exc:
@@ -762,6 +789,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["reflections"] = [asdict(item) for item in reflection.list_reflections(self.server.cwd, limit=5)]
         snapshot["autonomy"] = [asdict(item) for item in autonomy.list_cycles(self.server.cwd, limit=5)]
         snapshot["autonomyContracts"] = autonomy_contracts.snapshot()
+        snapshot["trustCalibration"] = trust_calibration.snapshot(self.server.cwd)
         snapshot["approvalPolicy"] = approval_policy.snapshot(self.server.cwd)
         snapshot["liveReplay"] = live_replay.snapshot(self.server.cwd)
         snapshot["jobQueue"] = job_queue.snapshot(self.server.cwd)
@@ -1252,10 +1280,19 @@ def _prompt_with_context(
             hints.append(hint)
     if action:
         hints.append(clarification_policy.prompt_hint(action))
-    if contract is None and intent:
-        contract = autonomy_contracts.select(text, intent)
-        if contract:
-            hints.append(autonomy_contracts.prompt_hint(contract))
+        if contract is None and intent:
+            contract = autonomy_contracts.select(text, intent)
+            if contract:
+                hints.append(autonomy_contracts.prompt_hint(contract))
+    if workspace:
+        trust_section = trust_calibration.prompt_section(
+            workspace,
+            text,
+            intent=intent.intent if intent else "",
+            risk="critical" if intent and intent.needs_approval else "medium",
+        )
+        if trust_section:
+            hints.append(trust_section.replace("\n", " | "))
     if workspace:
         policy_section = approval_policy.prompt_section(workspace, text)
         if policy_section:

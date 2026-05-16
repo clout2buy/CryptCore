@@ -1208,6 +1208,7 @@ function settingsView(snapshot) {
   const localSearch = snapshot.localSearch || {};
   const credentialVault = snapshot.credentialVault || {};
   const connectorReadiness = snapshot.connectorReadiness || {};
+  const trustCalibration = snapshot.trustCalibration || {};
   const approvalPolicy = snapshot.approvalPolicy || {};
   const usage = snapshot.modelUsageLedger || {};
   const offline = snapshot.offlineMode || {};
@@ -1229,6 +1230,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Local Search", value: localSearch.documents || 0, status: `${localSearch.tokenCount || 0} tokens`, detail: Object.entries(localSearch.sources || {}).map(([key, value]) => `${key}: ${value}`).join(" / ") || "Index is ready to build." })}
       ${featureCard({ label: "Credential Vault", value: credentialVault.total || 0, status: `${credentialVault.needed || 0} needed`, detail: "Reference-only account and secret requirements. Raw secrets stay out of chat and files." })}
       ${featureCard({ label: "Connector Readiness", value: `${connectorReadiness.ready || 0}/${connectorReadiness.total || 0}`, status: `${connectorReadiness.needsAuth || 0} auth`, detail: "External accounts, scopes, safe draft actions, and approval-only actions are mapped before use." })}
+      ${featureCard({ label: "Trust Calibration", value: `${trustCalibration.averageInitiative || 0}/5`, status: `${(trustCalibration.signals || []).length} signals`, detail: "Learns when to execute, draft, or ask per domain while preserving external approval gates." })}
       ${featureCard({ label: "Approval Policy", value: approvalPolicy.enabled || 0, status: `${approvalPolicy.ask || 0} ask / ${approvalPolicy.block || 0} block`, detail: "Configurable rules for what Crypt can do automatically, draft, ask for, or block." })}
       ${featureCard({ label: "Safety Incident Log", value: incidents.open || 0, status: `${incidents.critical || 0} critical`, detail: "Blocked actions, dangerous prompts, secret detections, and denied approvals are logged here." })}
       ${featureCard({ label: "Evaluation Harness", value: `${evalHarness.passing || 0}/${evalHarness.total || 0}`, status: `${Math.round((evalHarness.overallScore || 0) * 100)}% score`, detail: "Business, research, memory, browser, voice, and WebUI stability scenarios." })}
@@ -1268,6 +1270,12 @@ function settingsView(snapshot) {
         <h3>Connector Readiness</h3>
         <div class="compact-list">
           ${(connectorReadiness.cards || []).slice(0, 8).map((card) => compactItem(card.status || "connector", card.label || card.connector_id, `${(card.safe_actions || []).slice(0, 2).join(", ") || "draft/read"} / approval: ${(card.approval_actions || []).slice(0, 2).join(", ") || "none"}`)).join("") || compactItem("empty", "No connector map", "External connector readiness will appear here.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Trust Calibration</h3>
+        <div class="compact-list">
+          ${(trustCalibration.domains || []).map((domain) => compactItem(`${domain.initiative || 0}/5`, domain.domain, (domain.notes || []).slice(0, 1).join("") || "default initiative profile")).join("") || compactItem("empty", "No trust profile", "Per-domain initiative preferences will appear here.")}
         </div>
       </div>
       <div class="panel-card wide">
