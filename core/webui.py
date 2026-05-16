@@ -77,6 +77,7 @@ from . import (
     revenue,
     revenue_ops,
     runtime_rebuild,
+    runtime_compactor,
     safety_incidents,
     scheduler,
     session as sessions,
@@ -845,6 +846,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["onboarding"] = onboarding.snapshot(self.server.cwd, snapshot)
         snapshot["chaosChecks"] = chaos_checks.cached_snapshot(self.server.cwd)
         snapshot["releaseCandidate"] = release_candidate.snapshot(self.server.cwd, snapshot)
+        snapshot["runtimeCompact"] = runtime_compactor.compact(snapshot)
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         snapshot["capabilityMatrix"] = capability_matrix.build(self.server.cwd, snapshot).to_dict()
         return snapshot
