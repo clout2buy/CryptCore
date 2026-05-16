@@ -25,6 +25,7 @@ from . import (
     autonomy,
     autonomy_contracts,
     artifact_studio,
+    asset_library,
     browser_recorder,
     business_crm,
     business_entities,
@@ -876,6 +877,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["artifactsPreview"] = studio["artifacts"]
         snapshot["artifactGroups"] = studio["groups"]
         snapshot["artifactSummary"] = studio["summary"]
+        snapshot["assetLibrary"] = asset_library.snapshot(self.server.cwd)
         snapshot["artifactGraph"] = artifact_graph.build(self.server.cwd)
         snapshot["officeLayer"] = office_layer.snapshot(self.server.cwd)
         snapshot["websitePipelines"] = website_pipeline.snapshot(self.server.cwd)
@@ -1533,6 +1535,9 @@ def _prompt_with_context(
         artifact_graph_section = artifact_graph.prompt_section(workspace)
         if artifact_graph_section:
             hints.append(artifact_graph_section.replace("\n", " | "))
+        asset_section = asset_library.prompt_section(workspace)
+        if asset_section:
+            hints.append(asset_section.replace("\n", " | "))
         office_section = office_layer.prompt_section(workspace)
         if office_section:
             hints.append(office_section.replace("\n", " | "))

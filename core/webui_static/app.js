@@ -747,6 +747,8 @@ function filesView(snapshot) {
   const project = snapshot.project || {};
   const files = snapshot.filesPreview || [];
   const artifacts = snapshot.artifactsPreview || [];
+  const assetLibrary = snapshot.assetLibrary || {};
+  const assets = assetLibrary.assets || [];
   const groups = snapshot.artifactGroups || [];
   const summary = snapshot.artifactSummary || {};
   const graph = snapshot.artifactGraph || {};
@@ -775,6 +777,7 @@ function filesView(snapshot) {
       <div class="panel-card">
         <h3>Output State</h3>
         ${statCard("Artifacts", summary.total || artifacts.length || 0)}
+        ${statCard("Assets", assetLibrary.total || 0, `${assetLibrary.reusable || 0} reusable`)}
         ${statCard("Mission linked", summary.missionLinked || 0)}
         ${statCard("Verified", summary.verified || 0)}
         ${statCard("Office", office.total || 0)}
@@ -787,6 +790,9 @@ function filesView(snapshot) {
     </section>
     <section class="data-list data-import-list">
       ${importRows.slice(0, 8).map((item) => row("Data Import", `${item.kind || "file"} / ${item.rel_path || item.title}`, `${item.rows || 0} rows / ${oneLine(item.preview || "", 150)}`)).join("") || emptyRow("No imported data yet")}
+    </section>
+    <section class="data-list asset-library-list">
+      ${assets.slice(0, 10).map((asset) => row(asset.kind || "asset", asset.rel_path || asset.name, `${asset.purpose || "reusable asset"} / ${(asset.reuse_hints || []).slice(0, 1).join("") || asset.provenance || "check before reuse"}`)).join("") || emptyRow("No reusable assets indexed yet")}
     </section>
     <section class="data-list workspace-map-list">
       ${row("Workspace Map", `${mapSummary.safeZones || 0} safe zones`, `${mapSummary.generatedZones || 0} generated zones / ${mapSummary.ignoredPatterns || 0} ignored patterns`)}
@@ -1328,6 +1334,7 @@ function settingsView(snapshot) {
   const externalReceipts = snapshot.externalReceipts || {};
   const missionBudget = snapshot.missionBudget || {};
   const businessCrm = snapshot.businessCrm || {};
+  const assetLibrary = snapshot.assetLibrary || {};
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Onboarding", value: `${onboarding.percent || 0}%`, status: onboarding.status || "setup", detail: onboarding.summary || "One-screen setup for provider, voice, memory, autonomy, remote access, and safety." })}
@@ -1344,6 +1351,7 @@ function settingsView(snapshot) {
       ${featureCard({ label: "External Receipts", value: externalReceipts.total || 0, status: `${externalReceipts.approved || 0} approved`, detail: "External approvals and publication marks keep before/after receipt trails plus rollback hints." })}
       ${featureCard({ label: "Mission Budget", value: `$${Number(missionBudget.modelCostUsd || 0).toFixed(4)}`, status: `${missionBudget.overBudget || 0} over`, detail: `${missionBudget.totalMinutes || 0} minutes tracked; workspace model cost $${Number(missionBudget.workspaceModelCostUsd || 0).toFixed(4)}.` })}
       ${featureCard({ label: "Business CRM", value: businessCrm.contacts || 0, status: `$${Number(businessCrm.pipelineValueUsd || 0).toFixed(2)} pipeline`, detail: `${businessCrm.leads || 0} leads, ${businessCrm.customers || 0} customers, ${businessCrm.followUps || 0} follow-ups.` })}
+      ${featureCard({ label: "Asset Library", value: assetLibrary.total || 0, status: `${assetLibrary.reusable || 0} reusable`, detail: Object.entries(assetLibrary.byKind || {}).slice(0, 4).map(([key, value]) => `${key}: ${value}`).join(" / ") || "Reusable media, UI, docs, data, and generated artifacts." })}
       ${featureCard({ label: "Mission Workers", value: missionWorkers.active || 0, status: `${missionWorkers.gated || 0} gated`, detail: "Durable mission cycles queue work and stop before external actions until approval is explicit." })}
       ${featureCard({ label: "Offline Local Mode", value: offline.prefer_local ? "local" : (offline.enabled ? "armed" : "standby"), status: offline.provider ? `${providerLabel(offline.provider, snapshot)} / ${modelLabel(offline.model)}` : "ollama", detail: offline.reason || "Say offline, private mode, local only, or no cloud to route local-first." })}
       ${featureCard({ label: "Self-Upgrade Sandbox", value: sandbox.total || 0, status: "isolated plans", detail: "Upgrade branches, worktree paths, checks, and merge readiness." })}
@@ -1431,6 +1439,12 @@ function settingsView(snapshot) {
         <div class="compact-list">
           ${(businessCrm.contactPreview || []).slice(0, 8).map((contact) => compactItem(contact.status || "lead", contact.name || "Contact", `${contact.email || contact.company || "no contact detail"} / ${contact.next_action || "next action pending"}`)).join("") || compactItem("empty", "No CRM contacts", "Leads, customers, opportunities, and follow-ups will appear here.")}
           ${(businessCrm.opportunityPreview || []).slice(0, 5).map((opp) => compactItem(opp.stage || "opportunity", opp.title || "Opportunity", `$${Number(opp.value_usd || 0).toFixed(2)} / ${(Number(opp.probability || 0) * 100).toFixed(0)}% / ${opp.next_action || "next action pending"}`)).join("")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Asset Library</h3>
+        <div class="compact-list">
+          ${(assetLibrary.assets || []).slice(0, 8).map((asset) => compactItem(asset.kind || "asset", asset.rel_path || asset.name, `${asset.purpose || "reusable asset"} / ${(asset.reuse_hints || []).slice(0, 1).join("") || asset.provenance || "check before reuse"}`)).join("") || compactItem("empty", "No reusable assets", "Images, videos, docs, data, UI files, and generated artifacts will appear here.")}
         </div>
       </div>
       <div class="panel-card wide">

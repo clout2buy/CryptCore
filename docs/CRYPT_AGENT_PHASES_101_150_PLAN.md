@@ -107,6 +107,11 @@ surface.
 Index local images, videos, generated UI assets, documents, and website
 artifacts with purpose, provenance, and reuse hints.
 
+Progress: added `core.asset_library`, which records and indexes reusable media,
+UI, document, data, notes, and generated artifact assets with purpose,
+provenance, tags, size, and reuse hints. Files and Settings now expose the
+asset inventory alongside Artifact Studio.
+
 ## Phase 111 - Knowledge Pack Builder
 
 Bundle project docs, lessons, files, entities, and source summaries into
