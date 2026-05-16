@@ -18,6 +18,7 @@ from types import SimpleNamespace
 from typing import Callable
 
 from . import auth, autonomy, doctor, learning, live_events, loop, model_registry, model_usage_ledger, notification_center, provider_health, redact, runtime, session as sessions, settings, skills, smart_model_router
+from .api import TextDelta, ThinkingDelta, ToolUseReady, TurnEnd
 from tools import REGISTRY
 
 
@@ -299,17 +300,26 @@ class AppDaemon:
                 )
 
             with runtime.approval_handler(approve_tool):
-                result = loop.run_prompt(
-                    provider,
-                    text,
-                    cwd=str(self._cwd),
-                    session_obj=session_obj,
-                    approval_mode=runtime.approval_mode(),
-                    show_thinking=runtime.show_thinking(),
-                    render=False,
-                    subagent_provider_factory=lambda agent_type: _provider_for_route(saved, agent_type, fallback=provider),
-                    event_sink=emit_live,
-                )
+                if router_decision and router_decision.task_type == "conversation":
+                    result = _run_conversation_turn(
+                        provider,
+                        text,
+                        session_obj=session_obj,
+                        show_thinking=runtime.show_thinking(),
+                        event_sink=emit_live,
+                    )
+                else:
+                    result = loop.run_prompt(
+                        provider,
+                        text,
+                        cwd=str(self._cwd),
+                        session_obj=session_obj,
+                        approval_mode=runtime.approval_mode(),
+                        show_thinking=runtime.show_thinking(),
+                        render=False,
+                        subagent_provider_factory=lambda agent_type: _provider_for_route(saved, agent_type, fallback=provider),
+                        event_sink=emit_live,
+                    )
             latency_ms = int((time.perf_counter() - provider_started_at) * 1000)
             provider_health.record_result(
                 provider_name_for_learning,
@@ -934,6 +944,55 @@ def _record_outcome_learning(
         )
     except Exception as exc:
         return {"episode_id": "", "lesson_count": 0, "lessons": [], "error": f"{type(exc).__name__}: {exc}"}
+
+
+def _run_conversation_turn(
+    provider,
+    text: str,
+    *,
+    session_obj,
+    show_thinking: bool,
+    event_sink: Callable[[dict], None],
+) -> loop.RunResult:
+    """Run casual chat without tools, file writes, or agent dispatch."""
+    messages: list[dict] = session_obj.load_messages() if session_obj else []
+    user_msg = {"role": "user", "content": text}
+    messages.append(user_msg)
+    if session_obj:
+        session_obj.record_message(user_msg)
+    system = (
+        "You are Crypt in casual conversation mode. Reply like a sharp, direct assistant and friend. "
+        "Do not use tools, write files, inspect the repository, create missions, or offer status notes. "
+        "If the user asks for actual work, answer naturally and let the next routed turn handle the work."
+    )
+    final_message: dict | None = None
+    final_text = ""
+    current_tokens = 0
+    session_tokens = loop.compact.rough_tokens(messages)
+    for event in provider.stream_turn(messages, [], system):
+        if isinstance(event, TextDelta):
+            final_text += event.text
+            event_sink({"event": "assistantDelta", "text": event.text})
+        elif isinstance(event, ThinkingDelta):
+            if show_thinking:
+                event_sink({"event": "thinkingDelta", "text": event.text})
+        elif isinstance(event, ToolUseReady):
+            event_sink({"event": "toolBlocked", "tool": event.tool or {}, "text": "Tool call blocked in conversation mode."})
+            break
+        elif isinstance(event, TurnEnd):
+            final_message = event.message
+            if event.usage:
+                current_tokens = int(event.usage.get("output_tokens") or event.usage.get("completion_tokens") or 0)
+            if not final_text:
+                final_text = loop._extract_text(event.message)  # noqa: SLF001 - shared internal message format
+            break
+    if final_message is None:
+        final_message = {"role": "assistant", "content": final_text.strip() or "I’m here."}
+    messages.append(final_message)
+    if session_obj:
+        session_obj.record_message(final_message)
+    session_tokens = loop.compact.rough_tokens(messages)
+    return loop.RunResult(messages=messages, final_text=final_text.strip(), current_tokens=current_tokens, session_tokens=session_tokens)
 
 
 def _timeline_events(messages: list[dict]) -> list[dict]:

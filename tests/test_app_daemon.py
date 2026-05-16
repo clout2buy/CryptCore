@@ -309,23 +309,26 @@ def test_app_daemon_routes_from_raw_prompt_not_runtime_hints(monkeypatch, tmp_pa
     monkeypatch.setattr(settings, "load_config", lambda: {"provider": settings.PROVIDER_CRYPT})
     monkeypatch.setattr(app_daemon, "_credential", lambda provider: object())
     monkeypatch.setattr(app_daemon, "_credential_is_usable", lambda provider, cred: True)
+
+    class ChatProvider:
+        name = settings.PROVIDER_CRYPT
+        model = "crypt-spark"
+
+        def stream_turn(self, messages, tools, system):
+            assert tools == []
+            assert "Do not use tools" in system
+            yield app_daemon.TextDelta("hey")
+            yield app_daemon.TurnEnd("stop", {"role": "assistant", "content": "hey"})
+
     monkeypatch.setattr(
         app_daemon,
         "_provider",
-        lambda saved, provider_name, cred, model_override=None: type(
-            "Provider",
-            (),
-            {"name": provider_name, "model": model_override or "fallback-model"},
-        )(),
+        lambda saved, provider_name, cred, model_override=None: ChatProvider(),
     )
     monkeypatch.setattr(
         app_daemon.loop,
         "run_prompt",
-        lambda *args, **kwargs: type(
-            "Result",
-            (),
-            {"final_text": "hey", "current_tokens": 1, "session_tokens": 2},
-        )(),
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("casual chat should not use tool loop")),
     )
     monkeypatch.setattr(app_daemon, "_record_outcome_learning", lambda *args, **kwargs: {})
 
