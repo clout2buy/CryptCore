@@ -1310,6 +1310,7 @@ function settingsView(snapshot) {
   const providers = snapshot.providers || [];
   const routes = snapshot.routes || [];
   const tools = snapshot.toolsPreview || [];
+  const voiceWakeSessions = snapshot.voiceWakeSessions || {};
   const onboarding = snapshot.onboarding || {};
   const contracts = snapshot.autonomyContracts?.profiles || [];
   const providerHealth = snapshot.providerHealth || {};
@@ -1347,6 +1348,7 @@ function settingsView(snapshot) {
   return `
     <section class="feature-grid">
       ${featureCard({ label: "Onboarding", value: `${onboarding.percent || 0}%`, status: onboarding.status || "setup", detail: onboarding.summary || "One-screen setup for provider, voice, memory, autonomy, remote access, and safety." })}
+      ${featureCard({ label: "Voice Wake Sessions", value: voiceWakeSessions.status || "idle", status: `${voiceWakeSessions.wakePhraseHits || 0} wake / ${voiceWakeSessions.confirmationCount || 0} yes`, detail: `${voiceWakeSessions.interruptionCount || 0} interruptions, ${voiceWakeSessions.preferenceCount || 0} voice preference(s) captured.` })}
       ${featureCard({ label: "Engine", value: modelLabel(snapshot.model), status: providerLabel(snapshot.provider, snapshot), detail: "Current model used by chat." })}
       ${featureCard({ label: "Approval", value: snapshot.approval, status: snapshot.approvalMode, detail: "Controls when Crypt asks before tools run." })}
       ${featureCard({ label: "Thinking", value: snapshot.thinkingMode, status: snapshot.reasoningEffort, detail: "Provider reasoning mode." })}
@@ -1389,6 +1391,14 @@ function settingsView(snapshot) {
         <h3>Onboarding</h3>
         <div class="compact-list">
           ${(onboarding.steps || []).map((step) => compactItem(step.status || "setup", step.label, step.action || step.detail || "ready")).join("") || compactItem("empty", "No onboarding snapshot", "Setup readiness will appear here after refresh.")}
+        </div>
+      </div>
+      <div class="panel-card wide">
+        <h3>Voice Wake Sessions</h3>
+        <div class="compact-list">
+          ${compactItem(voiceWakeSessions.status || "idle", voiceWakeSessions.lastWakePhrase || "No wake phrase yet", voiceWakeSessions.lastTranscript || "Wake phrases, confirmations, and interruptions will appear here.")}
+          ${(voiceWakeSessions.preferences || []).slice(0, 6).map((preference) => compactItem("preference", preference, "Voice mode will use this as a runtime hint.")).join("")}
+          ${(voiceWakeSessions.events || []).slice(0, 6).map((event) => compactItem(event.event || "voice", event.text || event.voice || "voice event", event.voice || "local mic")).join("")}
         </div>
       </div>
       <div class="panel-card">
@@ -2165,6 +2175,14 @@ function handleEvent(event) {
     case "credentialVaultError":
       addActivity("Credential vault", event.error || "Could not update credential references.");
       break;
+    case "voiceConversation":
+      addActivity(
+        "Voice session",
+        `${event.wakeStatus || event.status || "voice"} / ${event.wakePhraseHits || 0} wake / ${event.confirmationCount || 0} confirmations`,
+        "memory",
+      );
+      refresh({ renderView: state.currentView === "settings" || state.currentView === "persona" }).catch((error) => addActivity("Voice session", error.message));
+      break;
     case "secretRotationUpdated":
       addActivity("Secret rotation", oneLine(event.text || "Sanitized rotation checklist created.", 160), "approval");
       refresh({ renderView: state.currentView === "settings" || state.currentView === "core" }).catch((error) => addActivity("Secret rotation", error.message));
@@ -2714,7 +2732,7 @@ function recordVoiceConversation(event, text = "") {
   const conversationId = state.snapshot?.voiceConversation?.conversationId || "";
   json("/api/voice/conversation", {
     method: "POST",
-    body: JSON.stringify({ event, text, conversationId }),
+    body: JSON.stringify({ event, text, conversationId, voice: state.voiceOut.voice }),
   }).catch((error) => addActivity("Voice", `conversation log failed: ${error.message}`));
 }
 

@@ -107,6 +107,7 @@ from . import (
     webui_cache_health,
     website_pipeline,
     voice_conversation,
+    voice_wake_sessions,
     workspace_map,
     work_threads,
     live_events,
@@ -713,15 +714,26 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                 text=str(body.get("text") or ""),
                 conversation_id=str(body.get("conversationId") or ""),
             )
+            wake = voice_wake_sessions.record_event(
+                self.server.cwd,
+                str(body.get("event") or ""),
+                text=str(body.get("text") or ""),
+                conversation_id=str(body.get("conversationId") or ""),
+                voice=str(body.get("voice") or ""),
+            )
             self.server.emit_event(
                 {
                     "event": "voiceConversation",
                     "status": convo.status,
                     "turnCount": convo.turn_count,
                     "interruptionCount": convo.interruption_count,
+                    "wakeStatus": wake.status,
+                    "wakePhraseHits": wake.wake_phrase_hits,
+                    "confirmationCount": wake.confirmation_count,
+                    "preferenceCount": wake.preference_count,
                 }
             )
-            self._json({"voiceConversation": convo.to_dict()})
+            self._json({"voiceConversation": convo.to_dict(), "voiceWakeSession": wake.to_dict()})
             return
         if path == "/api/backup/restore":
             try:
@@ -880,6 +892,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["personaGovernance"] = persona_governance.audit(self.server.cwd)
         snapshot["voice"] = local_voice.status().to_dict()
         snapshot["voiceConversation"] = voice_conversation.snapshot(self.server.cwd)
+        snapshot["voiceWakeSessions"] = voice_wake_sessions.snapshot(self.server.cwd)
         snapshot["offlineMode"] = offline_mode.snapshot(settings.load_config(), snapshot.get("providerHealth"))
         snapshot["safetyIncidents"] = safety_incidents.snapshot(self.server.cwd)
         snapshot["promptInjectionFirewall"] = prompt_injection_firewall.snapshot(self.server.cwd)
@@ -1455,6 +1468,9 @@ def _prompt_with_context(
         voice_conversation_section = voice_conversation.prompt_section(workspace)
         if voice_conversation_section:
             hints.append(voice_conversation_section.replace("\n", " | "))
+        voice_wake_section = voice_wake_sessions.prompt_section(workspace)
+        if voice_wake_section:
+            hints.append(voice_wake_section.replace("\n", " | "))
         offline_section = offline_mode.prompt_section(text, saved=settings.load_config())
         if offline_section:
             hints.append(offline_section.replace("\n", " | "))

@@ -148,6 +148,13 @@ persisting raw secret material.
 Track voice-mode sessions, interruptions, confirmations, wake phrases, and
 speaker preferences as first-class runtime state.
 
+Progress: added `core.voice_wake_sessions`, which records local voice sessions
+with wake phrase hits, confirmations, interruptions, active voice choice,
+transcript counts, and extracted voice preferences. `/api/voice/conversation`
+now updates both the conversation log and wake-session state, Settings exposes
+the voice session layer, and prompt context includes wake/interruption rules so
+spoken chat can behave like a real first-class input mode.
+
 ## Phase 115 - Screenshot Annotation Memory
 
 Let Crypt save screenshot observations, UI defects, and visual verification
