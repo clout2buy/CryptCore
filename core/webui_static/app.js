@@ -1199,6 +1199,7 @@ function settingsView(snapshot) {
   const providers = snapshot.providers || [];
   const routes = snapshot.routes || [];
   const tools = snapshot.toolsPreview || [];
+  const onboarding = snapshot.onboarding || {};
   const contracts = snapshot.autonomyContracts?.profiles || [];
   const providerHealth = snapshot.providerHealth || {};
   const healthCards = providerHealth.cards || [];
@@ -1218,6 +1219,7 @@ function settingsView(snapshot) {
   const dailyBrief = snapshot.dailyBrief || {};
   return `
     <section class="feature-grid">
+      ${featureCard({ label: "Onboarding", value: `${onboarding.percent || 0}%`, status: onboarding.status || "setup", detail: onboarding.summary || "One-screen setup for provider, voice, memory, autonomy, remote access, and safety." })}
       ${featureCard({ label: "Engine", value: modelLabel(snapshot.model), status: providerLabel(snapshot.provider, snapshot), detail: "Current model used by chat." })}
       ${featureCard({ label: "Approval", value: snapshot.approval, status: snapshot.approvalMode, detail: "Controls when Crypt asks before tools run." })}
       ${featureCard({ label: "Thinking", value: snapshot.thinkingMode, status: snapshot.reasoningEffort, detail: "Provider reasoning mode." })}
@@ -1241,6 +1243,12 @@ function settingsView(snapshot) {
       ${featureCard({ label: "Workspace", value: "open", status: "local", detail: snapshot.workspace })}
     </section>
     <section class="settings-grid">
+      <div class="panel-card wide">
+        <h3>Onboarding</h3>
+        <div class="compact-list">
+          ${(onboarding.steps || []).map((step) => compactItem(step.status || "setup", step.label, step.action || step.detail || "ready")).join("") || compactItem("empty", "No onboarding snapshot", "Setup readiness will appear here after refresh.")}
+        </div>
+      </div>
       <div class="panel-card">
         <h3>Routes</h3>
         <div class="compact-list">${routes.map((route) => compactItem(route.status || "route", routeLabel(route.role), `${providerLabel(route.provider, snapshot)} / ${modelLabel(route.model)}`)).join("") || compactItem("none", "No routes configured", "Chat falls back to the main engine.")}</div>

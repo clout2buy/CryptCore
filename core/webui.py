@@ -61,6 +61,7 @@ from . import (
     notification_center,
     office_layer,
     offline_mode,
+    onboarding,
     passive_memory,
     patch_risk,
     personal_os,
@@ -839,6 +840,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["evalHarness"] = eval_harness.snapshot(self.server.cwd, snapshot)
         snapshot["repairDoctor"] = repair_doctor.snapshot(self.server.cwd, snapshot)
         snapshot["dailyBrief"] = daily_brief.snapshot(self.server.cwd, snapshot)
+        snapshot["onboarding"] = onboarding.snapshot(self.server.cwd, snapshot)
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         snapshot["capabilityMatrix"] = capability_matrix.build(self.server.cwd, snapshot).to_dict()
         return snapshot
@@ -1423,6 +1425,9 @@ def _prompt_with_context(
         brief_section = daily_brief.prompt_section(workspace)
         if brief_section:
             hints.append(brief_section.replace("\n", " | "))
+        onboarding_section = onboarding.prompt_section(workspace)
+        if onboarding_section:
+            hints.append(onboarding_section.replace("\n", " | "))
         replay_section = live_replay.prompt_section(workspace)
         if replay_section:
             hints.append(replay_section.replace("\n", " | "))

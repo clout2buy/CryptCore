@@ -488,6 +488,13 @@ asking or drafting when the domain/risk says to slow down.
 Replace prompts with a one-screen setup that configures voice, providers,
 autonomy, memory, remote access, and safety.
 
+Progress: added `core.onboarding`, a one-screen readiness model for provider
+auth, local voice, memory, autonomy/trust rules, safety/repair state,
+connectors, and optional mobile/remote access. Settings now shows setup
+completion, next required setup step, and concrete actions, while prompt context
+surfaces missing required setup so Crypt can fix the environment instead of
+asking the user to know which subsystem is broken.
+
 ## Phase 99 - Full-System Chaos Checks
 
 Run simulated failures for provider outage, broken tools, corrupt memory, bad
