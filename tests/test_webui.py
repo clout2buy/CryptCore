@@ -202,6 +202,21 @@ def test_webui_event_sequence_stays_monotonic_after_buffer_wrap(monkeypatch, tmp
         server.server_close()
 
 
+def test_webui_conversation_prompt_context_stays_minimal():
+    route = webui.intent_router.route("idk testing u lol")
+    prompt = webui._prompt_with_context(
+        "idk testing u lol",
+        [],
+        intent=route,
+        workspace=Path("."),
+    )
+
+    assert "conversation mode" in prompt
+    assert "do not call tools" in prompt
+    assert "Smart Model Router" not in prompt
+    assert "Mission" not in prompt
+
+
 def test_webui_static_is_chat_first():
     html = resources.files("core.webui_static").joinpath("index.html").read_text(encoding="utf-8")
     script = resources.files("core.webui_static").joinpath("app.js").read_text(encoding="utf-8")

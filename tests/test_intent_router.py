@@ -10,6 +10,13 @@ def test_intent_router_keeps_short_chat_as_conversation():
     assert route.route_role == ""
 
 
+def test_intent_router_keeps_casual_testing_as_conversation():
+    route = intent_router.route("idk testing u lol")
+
+    assert route.intent == "conversation"
+    assert route.route_role == ""
+
+
 def test_intent_router_routes_code_to_builder():
     route = intent_router.route("fix the WebUI flicker bug and add tests")
 

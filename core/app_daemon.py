@@ -140,7 +140,14 @@ class AppDaemon:
                 self._run_command(text[1:], request_id=cid, session_key=_session_key(command))
                 return
             route_role = str(command.get("route") or "").strip().lower() or None
-            self._start_prompt(text, request_id=cid, route_role=route_role, session_key=_session_key(command))
+            routing_text = str(command.get("routingText") or text).strip()
+            self._start_prompt(
+                text,
+                request_id=cid,
+                route_role=route_role,
+                session_key=_session_key(command),
+                routing_text=routing_text,
+            )
             return
         self.emit("error", id=cid, error=f"unknown command: {ctype or '<missing>'}")
 
@@ -193,6 +200,7 @@ class AppDaemon:
         request_id: str,
         route_role: str | None = None,
         session_key: str = "default",
+        routing_text: str | None = None,
     ) -> None:
         with self._task_lock:
             if self._active_task:
@@ -207,7 +215,7 @@ class AppDaemon:
             self._task_session_keys[task_id] = session_key
         thread = threading.Thread(
             target=self._run_prompt_task,
-            args=(task_id, text, route_role),
+            args=(task_id, text, route_role, routing_text or text),
             name=f"crypt-task-{task_id}",
             daemon=True,
         )
@@ -222,10 +230,11 @@ class AppDaemon:
                 self._task_threads.pop(task_id, None)
             self.emit("error", id=request_id, error=f"failed to start task thread: {exc}")
 
-    def _run_prompt_task(self, task_id: str, text: str, route_role: str | None) -> None:
+    def _run_prompt_task(self, task_id: str, text: str, route_role: str | None, routing_text: str | None = None) -> None:
         session_key = self._task_session_keys.get(task_id, "default")
         self._active_session_key = session_key
-        self.emit("taskStarted", id=task_id, prompt=text, routeRole=route_role, sessionKey=session_key, snapshot=self.snapshot())
+        visible_text = str(routing_text or text)
+        self.emit("taskStarted", id=task_id, prompt=visible_text, routeRole=route_role, sessionKey=session_key, snapshot=self.snapshot())
         provider_name_for_learning = ""
         model_for_learning = ""
         session_id_for_learning = ""
@@ -242,7 +251,7 @@ class AppDaemon:
                 provider = _provider_from_route(saved, route)
                 provider_name = provider.name
             else:
-                router_decision = smart_model_router.decide(text, saved=saved)
+                router_decision = smart_model_router.decide(visible_text, saved=saved)
                 route_role = router_decision.route_role
                 provider_name = router_decision.provider
                 cred = _credential(provider_name)
@@ -320,7 +329,7 @@ class AppDaemon:
             outcome = _record_outcome_learning(
                 self._cwd,
                 task_id=task_id,
-                prompt=text,
+                prompt=visible_text,
                 status="completed",
                 final_text=result.final_text,
                 provider=provider_name_for_learning,
@@ -379,7 +388,7 @@ class AppDaemon:
             outcome = _record_outcome_learning(
                 self._cwd,
                 task_id=task_id,
-                prompt=text,
+                prompt=visible_text,
                 status="failed",
                 final_text=error_text,
                 provider=provider_name_for_learning,

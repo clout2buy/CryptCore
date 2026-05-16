@@ -22,7 +22,7 @@ class IntentRoute:
 _INTENTS: list[tuple[str, str, str, tuple[str, ...], bool, bool]] = [
     ("external_action", "planner", "external state-changing action", ("post", "publish", "buy", "purchase", "email", "reddit", "tweet", "dm ", "send money", "create account"), True, True),
     ("business", "builder", "business or revenue outcome", ("business", "revenue", "income", "customers", "leads", "store", "product launch", "stripe", "sales funnel"), True, False),
-    ("code", "builder", "software build or code change", ("code", "repo", "fix", "bug", "implement", "build", "refactor", "test", "webui", "frontend", "backend", "runtime"), False, False),
+    ("code", "builder", "software build or code change", ("code", "repo", "fix", "bug", "implement", "build", "refactor", "webui", "frontend", "backend", "runtime"), False, False),
     ("review", "reviewer", "review or verification request", ("review", "audit", "check my", "find bugs", "critique", "security", "verify", "tests"), False, False),
     ("research", "planner", "research or lookup request", ("research", "search", "find online", "look up", "latest", "compare", "source", "citations"), False, False),
     ("schedule", "planner", "scheduled follow-up or monitor", ("remind", "schedule", "every day", "daily", "weekly", "monitor", "watch", "keep an eye"), True, False),
@@ -33,6 +33,30 @@ _INTENTS: list[tuple[str, str, str, tuple[str, ...], bool, bool]] = [
 ]
 
 _CHAT_STARTS = ("hi", "hey", "yo", "hello", "sup", "thanks", "thank you")
+_CASUAL_MARKERS = (
+    "idk",
+    "lol",
+    "lmao",
+    "haha",
+    "testing u",
+    "testing you",
+    "test you",
+    "trying you",
+)
+_CODE_TEST_MARKERS = (
+    "run test",
+    "run tests",
+    "write test",
+    "write tests",
+    "add test",
+    "add tests",
+    "unit test",
+    "pytest",
+    "vitest",
+    "jest",
+    "test suite",
+    "failing test",
+)
 
 
 def route(text: str) -> IntentRoute:
@@ -43,10 +67,14 @@ def route(text: str) -> IntentRoute:
         return IntentRoute("empty", "", 1.0, "empty prompt", needs_clarification=True)
     if len(words) <= 5 and any(lower == item or lower.startswith(f"{item} ") for item in _CHAT_STARTS):
         return IntentRoute("conversation", "", 0.92, "short conversational opener")
+    if len(words) <= 8 and any(marker in lower for marker in _CASUAL_MARKERS):
+        return IntentRoute("conversation", "", 0.88, "casual check-in")
 
     matches: list[tuple[int, str, str, str, bool, bool]] = []
     for intent, role, rationale, terms, durable, approval in _INTENTS:
         hits = sum(1 for term in terms if term in lower)
+        if intent == "code" and any(marker in lower for marker in _CODE_TEST_MARKERS):
+            hits += 1
         if hits:
             matches.append((hits, intent, role, rationale, durable, approval))
     if matches:

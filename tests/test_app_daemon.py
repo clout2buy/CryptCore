@@ -247,8 +247,8 @@ def test_app_daemon_start_prompt_runs_in_background(monkeypatch, tmp_path):
     daemon = app_daemon.AppDaemon(emit=lambda event: None, cwd=str(tmp_path))
     calls: list[tuple[str, str, str | None]] = []
 
-    def fake_run(task_id: str, text: str, route_role: str | None) -> None:
-        calls.append((task_id, text, route_role))
+    def fake_run(task_id: str, text: str, route_role: str | None, routing_text: str | None = None) -> None:
+        calls.append((task_id, text, route_role, routing_text))
         with daemon._task_lock:
             daemon._active_task = None
             daemon._task_session_keys.pop(task_id, None)
@@ -261,7 +261,7 @@ def test_app_daemon_start_prompt_runs_in_background(monkeypatch, tmp_path):
     deadline = time.time() + 2
     while time.time() < deadline and not calls:
         time.sleep(0.01)
-    assert calls == [("sync-1", "hi", "builder")]
+    assert calls == [("sync-1", "hi", "builder", "hi")]
 
 
 def test_app_daemon_auto_prompt_uses_smart_model_router(monkeypatch, tmp_path):
@@ -301,6 +301,44 @@ def test_app_daemon_auto_prompt_uses_smart_model_router(monkeypatch, tmp_path):
     assert routed["routeRole"] == "builder"
 
 
+def test_app_daemon_routes_from_raw_prompt_not_runtime_hints(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
+    monkeypatch.setattr(settings, "CONFIG_PATH", tmp_path / "config.json")
+    events: list[dict] = []
+    daemon = app_daemon.AppDaemon(emit=events.append, cwd=str(tmp_path))
+    monkeypatch.setattr(settings, "load_config", lambda: {"provider": settings.PROVIDER_CRYPT})
+    monkeypatch.setattr(app_daemon, "_credential", lambda provider: object())
+    monkeypatch.setattr(app_daemon, "_credential_is_usable", lambda provider, cred: True)
+    monkeypatch.setattr(
+        app_daemon,
+        "_provider",
+        lambda saved, provider_name, cred, model_override=None: type(
+            "Provider",
+            (),
+            {"name": provider_name, "model": model_override or "fallback-model"},
+        )(),
+    )
+    monkeypatch.setattr(
+        app_daemon.loop,
+        "run_prompt",
+        lambda *args, **kwargs: type(
+            "Result",
+            (),
+            {"final_text": "hey", "current_tokens": 1, "session_tokens": 2},
+        )(),
+    )
+    monkeypatch.setattr(app_daemon, "_record_outcome_learning", lambda *args, **kwargs: {})
+
+    expanded = "hi\n\n[Crypt runtime hints: code builder tests runtime webui max reasoning]"
+    daemon._active_task = "task-chat"
+    daemon._task_session_keys["task-chat"] = "default"
+    daemon._run_prompt_task("task-chat", expanded, None, "hi")
+
+    routed = next(event for event in events if event["event"] == "modelRouted")
+    assert routed["decision"]["task_type"] == "conversation"
+    assert routed["decision"]["model"] == "crypt-spark"
+
+
 def test_app_daemon_accepts_approval_response_while_task_is_running(monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "APP_DIR", tmp_path / "crypt-home")
     monkeypatch.setattr(settings, "CONFIG_PATH", tmp_path / "config.json")
@@ -308,7 +346,7 @@ def test_app_daemon_accepts_approval_response_while_task_is_running(monkeypatch,
     daemon = app_daemon.AppDaemon(emit=events.append, cwd=str(tmp_path))
     result: list[tuple[bool, str]] = []
 
-    def fake_run(task_id: str, text: str, route_role: str | None) -> None:
+    def fake_run(task_id: str, text: str, route_role: str | None, routing_text: str | None = None) -> None:
         try:
             result.append(
                 daemon._request_approval(

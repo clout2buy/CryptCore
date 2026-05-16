@@ -1888,6 +1888,31 @@ function appendLiveEvent(id, item) {
   if (state.currentView === "chat") updateMessageNode(message);
 }
 
+function clearLiveEvents(id) {
+  if (!id) return;
+  const targetSessionId = state.taskSessions[id];
+  if (targetSessionId && targetSessionId !== state.currentSessionId) {
+    const session = state.sessions.find((candidate) => candidate.id === targetSessionId);
+    const message = (session?.messages || []).find((candidate) => candidate.id === id && candidate.role === "assistant");
+    if (message) {
+      message.live = [];
+      session.updatedAt = Date.now();
+      saveChatSessions();
+    }
+    return;
+  }
+  const message = state.messages.find((candidate) => candidate.id === id && candidate.role === "assistant");
+  if (!message) return;
+  message.live = [];
+  persistCurrentSession(false);
+  if (state.currentView === "chat") updateMessageNode(message);
+}
+
+function isConversationTurn(id) {
+  const turn = state.liveTurns[id];
+  return turn?.intent === "conversation" || turn?.intent === "empty";
+}
+
 function mergeLiveItems(items = [], entry) {
   const current = [...(items || [])];
   if (entry.key) {
@@ -2043,6 +2068,7 @@ function handleEvent(event) {
       addActivity("Started", event.prompt || "New request", "mission");
       break;
     case "taskProgress":
+      if (isConversationTurn(id) && ["provider", "running"].includes(event.phase || "")) return;
       appendLiveEvent(id, {
         key: `progress:${event.phase || "work"}`,
         kind: event.phase || "progress",
@@ -2053,6 +2079,12 @@ function handleEvent(event) {
       addActivity(event.phase || "Progress", event.text || "");
       break;
     case "intentRouted":
+      touchLiveTurn(id, { intent: event.intent || "task" });
+      if (event.intent === "conversation" || event.intent === "empty") {
+        stopLivePulse(id);
+        clearLiveEvents(id);
+        return;
+      }
       appendLiveEvent(id, {
         key: "intent-route",
         kind: "route",
@@ -2063,6 +2095,7 @@ function handleEvent(event) {
       addActivity("Intent", `${event.intent || "task"} / ${(Number(event.confidence || 0) * 100).toFixed(0)}%`, "mission");
       break;
     case "modelRouted":
+      if (isConversationTurn(id) || event.decision?.task_type === "conversation") return;
       appendLiveEvent(id, {
         key: "model-router",
         kind: "route",

@@ -686,6 +686,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
                     "type": "sendPrompt",
                     "id": request_id,
                     "text": prompt_text,
+                    "routingText": text,
                     "route": route_role,
                     "sessionKey": session_key,
                 }
@@ -1394,6 +1395,12 @@ def _prompt_with_context(
     workspace: str | Path | None = None,
 ) -> str:
     hints: list[str] = []
+    if intent and intent.intent in {"conversation", "empty"}:
+        return (
+            f"{text}\n\n"
+            "[Crypt runtime hints: conversation mode; answer directly in Crypt's voice; "
+            "do not call tools, write files, create missions, or offer status notes unless the user asks.]"
+        )
     hint_map = {
         "web": "use web research if it helps",
         "files": "inspect local files if needed",
