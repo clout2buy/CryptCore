@@ -79,6 +79,7 @@ def test_webui_snapshot_endpoint(monkeypatch, tmp_path: Path):
         assert "mobileCompanion" in web_snapshot
         assert "evalHarness" in web_snapshot
         assert "repairDoctor" in web_snapshot
+        assert "dailyBrief" in web_snapshot
         assert "toolCapabilityCards" in web_snapshot
         assert "smartModelRouter" in web_snapshot
         assert "providerHealth" in web_snapshot
@@ -271,6 +272,8 @@ def test_webui_static_is_chat_first():
     assert "evalHarness" in script
     assert "Repair Doctor" in script
     assert "repairDoctor" in script
+    assert "Daily Brief" in script
+    assert "dailyBrief" in script
     assert "Usage Ledger" in script
     assert "Notification Center" in script
     assert "Personal OS" in script

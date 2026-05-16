@@ -449,6 +449,14 @@ payment actions.
 Summarize overnight changes, open missions, approvals, reminders, and suggested
 next actions.
 
+Progress: added `core.daily_brief`, which builds a durable daily summary from
+notifications, job queue changes, live replay, monitors, open work threads,
+goals, scheduled follow-ups, credential references, connector readiness, and
+repair doctor output. It can write markdown/latest JSON reports, surfaces next
+actions in Settings, and injects urgent approvals, reminders, and repair steps
+into prompt context so Crypt starts each session oriented without asking the
+user to orchestrate.
+
 ## Phase 96 - Long-Running Mission Workers
 
 Let durable missions run background cycles with state, logs, and explicit

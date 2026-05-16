@@ -37,6 +37,7 @@ from . import (
     context_packs,
     credential_vault,
     data_importer,
+    daily_brief,
     desktop_recorder,
     entities,
     eval_harness,
@@ -807,6 +808,7 @@ class CryptWebHandler(BaseHTTPRequestHandler):
         snapshot["mobileCompanion"] = mobile_companion.snapshot(self.server.cwd, snapshot)
         snapshot["evalHarness"] = eval_harness.snapshot(self.server.cwd, snapshot)
         snapshot["repairDoctor"] = repair_doctor.snapshot(self.server.cwd, snapshot)
+        snapshot["dailyBrief"] = daily_brief.snapshot(self.server.cwd, snapshot)
         snapshot["coreFeatures"] = core_features(self.server.cwd, snapshot)
         snapshot["capabilityMatrix"] = capability_matrix.build(self.server.cwd, snapshot).to_dict()
         return snapshot
@@ -1379,6 +1381,9 @@ def _prompt_with_context(
         notification_section = notification_center.prompt_section(workspace)
         if notification_section:
             hints.append(notification_section.replace("\n", " | "))
+        brief_section = daily_brief.prompt_section(workspace)
+        if brief_section:
+            hints.append(brief_section.replace("\n", " | "))
         replay_section = live_replay.prompt_section(workspace)
         if replay_section:
             hints.append(replay_section.replace("\n", " | "))
